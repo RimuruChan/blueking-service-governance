@@ -398,7 +398,7 @@ type GetEnvInstanceStatsOutputObj struct {
 
 // EnvInstanceStatsOutput is the JSON representation of matched polaris instance counts.
 type EnvInstanceStatsOutput struct {
-	// 匹配实例中健康的数量（isHealthy && !isIsolated）
+	// 匹配实例中健康的数量（isHealthy && !isIsolated && weight > 0）
 	HealthyInstanceCount int32 `json:"healthyInstanceCount"`
 	// 匹配实例中隔离的数量（isIsolated == true）
 	IsolatedInstanceCount int32 `json:"isolatedInstanceCount"`

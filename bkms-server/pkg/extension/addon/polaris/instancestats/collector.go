@@ -41,9 +41,9 @@ import (
 )
 
 // Stats 单个环境匹配到的北极星实例统计。
-// healthy 为 isHealthy && !isIsolated；isolated 为 isIsolated。
+// healthy 为 isHealthy && !isIsolated && weight > 0；isolated 为 isIsolated。
 type Stats struct {
-	HealthyInstanceCount  int // isHealthy && !isIsolated
+	HealthyInstanceCount  int // isHealthy && !isIsolated && weight > 0
 	IsolatedInstanceCount int // isIsolated
 	TotalInstanceCount    int // 匹配到本环境的实例总数
 }
@@ -132,7 +132,7 @@ func (c *Collector) Collect(
 //  1. 实例 IP 落在本环境 Pod IP 集合中
 //  2. 实例 Port 等于配置的 ServicePort
 //
-// healthy 为 isHealthy && !isIsolated；isolated 为 isIsolated。
+// healthy 为 isHealthy && !isIsolated && weight > 0；isolated 为 isIsolated。
 func CountMatched(
 	podIPs map[string]struct{},
 	servicePort int32,
@@ -169,9 +169,9 @@ func summarizeHealthy(instances []*polarisInfra.Instance) (count int, weight int
 	return count, weight
 }
 
-// isHealthyInstance 健康实例：isHealthy && !isIsolated。
+// isHealthyInstance 健康实例：isHealthy && !isIsolated && weight > 0（权重为 0 不接流量）。
 func isHealthyInstance(inst *polarisInfra.Instance) bool {
-	return inst != nil && inst.IsHealthy && !inst.IsIsolated
+	return inst != nil && inst.IsHealthy && !inst.IsIsolated && inst.Weight > 0
 }
 
 // envNames 返回需要统计的环境集合：scopeEnvNames ∪ EnvStates keys（与 envStates 展示范围一致）。

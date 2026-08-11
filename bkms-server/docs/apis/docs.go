@@ -22058,7 +22058,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "healthyInstanceCount": {
-                    "description": "匹配实例中健康的数量（isHealthy && !isIsolated）",
+                    "description": "匹配实例中健康的数量（isHealthy && !isIsolated && weight > 0）",
                     "type": "integer"
                 },
                 "isolatedInstanceCount": {

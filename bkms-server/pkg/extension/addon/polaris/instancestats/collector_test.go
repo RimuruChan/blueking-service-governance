@@ -126,6 +126,7 @@ var _ = Describe("Collector", func() {
 				{IP: "127.0.0.2", Port: 9090, Weight: 80, IsHealthy: true},
 				{IP: "127.0.0.9", Port: 8080, Weight: 100, IsHealthy: true},
 				{IP: "127.0.0.8", Port: 8080, Weight: 200, IsHealthy: false},
+				{IP: "127.0.0.7", Port: 8080, Weight: 0, IsHealthy: true},
 			}, nil).
 			Build())
 
@@ -138,7 +139,7 @@ var _ = Describe("Collector", func() {
 			TotalInstanceCount:    2,
 		}))
 		Expect(result.EnvStats["test"]).To(Equal(instancestats.Stats{}))
-		// 全量健康实例含非平台匹配（127.0.0.9 / 异端口），不含隔离与不健康实例
+		// 全量健康实例含非平台匹配（127.0.0.9 / 异端口），不含隔离、不健康与零权重实例
 		Expect(result.TotalHealthyInstanceCount).To(Equal(3))
 		Expect(result.TotalHealthyInstanceWeight).To(Equal(280))
 	})
