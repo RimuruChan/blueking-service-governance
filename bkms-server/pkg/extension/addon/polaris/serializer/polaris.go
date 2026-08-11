@@ -400,6 +400,8 @@ type GetEnvInstanceStatsOutputObj struct {
 type EnvInstanceStatsOutput struct {
 	// 匹配实例中健康的数量（isHealthy && !isIsolated && weight > 0）
 	HealthyInstanceCount int32 `json:"healthyInstanceCount"`
+	// 匹配健康实例的权重总和
+	HealthyInstanceWeight int32 `json:"healthyInstanceWeight"`
 	// 匹配实例中隔离的数量（isIsolated == true）
 	IsolatedInstanceCount int32 `json:"isolatedInstanceCount"`
 	// 匹配到本环境 Pod 的实例总数
@@ -416,6 +418,7 @@ func (o *GetEnvInstanceStatsOutput) FromModel(result *instancestats.Result) *Get
 		for envName, s := range result.EnvStats {
 			obj.EnvStats[envName] = EnvInstanceStatsOutput{
 				HealthyInstanceCount:  int32(s.HealthyInstanceCount),  //nolint:gosec // G115: counts fit in int32
+				HealthyInstanceWeight: int32(s.HealthyInstanceWeight), //nolint:gosec // G115: weights fit in int32
 				IsolatedInstanceCount: int32(s.IsolatedInstanceCount), //nolint:gosec // G115: counts fit in int32
 				TotalInstanceCount:    int32(s.TotalInstanceCount),    //nolint:gosec // G115: counts fit in int32
 			}

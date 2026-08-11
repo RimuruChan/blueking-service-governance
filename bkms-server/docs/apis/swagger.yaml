@@ -3505,6 +3505,9 @@ definitions:
       healthyInstanceCount:
         description: 匹配实例中健康的数量（isHealthy && !isIsolated && weight > 0）
         type: integer
+      healthyInstanceWeight:
+        description: 匹配健康实例的权重总和
+        type: integer
       isolatedInstanceCount:
         description: 匹配实例中隔离的数量（isIsolated == true）
         type: integer

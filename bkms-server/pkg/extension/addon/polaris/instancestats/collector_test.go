@@ -135,6 +135,7 @@ var _ = Describe("Collector", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result.EnvStats["stable"]).To(Equal(instancestats.Stats{
 			HealthyInstanceCount:  1,
+			HealthyInstanceWeight: 100,
 			IsolatedInstanceCount: 1,
 			TotalInstanceCount:    2,
 		}))
@@ -202,8 +203,9 @@ var _ = Describe("Collector", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(listedNamespace).To(Equal("new-ns"))
 		Expect(result.EnvStats["stable"]).To(Equal(instancestats.Stats{
-			HealthyInstanceCount: 1,
-			TotalInstanceCount:   1,
+			HealthyInstanceCount:  1,
+			HealthyInstanceWeight: 100,
+			TotalInstanceCount:    1,
 		}))
 		Expect(result.TotalHealthyInstanceCount).To(Equal(1))
 		Expect(result.TotalHealthyInstanceWeight).To(Equal(100))

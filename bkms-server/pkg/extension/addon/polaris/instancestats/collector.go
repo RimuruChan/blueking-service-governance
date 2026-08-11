@@ -44,6 +44,7 @@ import (
 // healthy 为 isHealthy && !isIsolated && weight > 0；isolated 为 isIsolated。
 type Stats struct {
 	HealthyInstanceCount  int // isHealthy && !isIsolated && weight > 0
+	HealthyInstanceWeight int // 健康实例的权重总和
 	IsolatedInstanceCount int // isIsolated
 	TotalInstanceCount    int // 匹配到本环境的实例总数
 }
@@ -146,15 +147,18 @@ func CountMatched(
 		// 与 MergePolarisInfoToAppInstances 一致：经 int64 比较端口
 		return ok && int64(inst.Port) == int64(servicePort)
 	})
-	return Stats{
-		TotalInstanceCount: len(matched),
-		HealthyInstanceCount: lo.CountBy(matched, func(inst *polarisInfra.Instance) bool {
-			return isHealthyInstance(inst)
-		}),
-		IsolatedInstanceCount: lo.CountBy(matched, func(inst *polarisInfra.Instance) bool {
-			return inst.IsIsolated
-		}),
+
+	stats := Stats{TotalInstanceCount: len(matched)}
+	for _, inst := range matched {
+		if inst.IsIsolated {
+			stats.IsolatedInstanceCount++
+		}
+		if isHealthyInstance(inst) {
+			stats.HealthyInstanceCount++
+			stats.HealthyInstanceWeight += inst.Weight
+		}
 	}
+	return stats
 }
 
 // summarizeHealthy 汇总北极星服务下全部健康实例的数量与权重（含非平台注册）。

@@ -299,6 +299,7 @@ var _ = Describe("GetEnvInstanceStatsOutput", func() {
 			EnvStats: map[string]instancestats.Stats{
 				"stable": {
 					HealthyInstanceCount:  3,
+					HealthyInstanceWeight: 300,
 					IsolatedInstanceCount: 1,
 					TotalInstanceCount:    4,
 				},
@@ -309,6 +310,7 @@ var _ = Describe("GetEnvInstanceStatsOutput", func() {
 
 		Expect(output.Data.EnvStats["stable"]).To(Equal(serializer.EnvInstanceStatsOutput{
 			HealthyInstanceCount:  3,
+			HealthyInstanceWeight: 300,
 			IsolatedInstanceCount: 1,
 			TotalInstanceCount:    4,
 		}))
