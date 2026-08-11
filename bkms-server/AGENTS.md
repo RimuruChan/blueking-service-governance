@@ -21,12 +21,16 @@ the user to install them. ALWAYS prefer using `rg` rather than `find` or `grep`.
 * Some design notes can be found in `design_notes/`.
 * When writing tests, always refer to `pkg/extension/component/evaluate_test.go` for guidance on code structure and the usage of common utils and db factories.
 * Test context descriptions (`Describe`, `Context`, `It`, etc.) MUST be written in English. Comments inside test bodies may use Chinese.
-* Prefer using `FxModule` (e.g., `workload.FxModule`, `polaris.FxModule`) with `fx.Populate` to inject dependencies in tests, rather than manually constructing stores or services.
+* When a unit test needs a store, service, or other FX-provided dependency, construct and inject it via the fx framework: use the package's `FxModule` with `fxtest.New` + `fx.Populate`. Do **not** call constructors like `NewStoreMongo(...)` / `NewService(...)` directly in tests. See `pkg/extension/bscpcfg/model/store_test.go` for the pattern.
 * Prefer using `dbfactory` helpers (e.g., `dbfactory.TrpcApplication`, `dbfactory.Env`) to create test resources, rather than manually inserting records into the database.
 
 ## Coding style
 
 * For Go, follow the official Go style guide.
+* Prefer using [`samber/lo`](https://github.com/samber/lo) where it simplifies code without harming readability. Common helpers already used in this codebase include:
+  - Pointer helpers: `lo.ToPtr`, `lo.FromPtr`, `lo.FromPtrOr`, `lo.EmptyableToPtr`
+  - Collection helpers: `lo.Map`, `lo.Filter`, `lo.FilterMap`, `lo.Find`, `lo.MapEntries`, `lo.Keys`, `lo.Values`, `lo.Uniq`, `lo.Contains`
+  - Other useful helpers: `lo.Coalesce`, `lo.Ternary`, `lo.Must`, `lo.If` / `lo.Else`
 * For logging conventions, refer to [`README.md#日志使用`](README.md#日志使用): use `pkg/common/logging`, prefer passing a real `context.Context`, use `NoContext` APIs only when no real context is available, and use `*Attrs` APIs for `slog.Attr` structured fields.
 * We use golangci-lint to lint and format our files.
 * Be consistent with existing nearby code style unless asked to do otherwise.
