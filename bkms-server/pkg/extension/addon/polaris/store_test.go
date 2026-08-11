@@ -21,6 +21,7 @@ package polaris_test
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/TencentBlueKing/gopkg/stringx"
 	. "github.com/onsi/ginkgo/v2"
@@ -165,6 +166,8 @@ var _ = Describe("PolarisConfigStore", func() {
 				before, err := store.Get(ctx, testAppID, configName)
 				Expect(err).NotTo(HaveOccurred())
 
+				// MongoDB 时间精度为毫秒，等待一小段时间以确保 updatedAt 可比较
+				time.Sleep(5 * time.Millisecond)
 				Expect(store.UpsertEnvWeight(ctx, testAppID, configName, "dev", 0)).To(Succeed())
 
 				updatedConfig, err := store.Get(ctx, testAppID, configName)

@@ -106,17 +106,17 @@ var _ = Describe("Collector", func() {
 				metav1.ListOptions,
 			) (*unstructured.UnstructuredList, error) {
 				return &unstructured.UnstructuredList{Items: []unstructured.Unstructured{
-					{Object: map[string]any{"status": map[string]any{"podIP": "10.0.0.1"}}},
-					{Object: map[string]any{"status": map[string]any{"podIP": "10.0.0.2"}}},
+					{Object: map[string]any{"status": map[string]any{"podIP": "127.0.0.1"}}},
+					{Object: map[string]any{"status": map[string]any{"podIP": "127.0.0.2"}}},
 				}}, nil
 			}).
 			Build())
 		mockers = append(mockers, mockey.Mock(polarisInfra.GetInstances).
 			Return([]*polarisInfra.Instance{
-				{IP: "10.0.0.1", Port: 8080, IsHealthy: true},
-				{IP: "10.0.0.2", Port: 8080, IsHealthy: true, IsIsolated: true},
-				{IP: "10.0.0.2", Port: 9090, IsHealthy: true},
-				{IP: "10.0.0.9", Port: 8080, IsHealthy: true},
+				{IP: "127.0.0.1", Port: 8080, IsHealthy: true},
+				{IP: "127.0.0.2", Port: 8080, IsHealthy: true, IsIsolated: true},
+				{IP: "127.0.0.2", Port: 9090, IsHealthy: true},
+				{IP: "127.0.0.9", Port: 8080, IsHealthy: true},
 			}, nil).
 			Build())
 
@@ -209,12 +209,12 @@ var _ = Describe("Collector", func() {
 var _ = Describe("CountMatched", func() {
 	It("ignores nil and unmatched instances", func() {
 		stats := instancestats.CountMatched(
-			map[string]struct{}{"10.0.0.1": {}},
+			map[string]struct{}{"127.0.0.1": {}},
 			8080,
 			[]*polarisInfra.Instance{
 				nil,
-				{IP: "10.0.0.2", Port: 8080, IsHealthy: true},
-				{IP: "10.0.0.1", Port: 9090, IsHealthy: true},
+				{IP: "127.0.0.2", Port: 8080, IsHealthy: true},
+				{IP: "127.0.0.1", Port: 9090, IsHealthy: true},
 			},
 		)
 
