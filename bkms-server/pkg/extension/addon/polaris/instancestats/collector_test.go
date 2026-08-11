@@ -20,6 +20,7 @@ package instancestats_test
 
 import (
 	"context"
+	"time"
 
 	"github.com/TencentBlueKing/gopkg/stringx"
 	"github.com/bytedance/mockey"
@@ -129,6 +130,69 @@ var _ = Describe("Collector", func() {
 			TotalInstanceCount:    2,
 		}))
 		Expect(result["test"]).To(Equal(instancestats.Stats{}))
+	})
+
+	It("uses the latest deploy record even when its status is not deployed", func() {
+		// 较早的成功记录：若误用 GetLatestByStatuses(Deployed) 会落到这里
+		_, err := store.Create(ctx, &appmodeldeploy.Record{
+			AppID:           appID,
+			EnvName:         "stable",
+			TrafficLaneName: "",
+			Status:          appmodeldeploy.StatusDeployed,
+			ClusterID:       "BCS-K8S-OLD",
+			Namespace:       "old-ns",
+			LabelSelector:   map[string]string{"app": "old"},
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		// MongoDB DateTime 精度为毫秒，保证 failed 记录成为 GetLatest 结果
+		time.Sleep(5 * time.Millisecond)
+
+		_, err = store.Create(ctx, &appmodeldeploy.Record{
+			AppID:           appID,
+			EnvName:         "stable",
+			TrafficLaneName: "",
+			Status:          appmodeldeploy.StatusFailed,
+			ClusterID:       "BCS-K8S-NEW",
+			Namespace:       "new-ns",
+			LabelSelector:   map[string]string{"app": "new"},
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		var listedNamespace string
+		mockers = append(mockers, mockey.Mock(cluster.NewConfig).Return(&cluster.Config{}).Build())
+		mockers = append(mockers, mockey.Mock(k8sclient.NewWithGVR).
+			To(func(*cluster.Config, schema.GroupVersionResource) *k8sclient.Client {
+				return &k8sclient.Client{}
+			}).
+			Build())
+		mockers = append(mockers, mockey.Mock((*k8sclient.Client).List).
+			To(func(
+				_ *k8sclient.Client,
+				_ context.Context,
+				namespace string,
+				_ metav1.ListOptions,
+			) (*unstructured.UnstructuredList, error) {
+				listedNamespace = namespace
+				return &unstructured.UnstructuredList{Items: []unstructured.Unstructured{
+					{Object: map[string]any{"status": map[string]any{"podIP": "127.0.0.3"}}},
+				}}, nil
+			}).
+			Build())
+		mockers = append(mockers, mockey.Mock(polarisInfra.GetInstances).
+			Return([]*polarisInfra.Instance{
+				{IP: "127.0.0.3", Port: 8080, IsHealthy: true},
+			}, nil).
+			Build())
+
+		result, err := instancestats.NewCollector(store).Collect(ctx, appID, config)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(listedNamespace).To(Equal("new-ns"))
+		Expect(result["stable"]).To(Equal(instancestats.Stats{
+			HealthyInstanceCount: 1,
+			TotalInstanceCount:   1,
+		}))
 	})
 
 	It("returns zeros without querying dependencies for undeployed environments", func() {
