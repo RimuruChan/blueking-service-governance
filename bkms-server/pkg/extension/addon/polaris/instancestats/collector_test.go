@@ -121,10 +121,11 @@ var _ = Describe("Collector", func() {
 			Build())
 		mockers = append(mockers, mockey.Mock(polarisInfra.GetInstances).
 			Return([]*polarisInfra.Instance{
-				{IP: "127.0.0.1", Port: 8080, IsHealthy: true},
-				{IP: "127.0.0.2", Port: 8080, IsHealthy: true, IsIsolated: true},
-				{IP: "127.0.0.2", Port: 9090, IsHealthy: true},
-				{IP: "127.0.0.9", Port: 8080, IsHealthy: true},
+				{IP: "127.0.0.1", Port: 8080, Weight: 100, IsHealthy: true},
+				{IP: "127.0.0.2", Port: 8080, Weight: 50, IsHealthy: true, IsIsolated: true},
+				{IP: "127.0.0.2", Port: 9090, Weight: 80, IsHealthy: true},
+				{IP: "127.0.0.9", Port: 8080, Weight: 100, IsHealthy: true},
+				{IP: "127.0.0.8", Port: 8080, Weight: 200, IsHealthy: false},
 			}, nil).
 			Build())
 
@@ -132,13 +133,14 @@ var _ = Describe("Collector", func() {
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result.EnvStats["stable"]).To(Equal(instancestats.Stats{
-			HealthyInstanceCount:  2,
+			HealthyInstanceCount:  1,
 			IsolatedInstanceCount: 1,
 			TotalInstanceCount:    2,
 		}))
 		Expect(result.EnvStats["test"]).To(Equal(instancestats.Stats{}))
-		// 含非平台匹配实例（127.0.0.9 / 异端口），全量大于各环境匹配数之和
-		Expect(result.PolarisInstanceCount).To(Equal(4))
+		// 全量健康实例含非平台匹配（127.0.0.9 / 异端口），不含隔离与不健康实例
+		Expect(result.TotalHealthyInstanceCount).To(Equal(3))
+		Expect(result.TotalHealthyInstanceWeight).To(Equal(280))
 	})
 
 	It("uses the latest deploy record even when its status is not deployed", func() {
@@ -190,7 +192,7 @@ var _ = Describe("Collector", func() {
 			Build())
 		mockers = append(mockers, mockey.Mock(polarisInfra.GetInstances).
 			Return([]*polarisInfra.Instance{
-				{IP: "127.0.0.3", Port: 8080, IsHealthy: true},
+				{IP: "127.0.0.3", Port: 8080, Weight: 100, IsHealthy: true},
 			}, nil).
 			Build())
 
@@ -202,7 +204,8 @@ var _ = Describe("Collector", func() {
 			HealthyInstanceCount: 1,
 			TotalInstanceCount:   1,
 		}))
-		Expect(result.PolarisInstanceCount).To(Equal(1))
+		Expect(result.TotalHealthyInstanceCount).To(Equal(1))
+		Expect(result.TotalHealthyInstanceWeight).To(Equal(100))
 	})
 
 	It("returns zeros without querying dependencies for undeployed environments", func() {
@@ -216,7 +219,8 @@ var _ = Describe("Collector", func() {
 				"stable": {},
 				"test":   {},
 			},
-			PolarisInstanceCount: 0,
+			TotalHealthyInstanceCount:  0,
+			TotalHealthyInstanceWeight: 0,
 		}))
 	})
 

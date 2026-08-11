@@ -390,13 +390,15 @@ type GetEnvInstanceStatsOutput struct {
 type GetEnvInstanceStatsOutputObj struct {
 	// 各环境匹配到的北极星实例统计，key 为环境名
 	EnvStats map[string]EnvInstanceStatsOutput `json:"envStats"`
-	// 北极星服务下全部实例数（含非平台注册的实例，例如迁移业务）
-	PolarisInstanceCount int32 `json:"polarisInstanceCount"`
+	// 北极星服务下全部健康实例数（含非平台注册，例如迁移业务）
+	TotalHealthyInstanceCount int32 `json:"totalHealthyInstanceCount"`
+	// 北极星服务下全部健康实例的权重总和
+	TotalHealthyInstanceWeight int32 `json:"totalHealthyInstanceWeight"`
 }
 
 // EnvInstanceStatsOutput is the JSON representation of matched polaris instance counts.
 type EnvInstanceStatsOutput struct {
-	// 匹配实例中健康的数量（isHealthy == true）
+	// 匹配实例中健康的数量（isHealthy && !isIsolated）
 	HealthyInstanceCount int32 `json:"healthyInstanceCount"`
 	// 匹配实例中隔离的数量（isIsolated == true）
 	IsolatedInstanceCount int32 `json:"isolatedInstanceCount"`
@@ -418,7 +420,8 @@ func (o *GetEnvInstanceStatsOutput) FromModel(result *instancestats.Result) *Get
 				TotalInstanceCount:    int32(s.TotalInstanceCount),    //nolint:gosec // G115: counts fit in int32
 			}
 		}
-		obj.PolarisInstanceCount = int32(result.PolarisInstanceCount) //nolint:gosec // G115: counts fit in int32
+		obj.TotalHealthyInstanceCount = int32(result.TotalHealthyInstanceCount)   //nolint:gosec // G115: counts fit in int32
+		obj.TotalHealthyInstanceWeight = int32(result.TotalHealthyInstanceWeight) //nolint:gosec // G115: weights fit in int32
 	}
 	o.Data = obj
 	return o

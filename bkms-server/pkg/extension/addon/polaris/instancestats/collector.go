@@ -41,10 +41,10 @@ import (
 )
 
 // Stats 单个环境匹配到的北极星实例统计。
-// healthy 与 isolated 相互独立，同一实例可同时计入两者。
+// healthy 为 isHealthy && !isIsolated；isolated 为 isIsolated。
 type Stats struct {
-	HealthyInstanceCount  int // isHealthy == true
-	IsolatedInstanceCount int // isIsolated == true
+	HealthyInstanceCount  int // isHealthy && !isIsolated
+	IsolatedInstanceCount int // isIsolated
 	TotalInstanceCount    int // 匹配到本环境的实例总数
 }
 
@@ -52,8 +52,10 @@ type Stats struct {
 type Result struct {
 	// EnvStats 各环境匹配到的实例统计
 	EnvStats map[string]Stats
-	// PolarisInstanceCount 北极星服务下全部实例数（含非平台注册），未拉取时为 0
-	PolarisInstanceCount int
+	// TotalHealthyInstanceCount 北极星服务下全部健康实例数（含非平台注册）
+	TotalHealthyInstanceCount int
+	// TotalHealthyInstanceWeight 北极星服务下全部健康实例的权重总和
+	TotalHealthyInstanceWeight int
 }
 
 // Collector 拉取并汇总北极星配置在各环境下的实例统计。
@@ -66,7 +68,7 @@ func NewCollector(deployRecordStore appmodeldeploy.RecordStore) *Collector {
 	return &Collector{deployRecordStore: deployRecordStore}
 }
 
-// Collect 返回配置关联各环境的实例统计，以及北极星服务全量实例数。
+// Collect 返回配置关联各环境的实例统计，以及北极星服务全量健康实例数 / 权重。
 // 未部署环境直接返回全 0；部署记录 / Pod / 北极星查询失败则整体报错。
 func (c *Collector) Collect(
 	ctx context.Context,
@@ -116,11 +118,11 @@ func (c *Collector) Collect(
 		envStats[envName] = CountMatched(podIPs, config.ServicePort, instances)
 	}
 
+	healthyCount, healthyWeight := summarizeHealthy(instances)
 	return &Result{
-		EnvStats: envStats,
-		PolarisInstanceCount: lo.CountBy(instances, func(inst *polarisInfra.Instance) bool {
-			return inst != nil
-		}),
+		EnvStats:                   envStats,
+		TotalHealthyInstanceCount:  healthyCount,
+		TotalHealthyInstanceWeight: healthyWeight,
 	}, nil
 }
 
@@ -130,7 +132,7 @@ func (c *Collector) Collect(
 //  1. 实例 IP 落在本环境 Pod IP 集合中
 //  2. 实例 Port 等于配置的 ServicePort
 //
-// healthy / isolated 按字段独立计数，可重叠。
+// healthy 为 isHealthy && !isIsolated；isolated 为 isIsolated。
 func CountMatched(
 	podIPs map[string]struct{},
 	servicePort int32,
@@ -147,12 +149,29 @@ func CountMatched(
 	return Stats{
 		TotalInstanceCount: len(matched),
 		HealthyInstanceCount: lo.CountBy(matched, func(inst *polarisInfra.Instance) bool {
-			return inst.IsHealthy
+			return isHealthyInstance(inst)
 		}),
 		IsolatedInstanceCount: lo.CountBy(matched, func(inst *polarisInfra.Instance) bool {
 			return inst.IsIsolated
 		}),
 	}
+}
+
+// summarizeHealthy 汇总北极星服务下全部健康实例的数量与权重（含非平台注册）。
+func summarizeHealthy(instances []*polarisInfra.Instance) (count int, weight int) {
+	for _, inst := range instances {
+		if !isHealthyInstance(inst) {
+			continue
+		}
+		count++
+		weight += inst.Weight
+	}
+	return count, weight
+}
+
+// isHealthyInstance 健康实例：isHealthy && !isIsolated。
+func isHealthyInstance(inst *polarisInfra.Instance) bool {
+	return inst != nil && inst.IsHealthy && !inst.IsIsolated
 }
 
 // envNames 返回需要统计的环境集合：scopeEnvNames ∪ EnvStates keys（与 envStates 展示范围一致）。

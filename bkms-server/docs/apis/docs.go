@@ -22058,7 +22058,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "healthyInstanceCount": {
-                    "description": "匹配实例中健康的数量（isHealthy == true）",
+                    "description": "匹配实例中健康的数量（isHealthy && !isIsolated）",
                     "type": "integer"
                 },
                 "isolatedInstanceCount": {
@@ -22966,8 +22966,12 @@ const docTemplate = `{
                         "$ref": "#/definitions/serializer.EnvInstanceStatsOutput"
                     }
                 },
-                "polarisInstanceCount": {
-                    "description": "北极星服务下全部实例数（含非平台注册的实例，例如迁移业务）",
+                "totalHealthyInstanceCount": {
+                    "description": "北极星服务下全部健康实例数（含非平台注册，例如迁移业务）",
+                    "type": "integer"
+                },
+                "totalHealthyInstanceWeight": {
+                    "description": "北极星服务下全部健康实例的权重总和",
                     "type": "integer"
                 }
             }

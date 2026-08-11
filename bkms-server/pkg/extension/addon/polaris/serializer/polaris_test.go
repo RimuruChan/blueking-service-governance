@@ -294,7 +294,7 @@ var _ = Describe("AppConfigEnvNameURIInput", func() {
 })
 
 var _ = Describe("GetEnvInstanceStatsOutput", func() {
-	It("maps per-environment instance counts and polaris total", func() {
+	It("maps per-environment instance counts and healthy totals", func() {
 		output := new(serializer.GetEnvInstanceStatsOutput).FromModel(&instancestats.Result{
 			EnvStats: map[string]instancestats.Stats{
 				"stable": {
@@ -303,7 +303,8 @@ var _ = Describe("GetEnvInstanceStatsOutput", func() {
 					TotalInstanceCount:    4,
 				},
 			},
-			PolarisInstanceCount: 7,
+			TotalHealthyInstanceCount:  7,
+			TotalHealthyInstanceWeight: 520,
 		})
 
 		Expect(output.Data.EnvStats["stable"]).To(Equal(serializer.EnvInstanceStatsOutput{
@@ -311,6 +312,7 @@ var _ = Describe("GetEnvInstanceStatsOutput", func() {
 			IsolatedInstanceCount: 1,
 			TotalInstanceCount:    4,
 		}))
-		Expect(output.Data.PolarisInstanceCount).To(Equal(int32(7)))
+		Expect(output.Data.TotalHealthyInstanceCount).To(Equal(int32(7)))
+		Expect(output.Data.TotalHealthyInstanceWeight).To(Equal(int32(520)))
 	})
 })
