@@ -16,26 +16,18 @@
  * to the current version of the project delivered to anyone in the future.
  */
 
-package overview
+package autodeploy
 
 import (
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
+	"go.uber.org/fx"
+
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
 )
 
-var _ = Describe("instance helpers", func() {
-	Describe("extractGameDeployReplicas", func() {
-		It("returns replicas from spec", func() {
-			replicas, ok := extractGameDeployReplicas(map[string]any{
-				"spec": map[string]any{"replicas": int64(5)},
-			})
-			Expect(ok).To(BeTrue())
-			Expect(replicas).To(Equal(int32(5)))
-		})
-
-		It("returns not found when replicas missing", func() {
-			_, ok := extractGameDeployReplicas(map[string]any{"spec": map[string]any{}})
-			Expect(ok).To(BeFalse())
-		})
-	})
-})
+// FxModule provides build auto deploy store dependencies.
+var FxModule = fx.Module("buildautodeploy",
+	database.PrivateFxModule,
+	fx.Provide(
+		fx.Annotate(NewRecordStoreMongo, fx.As(new(RecordStore))),
+	),
+)

@@ -152,20 +152,7 @@ func (o *AppInstanceOutputObj) FromPodManifest(
 		message = mapx.GetStr(manifest, "status.reason")
 	}
 
-	isHealthy := false
-	for _, condition := range mapx.GetList(manifest, "status.conditions") {
-		cond, ok := condition.(map[string]any)
-		if !ok {
-			continue
-		}
-		condType := mapx.GetStr(cond, "type")
-		condReason := mapx.GetStr(cond, "reason")
-		condStatus := mapx.GetStr(cond, "status")
-		if condType == "Ready" && (condStatus == "True" || condReason == "PodCompleted") {
-			isHealthy = true
-			break
-		}
-	}
+	isHealthy := podstatus.IsReady(manifest)
 
 	*o = AppInstanceOutputObj{
 		ID:           podName,

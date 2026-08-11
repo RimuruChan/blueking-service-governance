@@ -420,3 +420,46 @@ var _ = Describe("PodStatusParser", func() {
 		})
 	})
 })
+
+var _ = Describe("IsReady", func() {
+	It("should return true when Ready condition is True", func() {
+		Expect(podstatus.IsReady(map[string]any{
+			"status": map[string]any{
+				"conditions": []any{
+					map[string]any{"type": "Ready", "status": "True"},
+				},
+			},
+		})).To(BeTrue())
+	})
+
+	It("should return true when pod completed normally", func() {
+		Expect(podstatus.IsReady(map[string]any{
+			"status": map[string]any{
+				"conditions": []any{
+					map[string]any{"type": "Ready", "status": "False", "reason": "PodCompleted"},
+				},
+			},
+		})).To(BeTrue())
+	})
+
+	It("should return false when Ready condition is False", func() {
+		Expect(podstatus.IsReady(map[string]any{
+			"status": map[string]any{
+				"conditions": []any{
+					map[string]any{"type": "Ready", "status": "False"},
+				},
+			},
+		})).To(BeFalse())
+	})
+
+	It("should return false when Ready condition is absent", func() {
+		Expect(podstatus.IsReady(map[string]any{})).To(BeFalse())
+		Expect(podstatus.IsReady(map[string]any{
+			"status": map[string]any{
+				"conditions": []any{
+					map[string]any{"type": "Initialized", "status": "True"},
+				},
+			},
+		})).To(BeFalse())
+	})
+})

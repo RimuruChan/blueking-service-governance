@@ -27,7 +27,11 @@ import (
 	v1 "k8s.io/api/core/v1"
 
 	k8sstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload"
 )
+
+// podCompletedReason Pod 正常跑完退出时 Ready condition 的 reason
+const podCompletedReason = "PodCompleted"
 
 // Parser Pod 状态解析器
 type Parser struct {
@@ -145,6 +149,17 @@ func (p *Parser) updateByContainerStatuses(podStatus *PartialPodStatus) {
 			p.reason = "NotReady"
 		}
 	}
+}
+
+// IsReady 判断 Pod 是否就绪：Ready condition 为 True，
+// 或因 PodCompleted 结束（正常跑完退出的 Pod 视为健康，不计入异常）。
+func IsReady(manifest map[string]any) bool {
+	cond := workload.GetCondition(manifest, string(v1.PodReady))
+	if cond == nil {
+		return false
+	}
+	return mapx.GetStr(cond, "status") == string(v1.ConditionTrue) ||
+		mapx.GetStr(cond, "reason") == podCompletedReason
 }
 
 // hasPodInitializedCondition 判断 pod 是否 initialized

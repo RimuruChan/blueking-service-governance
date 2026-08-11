@@ -16,26 +16,30 @@
  * to the current version of the project delivered to anyone in the future.
  */
 
-package overview
+package autodeploy_test
 
 import (
+	"testing"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil"
 )
 
-var _ = Describe("instance helpers", func() {
-	Describe("extractGameDeployReplicas", func() {
-		It("returns replicas from spec", func() {
-			replicas, ok := extractGameDeployReplicas(map[string]any{
-				"spec": map[string]any{"replicas": int64(5)},
-			})
-			Expect(ok).To(BeTrue())
-			Expect(replicas).To(Equal(int32(5)))
-		})
+func TestAutoDeploy(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Build Auto Deploy Suite")
+}
 
-		It("returns not found when replicas missing", func() {
-			_, ok := extractGameDeployReplicas(map[string]any{"spec": map[string]any{}})
-			Expect(ok).To(BeFalse())
-		})
-	})
+var _ = BeforeSuite(func() {
+	if err := testutil.SetUpGlobalDatabase(); err != nil {
+		panic("failed to set up global database: " + err.Error())
+	}
+})
+
+var _ = AfterSuite(func() {
+	if err := testutil.TeardownGlobalDatabase(); err != nil {
+		panic("failed to teardown global database: " + err.Error())
+	}
 })

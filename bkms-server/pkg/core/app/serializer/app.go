@@ -458,13 +458,13 @@ func (o *DeployOverviewInstancesObj) FromModel(counts *overview.InstanceCounts) 
 
 // DeployOverviewResourcesObj is app-spec effective resource quantities (passthrough).
 type DeployOverviewResourcesObj struct {
-	// CPU limits（Kubernetes quantity 字符串）
+	// CPU limits（Kubernetes quantity 字符串），可选：未配置时不返回该字段
 	CPULimits string `json:"cpuLimits,omitempty"`
-	// CPU requests
+	// CPU requests，可选：未配置时不返回该字段
 	CPURequests string `json:"cpuRequests,omitempty"`
-	// Memory limits
+	// Memory limits，可选：未配置时不返回该字段
 	MemoryLimits string `json:"memoryLimits,omitempty"`
-	// Memory requests
+	// Memory requests，可选：未配置时不返回该字段
 	MemoryRequests string `json:"memoryRequests,omitempty"`
 }
 
@@ -496,11 +496,11 @@ type DeployOverviewAutoscalingObj struct {
 	MinReplicas int32 `json:"minReplicas"`
 	// 最大副本数
 	MaxReplicas int32 `json:"maxReplicas"`
-	// 指标模式扩缩容指标列表
+	// 指标模式扩缩容指标列表，仅配置定时扩缩容时为空数组
 	Metrics []DeployOverviewAutoscalingMetricObj `json:"metrics"`
 	// 利用率计算基准：true 以 limits 为基准，false 以 requests 为基准
 	ComputeByLimits bool `json:"computeByLimits"`
-	// 集群 GPA CR 运行状态；未启用 / CR 缺失 / 查询失败时为 null
+	// 集群 GPA CR 运行状态，可选：未启用 / CR 缺失 / 查询失败时为 null
 	Status *DeployOverviewAutoscalingStatusObj `json:"status"`
 }
 
@@ -510,11 +510,11 @@ type DeployOverviewAutoscalingStatusObj struct {
 	CurrentReplicas int32 `json:"currentReplicas"`
 	// 期望副本数
 	DesiredReplicas int32 `json:"desiredReplicas"`
-	// 上次扩缩容时间（RFC3339 字符串，可能为空）
+	// 上次扩缩容时间（RFC3339 字符串），可选：尚未发生扩缩容时为空字符串
 	LastScaleTime string `json:"lastScaleTime"`
 	// Phase：Active / Paused / Limited / Failed / Initializing / Unknown
 	Phase string `json:"phase"`
-	// 非 True condition 的汇总消息；出错时可展示
+	// 非 True condition 的汇总消息，可选：一切正常时为空字符串
 	StatusMessage string `json:"statusMessage"`
 }
 
@@ -572,13 +572,13 @@ type AppDeployOverviewEnvObj struct {
 	EnvKind string `json:"envKind"`
 	// 部署状态（原始枚举）
 	DeployStatus string `json:"deployStatus"`
-	// 实例数；不可用时为 null
+	// 实例数，可选：集群查询失败或缺少 workload 时为 null
 	Instances *DeployOverviewInstancesObj `json:"instances"`
-	// 自动扩缩容配置摘要；无 GPA 配置时为 null
+	// 自动扩缩容配置摘要，可选：无 GPA 配置时为 null
 	Autoscaling *DeployOverviewAutoscalingObj `json:"autoscaling"`
 	// 资源规格（app-spec 生效值）
 	Resources DeployOverviewResourcesObj `json:"resources"`
-	// 最近一次部署开始时间；无记录时省略
+	// 最近一次部署开始时间，可选：无部署记录时不返回该字段
 	LastDeployStartedAt *time.Time `json:"lastDeployStartedAt,omitempty"`
 }
 

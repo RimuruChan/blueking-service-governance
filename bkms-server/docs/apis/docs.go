@@ -18638,7 +18638,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "autoscaling": {
-                    "description": "自动扩缩容配置摘要；无 GPA 配置时为 null",
+                    "description": "自动扩缩容配置摘要，可选：无 GPA 配置时为 null",
                     "allOf": [
                         {
                             "$ref": "#/definitions/serializer.DeployOverviewAutoscalingObj"
@@ -18670,7 +18670,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "instances": {
-                    "description": "实例数；不可用时为 null",
+                    "description": "实例数，可选：集群查询失败或缺少 workload 时为 null",
                     "allOf": [
                         {
                             "$ref": "#/definitions/serializer.DeployOverviewInstancesObj"
@@ -18678,7 +18678,7 @@ const docTemplate = `{
                     ]
                 },
                 "lastDeployStartedAt": {
-                    "description": "最近一次部署开始时间；无记录时省略",
+                    "description": "最近一次部署开始时间，可选：无部署记录时不返回该字段",
                     "type": "string"
                 },
                 "resources": {
@@ -21707,7 +21707,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "metrics": {
-                    "description": "指标模式扩缩容指标列表",
+                    "description": "指标模式扩缩容指标列表，仅配置定时扩缩容时为空数组",
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/serializer.DeployOverviewAutoscalingMetricObj"
@@ -21718,7 +21718,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "status": {
-                    "description": "集群 GPA CR 运行状态；未启用 / CR 缺失 / 查询失败时为 null",
+                    "description": "集群 GPA CR 运行状态，可选：未启用 / CR 缺失 / 查询失败时为 null",
                     "allOf": [
                         {
                             "$ref": "#/definitions/serializer.DeployOverviewAutoscalingStatusObj"
@@ -21739,7 +21739,7 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "lastScaleTime": {
-                    "description": "上次扩缩容时间（RFC3339 字符串，可能为空）",
+                    "description": "上次扩缩容时间（RFC3339 字符串），可选：尚未发生扩缩容时为空字符串",
                     "type": "string"
                 },
                 "phase": {
@@ -21747,7 +21747,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "statusMessage": {
-                    "description": "非 True condition 的汇总消息；出错时可展示",
+                    "description": "非 True condition 的汇总消息，可选：一切正常时为空字符串",
                     "type": "string"
                 }
             }
@@ -21773,19 +21773,19 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "cpuLimits": {
-                    "description": "CPU limits（Kubernetes quantity 字符串）",
+                    "description": "CPU limits（Kubernetes quantity 字符串），可选：未配置时不返回该字段",
                     "type": "string"
                 },
                 "cpuRequests": {
-                    "description": "CPU requests",
+                    "description": "CPU requests，可选：未配置时不返回该字段",
                     "type": "string"
                 },
                 "memoryLimits": {
-                    "description": "Memory limits",
+                    "description": "Memory limits，可选：未配置时不返回该字段",
                     "type": "string"
                 },
                 "memoryRequests": {
-                    "description": "Memory requests",
+                    "description": "Memory requests，可选：未配置时不返回该字段",
                     "type": "string"
                 }
             }

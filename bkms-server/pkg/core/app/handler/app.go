@@ -605,7 +605,7 @@ func (h *Handler) GetAppDeployOverview(c *gin.Context) {
 		h.registry.HelmDeployRecordStore,
 		h.registry.GPAConfigStore,
 	)
-	result, err := svc.Build(ctx, app)
+	result, err := svc.GetOverview(ctx, app)
 	if err != nil {
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "build app deploy overview"))
 		return

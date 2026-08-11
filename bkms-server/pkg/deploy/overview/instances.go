@@ -24,7 +24,6 @@ import (
 	"maps"
 	"sync"
 
-	"github.com/TencentBlueKing/gopkg/mapx"
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +36,7 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/gvr"
 	k8skind "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
+	podstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/pod"
 )
 
 // deployRecordForEnv 携带查 K8s 实例所需的最新 AppModel 部署记录。
@@ -75,6 +75,7 @@ func queryInstanceCounts(ctx context.Context, records []deployRecordForEnv) inst
 	byCluster := groupDeployRecordsByCluster(records)
 	var mu sync.Mutex
 	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(maxConcurrentK8sRequests)
 	for _, batch := range byCluster {
 		g.Go(func() error {
 			counts := queryInstanceCountsForCluster(gctx, batch.clusterID, batch.items)
@@ -135,6 +136,7 @@ func queryInstanceCountsForCluster(
 
 	var mu sync.Mutex
 	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(maxConcurrentK8sRequests)
 	for _, item := range items {
 		g.Go(func() error {
 			counts, err := queryInstanceCountsForEnv(gctx, podClient, gdClient, item)
@@ -169,7 +171,7 @@ func queryInstanceCountsForEnv(
 	gdClient *k8sclient.Client,
 	item deployRecordForEnv,
 ) (*InstanceCounts, error) {
-	gdName := findGameDeployName(item.Record)
+	gdName := extractGameDeployName(item.Record)
 	if gdName == "" {
 		return nil, nil
 	}
@@ -183,12 +185,13 @@ func queryInstanceCountsForEnv(
 	)
 
 	g, gctx := errgroup.WithContext(ctx)
+	// 错误经 podsErr / gdErr 带回，两个查询都返回 nil，避免其中一个失败就取消另一个
 	g.Go(func() error {
-		pods, podsErr = listPodsForEnv(gctx, podClient, item)
-		return nil // 错误经 podsErr 带回，避免取消并发的 GD Get
+		pods, podsErr = listPods(gctx, podClient, item)
+		return nil
 	})
 	g.Go(func() error {
-		expected, gdOK, gdErr = getGameDeployReplicasForEnv(gctx, gdClient, item, gdName)
+		expected, gdOK, gdErr = getGameDeployReplicas(gctx, gdClient, item, gdName)
 		return nil
 	})
 	_ = g.Wait()
@@ -203,14 +206,7 @@ func queryInstanceCountsForEnv(
 		return nil, nil
 	}
 
-	var running, abnormal int32
-	for _, pod := range pods {
-		if isPodReady(pod.Object) {
-			running++
-		} else {
-			abnormal++
-		}
-	}
+	running, abnormal := countPodStates(pods)
 	return &InstanceCounts{
 		Running:  running,
 		Expected: expected,
@@ -218,8 +214,20 @@ func queryInstanceCountsForEnv(
 	}, nil
 }
 
-// findGameDeployName 从部署记录的 ResourceKeys 中取 GameDeployment 名称；没有则返回空串。
-func findGameDeployName(rec *appmodel.Record) string {
+// countPodStates 统计 Ready 与非 Ready 的 Pod 数。
+func countPodStates(pods []unstructured.Unstructured) (running, abnormal int32) {
+	for _, pod := range pods {
+		if podstatus.IsReady(pod.Object) {
+			running++
+		} else {
+			abnormal++
+		}
+	}
+	return running, abnormal
+}
+
+// extractGameDeployName 从部署记录的 ResourceKeys 中取 GameDeployment 名称；没有则返回空串。
+func extractGameDeployName(rec *appmodel.Record) string {
 	for _, key := range rec.ResourceKeys {
 		if key.Kind == k8skind.GameDeploy {
 			return key.Name
@@ -228,8 +236,8 @@ func findGameDeployName(rec *appmodel.Record) string {
 	return ""
 }
 
-// listPodsForEnv 在环境命名空间内按 LabelSelector List Pod。
-func listPodsForEnv(
+// listPods 在环境命名空间内按 LabelSelector List Pod。
+func listPods(
 	ctx context.Context,
 	client *k8sclient.PodClient,
 	item deployRecordForEnv,
@@ -243,9 +251,9 @@ func listPodsForEnv(
 	return list.Items, nil
 }
 
-// getGameDeployReplicasForEnv 按 ns/name Get GameDeployment 并读取 spec.replicas。
+// getGameDeployReplicas 按 ns/name Get GameDeployment 并读取 spec.replicas。
 // 找不到或 replicas 缺失时 ok=false（调用方视为该环境实例不可用）。
-func getGameDeployReplicasForEnv(
+func getGameDeployReplicas(
 	ctx context.Context,
 	client *k8sclient.Client,
 	item deployRecordForEnv,
@@ -275,21 +283,4 @@ func extractGameDeployReplicas(manifest map[string]any) (int32, bool) {
 		return 0, false
 	}
 	return int32(replicas), true //nolint:gosec // bounded by check above
-}
-
-// isPodReady 与实例列表序列化使用同一 Ready 判定（Ready=True 或 reason=PodCompleted）。
-func isPodReady(manifest map[string]any) bool {
-	for _, condition := range mapx.GetList(manifest, "status.conditions") {
-		cond, ok := condition.(map[string]any)
-		if !ok {
-			continue
-		}
-		condType := mapx.GetStr(cond, "type")
-		condReason := mapx.GetStr(cond, "reason")
-		condStatus := mapx.GetStr(cond, "status")
-		if condType == "Ready" && (condStatus == "True" || condReason == "PodCompleted") {
-			return true
-		}
-	}
-	return false
 }

@@ -132,9 +132,9 @@ var _ = Describe("overview.Service", func() {
 		return trpcApp
 	}
 
-	Describe("Build", func() {
+	Describe("GetOverview", func() {
 		It("rejects non AppModel application types", func() {
-			_, err := svc.Build(ctx, &bkmsapp.Application{ID: "h1", Type: bkmsapp.AppTypeHelm})
+			_, err := svc.GetOverview(ctx, &bkmsapp.Application{ID: "h1", Type: bkmsapp.AppTypeHelm})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unsupported app type"))
 		})
@@ -143,7 +143,7 @@ var _ = Describe("overview.Service", func() {
 			trpcApp := newTrpcApp()
 			_ = dbfactory.Env(ctx, envSvc, trpcApp.WorkspaceID)
 
-			result, err := svc.Build(ctx, trpcApp)
+			result, err := svc.GetOverview(ctx, trpcApp)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Envs).To(BeEmpty())
 		})
@@ -166,7 +166,7 @@ var _ = Describe("overview.Service", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			result, err := svc.Build(ctx, trpcApp)
+			result, err := svc.GetOverview(ctx, trpcApp)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Envs).To(HaveLen(1))
 			Expect(result.Envs[0].EnvName).To(Equal(tracked.Name))
@@ -183,7 +183,7 @@ var _ = Describe("overview.Service", func() {
 			featWithApp := dbfactory.FeatEnv(ctx, envSvc, trpcApp, source)
 			Expect(envStore.AddApp(ctx, featWithApp.ID, trpcApp.ID)).To(Succeed())
 
-			result, err := svc.Build(ctx, trpcApp)
+			result, err := svc.GetOverview(ctx, trpcApp)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Envs).To(HaveLen(1))
 			Expect(result.Envs[0].EnvName).To(Equal(featWithApp.Name))
@@ -216,7 +216,7 @@ var _ = Describe("overview.Service", func() {
 			}
 			Expect(gpaConfigStore.Create(ctx, cfg)).To(Succeed())
 
-			result, err := svc.Build(ctx, trpcApp)
+			result, err := svc.GetOverview(ctx, trpcApp)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Envs).To(HaveLen(1))
 			Expect(result.Envs[0].Autoscaling).NotTo(BeNil())
@@ -260,7 +260,7 @@ var _ = Describe("overview.Service", func() {
 					StatusMessage:   "the GPA controller was unable to get the target's current scale: not found",
 				}, nil).Build()
 
-				result, err := svc.Build(ctx, trpcApp)
+				result, err := svc.GetOverview(ctx, trpcApp)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.Envs).To(HaveLen(1))
 				Expect(result.Envs[0].Autoscaling).NotTo(BeNil())
@@ -343,7 +343,7 @@ var _ = Describe("overview.Service", func() {
 					}}, nil
 				}).Build()
 
-				result, err := svc.Build(ctx, trpcApp)
+				result, err := svc.GetOverview(ctx, trpcApp)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.Envs).To(HaveLen(1))
 				Expect(result.Envs[0].Instances).NotTo(BeNil())
@@ -385,7 +385,7 @@ var _ = Describe("overview.Service", func() {
 					nil, errors.New("cluster unreachable"),
 				).Build()
 
-				result, err := svc.Build(ctx, trpcApp)
+				result, err := svc.GetOverview(ctx, trpcApp)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result.Envs).To(HaveLen(1))
 				Expect(result.Envs[0].Instances).To(BeNil())
