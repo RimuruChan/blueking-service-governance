@@ -84,20 +84,11 @@ func (s *GPAService) Apply(ctx context.Context, env *bkmsenv.Environment, config
 
 // Get 回查集群中指定 GPA CR 的运行状态
 func (s *GPAService) Get(ctx context.Context, env *bkmsenv.Environment, name string) (*GPAStatus, error) {
-	k8sClient, err := s.newK8sClient(env.Cluster.ClusterID)
+	clusterClient, err := s.NewClusterClient(env.Cluster.ClusterID)
 	if err != nil {
-		return nil, errors.Wrap(err, "create k8s client for gpa")
+		return nil, err
 	}
-
-	obj, err := k8sClient.Get(ctx, env.Cluster.Namespace, name, metav1.GetOptions{})
-	if err != nil {
-		if errors.Is(err, k8sclient.ErrResourceNotFound) {
-			return nil, ErrCRNotFound
-		}
-		return nil, errors.Wrap(err, "get gpa CR from k8s")
-	}
-
-	return parseGPAStatusFromUnstructured(obj)
+	return clusterClient.GetStatus(ctx, env.Cluster.Namespace, name)
 }
 
 // ListByEnv 列出指定环境下所有 GPA CR 的运行状态
@@ -133,6 +124,43 @@ func (s *GPAService) Delete(ctx context.Context, env *bkmsenv.Environment, name 
 	}
 
 	return nil
+}
+
+// ClusterClient 单个集群的 GPA CR 客户端。
+//
+// 创建时解析一次 GVR（含 discovery 与 Redis 缓存查询），之后可在同集群多个 namespace 的
+// 查询间复用，避免逐环境重复解析。
+type ClusterClient struct {
+	cli *k8sclient.Client
+}
+
+// NewClusterClient 创建单集群 GPA CR 客户端。
+//
+// Args:
+//   - clusterID BCS / 本地集群 ID
+//
+// Returns:
+//   - 集群 GPA CR 客户端
+//   - error，集群未安装 GPA 组件时其中包含 discovery.ErrKindNotFound
+func (s *GPAService) NewClusterClient(clusterID string) (*ClusterClient, error) {
+	cli, err := s.newK8sClient(clusterID)
+	if err != nil {
+		return nil, errors.Wrap(err, "create k8s client for gpa")
+	}
+	return &ClusterClient{cli: cli}, nil
+}
+
+// GetStatus 回查指定 namespace 下 GPA CR 的运行状态；CR 不存在时返回 ErrCRNotFound。
+func (c *ClusterClient) GetStatus(ctx context.Context, namespace, name string) (*GPAStatus, error) {
+	obj, err := c.cli.Get(ctx, namespace, name, metav1.GetOptions{})
+	if err != nil {
+		if errors.Is(err, k8sclient.ErrResourceNotFound) {
+			return nil, ErrCRNotFound
+		}
+		return nil, errors.Wrap(err, "get gpa CR from k8s")
+	}
+
+	return parseGPAStatusFromUnstructured(obj)
 }
 
 // resolveScaleTargetName 解析 scaleTargetRef 指向的工作负载名。

@@ -21,11 +21,13 @@ package overview
 import (
 	"context"
 	"log/slog"
+	"maps"
 	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 
 	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
 	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
@@ -71,15 +73,32 @@ func (s *Service) listAutoscalingConfigsByEnv(
 	return out, nil
 }
 
-// queryAutoscalingStatuses 为已启用 GPA 的环境并发回查集群 CR 状态。
+// autoscalingTarget 单个环境待回查的 GPA CR 位置。
+type autoscalingTarget struct {
+	envName   string
+	namespace string
+	crName    string
+}
+
+// autoscalingClusterBatch 同一集群上需要一并回查的 GPA CR。
+type autoscalingClusterBatch struct {
+	clusterID string
+	targets   []autoscalingTarget
+}
+
+// queryAutoscalingStatuses 为已启用 GPA 的环境按集群并发回查集群 CR 状态。
 //
 // rows 只用于读取待查环境与 CR 名，不写回；回查失败的环境不出现在结果中，
 // 不使整次总览失败（与 instances 降级策略一致）。
+//
+// Args:
+//   - sem 本次请求内所有集群回查共享的在途请求闸门
 //
 // Returns:
 //   - envName -> GPA 运行状态
 func (s *Service) queryAutoscalingStatuses(
 	ctx context.Context,
+	sem *semaphore.Weighted,
 	trackedEnvs []envmodel.Environment,
 	rows []EnvRow,
 ) autoscalingStatusByEnv {
@@ -87,11 +106,32 @@ func (s *Service) queryAutoscalingStatuses(
 	if s.gpaService == nil {
 		return out
 	}
-	envByName := lo.KeyBy(trackedEnvs, func(env envmodel.Environment) string { return env.Name })
 
+	byCluster := groupAutoscalingTargetsByCluster(trackedEnvs, rows)
 	var mu sync.Mutex
 	g, gctx := errgroup.WithContext(ctx)
-	g.SetLimit(maxConcurrentK8sRequests)
+	for _, batch := range byCluster {
+		g.Go(func() error {
+			statuses := s.queryAutoscalingStatusesForCluster(gctx, sem, batch.clusterID, batch.targets)
+			mu.Lock()
+			defer mu.Unlock()
+			maps.Copy(out, statuses)
+			return nil
+		})
+	}
+	_ = g.Wait()
+	return out
+}
+
+// groupAutoscalingTargetsByCluster 按集群归拢待回查的 GPA CR。
+// 未启用 GPA、缺 CR 名、或环境缺集群信息的行直接跳过。
+func groupAutoscalingTargetsByCluster(
+	trackedEnvs []envmodel.Environment,
+	rows []EnvRow,
+) map[string]*autoscalingClusterBatch {
+	envByName := lo.KeyBy(trackedEnvs, func(env envmodel.Environment) string { return env.Name })
+
+	byCluster := map[string]*autoscalingClusterBatch{}
 	for i := range rows {
 		info := rows[i].Autoscaling
 		if info == nil || !info.Enabled || info.CRName == "" {
@@ -101,14 +141,53 @@ func (s *Service) queryAutoscalingStatuses(
 		if !ok || env.Cluster.ClusterID == "" {
 			continue
 		}
-		envName := rows[i].EnvName
+		batch, ok := byCluster[env.Cluster.ClusterID]
+		if !ok {
+			batch = &autoscalingClusterBatch{clusterID: env.Cluster.ClusterID}
+			byCluster[env.Cluster.ClusterID] = batch
+		}
+		batch.targets = append(batch.targets, autoscalingTarget{
+			envName:   rows[i].EnvName,
+			namespace: env.Cluster.Namespace,
+			crName:    info.CRName,
+		})
+	}
+	return byCluster
+}
+
+// queryAutoscalingStatusesForCluster 回查单集群上各环境的 GPA CR 状态。
+//
+// 客户端按集群创建一次（含一次 GVR 解析与 Redis 缓存查询），供该集群下各环境复用；
+// 创建失败时该集群整批降级为「状态不可用」，不影响其它集群。
+//
+// Returns:
+//   - envName -> GPA 运行状态；失败环境不写入
+func (s *Service) queryAutoscalingStatusesForCluster(
+	ctx context.Context,
+	sem *semaphore.Weighted,
+	clusterID string,
+	targets []autoscalingTarget,
+) autoscalingStatusByEnv {
+	out := make(autoscalingStatusByEnv, len(targets))
+	clusterClient, err := s.gpaService.NewClusterClient(clusterID)
+	if err != nil {
+		log.ErrorAttrs(ctx, "create deploy overview gpa cluster client failed",
+			slog.String("cluster_id", clusterID),
+			slog.Any("error", err),
+		)
+		return out
+	}
+
+	var mu sync.Mutex
+	g, gctx := errgroup.WithContext(ctx)
+	for _, target := range targets {
 		g.Go(func() error {
-			status := s.queryAutoscalingStatusForEnv(gctx, &env, info.CRName)
+			status := queryAutoscalingStatusForTarget(gctx, sem, clusterClient, clusterID, target)
 			if status == nil {
 				return nil
 			}
 			mu.Lock()
-			out[envName] = status
+			out[target.envName] = status
 			mu.Unlock()
 			return nil
 		})
@@ -117,22 +196,27 @@ func (s *Service) queryAutoscalingStatuses(
 	return out
 }
 
-// queryAutoscalingStatusForEnv 回查单个环境的 GPA CR 状态。
-//
-// CR 不存在、集群不可达时返回 nil，
-// 由调用方降级为「状态不可用」。
-func (s *Service) queryAutoscalingStatusForEnv(
+// queryAutoscalingStatusForTarget 回查单个环境的 GPA CR 状态。
+// CR 不存在、集群不可达时返回 nil，由调用方降级为「状态不可用」。
+func queryAutoscalingStatusForTarget(
 	ctx context.Context,
-	env *envmodel.Environment,
-	crName string,
+	sem *semaphore.Weighted,
+	client *gpa.ClusterClient,
+	clusterID string,
+	target autoscalingTarget,
 ) *AutoscalingStatus {
-	status, err := s.gpaService.Get(ctx, env, crName)
+	if err := sem.Acquire(ctx, 1); err != nil {
+		return nil
+	}
+	defer sem.Release(1)
+
+	status, err := client.GetStatus(ctx, target.namespace, target.crName)
 	if err != nil {
 		if !errors.Is(err, gpa.ErrCRNotFound) {
 			log.ErrorAttrs(ctx, "query deploy overview gpa status failed",
-				slog.String("env_name", env.Name),
-				slog.String("cluster_id", env.Cluster.ClusterID),
-				slog.String("gpa_name", crName),
+				slog.String("env_name", target.envName),
+				slog.String("cluster_id", clusterID),
+				slog.String("gpa_name", target.crName),
 				slog.Any("error", err),
 			)
 		}

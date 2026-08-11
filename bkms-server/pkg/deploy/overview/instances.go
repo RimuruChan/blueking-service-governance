@@ -26,6 +26,7 @@ import (
 
 	"github.com/pkg/errors"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
@@ -56,17 +57,41 @@ type clusterDeployBatch struct {
 	items     []deployRecordForEnv
 }
 
+// clusterQuerier 单集群内查询实例数所需的客户端与共享并发闸门。
+// 客户端按集群创建一次，供该集群下各环境复用。
+type clusterQuerier struct {
+	pods *k8sclient.PodClient
+	gd   *k8sclient.Client
+	sem  *semaphore.Weighted
+}
+
+// newClusterQuerier 创建单集群查询器；集群配置只解析一次，Pod 与 GameDeployment 客户端共用。
+func newClusterQuerier(clusterID string, sem *semaphore.Weighted) *clusterQuerier {
+	clusterCfg := cluster.NewConfig(clusterID)
+	return &clusterQuerier{
+		pods: k8sclient.NewPodClient(clusterCfg),
+		gd:   k8sclient.NewWithGVR(clusterCfg, gvr.GameDeploy),
+		sem:  sem,
+	}
+}
+
 // queryInstanceCounts 按集群并发查询各环境实例数。
 //
 // 集群之间并发；集群内各环境并发；单环境内 Pod List 与 GameDeployment Get 并发。
+// 三层扇出均不设上限，真正的在途请求数由 sem 统一约束。
 // 单环境失败只影响该环境（保持 nil），不中断其它环境/集群，也不使整次总览失败。
 //
 // Args:
+//   - sem 本次请求内所有集群回查共享的在途请求闸门
 //   - records 已过滤到表格行内、且含 AppModel 部署记录的环境
 //
 // Returns:
 //   - envName -> 实例数；失败或无法定位 workload 的环境不出现或为 nil
-func queryInstanceCounts(ctx context.Context, records []deployRecordForEnv) instanceCountsByEnv {
+func queryInstanceCounts(
+	ctx context.Context,
+	sem *semaphore.Weighted,
+	records []deployRecordForEnv,
+) instanceCountsByEnv {
 	out := make(instanceCountsByEnv, len(records))
 	if len(records) == 0 {
 		return out
@@ -75,10 +100,9 @@ func queryInstanceCounts(ctx context.Context, records []deployRecordForEnv) inst
 	byCluster := groupDeployRecordsByCluster(records)
 	var mu sync.Mutex
 	g, gctx := errgroup.WithContext(ctx)
-	g.SetLimit(maxConcurrentK8sRequests)
 	for _, batch := range byCluster {
 		g.Go(func() error {
-			counts := queryInstanceCountsForCluster(gctx, batch.clusterID, batch.items)
+			counts := queryInstanceCountsForCluster(gctx, sem, batch.clusterID, batch.items)
 			mu.Lock()
 			defer mu.Unlock()
 			maps.Copy(out, counts)
@@ -116,6 +140,7 @@ func groupDeployRecordsByCluster(records []deployRecordForEnv) map[string]*clust
 // 任一环境的查询失败只跳过该环境（instances 保持 nil），不影响同集群其它环境。
 //
 // Args:
+//   - sem 本次请求内所有集群回查共享的在途请求闸门
 //   - clusterID BCS / 本地集群 ID
 //   - items 同属于该集群的环境部署记录（约定 namespace 互不重复）
 //
@@ -123,6 +148,7 @@ func groupDeployRecordsByCluster(records []deployRecordForEnv) map[string]*clust
 //   - envName -> 实例数；失败环境不写入
 func queryInstanceCountsForCluster(
 	ctx context.Context,
+	sem *semaphore.Weighted,
 	clusterID string,
 	items []deployRecordForEnv,
 ) instanceCountsByEnv {
@@ -131,15 +157,13 @@ func queryInstanceCountsForCluster(
 		return out
 	}
 
-	podClient := k8sclient.NewPodClient(cluster.NewConfig(clusterID))
-	gdClient := k8sclient.NewWithGVR(cluster.NewConfig(clusterID), gvr.GameDeploy)
+	querier := newClusterQuerier(clusterID, sem)
 
 	var mu sync.Mutex
 	g, gctx := errgroup.WithContext(ctx)
-	g.SetLimit(maxConcurrentK8sRequests)
 	for _, item := range items {
 		g.Go(func() error {
-			counts, err := queryInstanceCountsForEnv(gctx, podClient, gdClient, item)
+			counts, err := queryInstanceCountsForEnv(gctx, querier, item)
 			if err != nil {
 				log.ErrorAttrs(gctx, "query deploy overview instances failed",
 					slog.String("cluster_id", clusterID),
@@ -167,8 +191,7 @@ func queryInstanceCountsForCluster(
 // Pod List 与 GameDeployment Get 并发；任一失败或缺少 GD 时返回 (nil, err/nil) 由调用方降级。
 func queryInstanceCountsForEnv(
 	ctx context.Context,
-	podClient *k8sclient.PodClient,
-	gdClient *k8sclient.Client,
+	querier *clusterQuerier,
 	item deployRecordForEnv,
 ) (*InstanceCounts, error) {
 	gdName := extractGameDeployName(item.Record)
@@ -187,11 +210,11 @@ func queryInstanceCountsForEnv(
 	g, gctx := errgroup.WithContext(ctx)
 	// 错误经 podsErr / gdErr 带回，两个查询都返回 nil，避免其中一个失败就取消另一个
 	g.Go(func() error {
-		pods, podsErr = listPods(gctx, podClient, item)
+		pods, podsErr = listPods(gctx, querier, item)
 		return nil
 	})
 	g.Go(func() error {
-		expected, gdOK, gdErr = getGameDeployReplicas(gctx, gdClient, item, gdName)
+		expected, gdOK, gdErr = getGameDeployReplicas(gctx, querier, item, gdName)
 		return nil
 	})
 	_ = g.Wait()
@@ -237,14 +260,23 @@ func extractGameDeployName(rec *appmodel.Record) string {
 }
 
 // listPods 在环境命名空间内按 LabelSelector List Pod。
+//
+// 指定 ResourceVersion="0"，让 apiserver 直接从 watch cache 返回，不必走 etcd 的 quorum read：
+// 这是本接口里最大的一笔查询（整个 Pod 列表），而总览只用于展示运行/异常实例数，
+// 可以接受 cache 落后主库几百毫秒；需要强一致读的场景（如部署前置校验）不应复用本函数。
 func listPods(
 	ctx context.Context,
-	client *k8sclient.PodClient,
+	querier *clusterQuerier,
 	item deployRecordForEnv,
 ) ([]unstructured.Unstructured, error) {
+	if err := querier.sem.Acquire(ctx, 1); err != nil {
+		return nil, errors.Wrap(err, "acquire k8s request slot")
+	}
+	defer querier.sem.Release(1)
+
 	ns := item.Record.Namespace
 	sel := labels.SelectorFromSet(item.Record.LabelSelector).String()
-	list, err := client.List(ctx, ns, metav1.ListOptions{LabelSelector: sel})
+	list, err := querier.pods.List(ctx, ns, metav1.ListOptions{LabelSelector: sel, ResourceVersion: "0"})
 	if err != nil {
 		return nil, errors.Wrapf(err, "list pods in namespace %s", ns)
 	}
@@ -255,11 +287,16 @@ func listPods(
 // 找不到或 replicas 缺失时 ok=false（调用方视为该环境实例不可用）。
 func getGameDeployReplicas(
 	ctx context.Context,
-	client *k8sclient.Client,
+	querier *clusterQuerier,
 	item deployRecordForEnv,
 	gdName string,
 ) (replicas int32, ok bool, err error) {
-	res, err := client.Get(ctx, item.Record.Namespace, gdName, metav1.GetOptions{})
+	if err = querier.sem.Acquire(ctx, 1); err != nil {
+		return 0, false, errors.Wrap(err, "acquire k8s request slot")
+	}
+	defer querier.sem.Release(1)
+
+	res, err := querier.gd.Get(ctx, item.Record.Namespace, gdName, metav1.GetOptions{})
 	if err != nil {
 		return 0, false, errors.Wrapf(
 			err, "get game deployment %s/%s", item.Record.Namespace, gdName,

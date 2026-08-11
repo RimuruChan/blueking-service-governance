@@ -31,6 +31,7 @@ import (
 	"go.uber.org/fx/fxtest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/autodeploy"
 	build "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
@@ -45,6 +46,7 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
 	k8sclient "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/client"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/discovery"
 	k8skind "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
@@ -132,6 +134,19 @@ var _ = Describe("overview.Service", func() {
 		return trpcApp
 	}
 
+	// mockGPAClusterClientChain mock 出 GPA 集群客户端的构造链路
+	// （cluster.NewConfig / GetGroupVersionResource / NewWithGVR），
+	// 具体的 CR 查询由各用例单独 mock。
+	mockGPAClusterClientChain := func() {
+		mockey.Mock(cluster.NewConfig).Return(&cluster.Config{}).Build()
+		mockey.Mock(discovery.GetGroupVersionResource).Return(
+			&schema.GroupVersionResource{
+				Group: "autoscaling.tkex.tencent.com", Version: "v1alpha1", Resource: "generalpodautoscalers",
+			}, nil,
+		).Build()
+		mockey.Mock(k8sclient.NewWithGVR).Return(&k8sclient.Client{}).Build()
+	}
+
 	Describe("GetOverview", func() {
 		It("rejects non AppModel application types", func() {
 			_, err := svc.GetOverview(ctx, &bkmsapp.Application{ID: "h1", Type: bkmsapp.AppTypeHelm})
@@ -216,24 +231,29 @@ var _ = Describe("overview.Service", func() {
 			}
 			Expect(gpaConfigStore.Create(ctx, cfg)).To(Succeed())
 
-			result, err := svc.GetOverview(ctx, trpcApp)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result.Envs).To(HaveLen(1))
-			Expect(result.Envs[0].Autoscaling).NotTo(BeNil())
-			Expect(result.Envs[0].Autoscaling.Enabled).To(BeTrue())
-			Expect(result.Envs[0].Autoscaling.MinReplicas).To(Equal(int32(4)))
-			Expect(result.Envs[0].Autoscaling.MaxReplicas).To(Equal(int32(12)))
-			Expect(result.Envs[0].Autoscaling.Metrics).To(ConsistOf(
-				AutoscalingMetric{Resource: string(gpa.ResourceCPU), AverageUtilization: 60},
-				AutoscalingMetric{Resource: string(gpa.ResourceMemory), AverageUtilization: 70},
-			))
-			Expect(result.Envs[0].Autoscaling.ComputeByLimits).To(BeFalse())
-			// 无 mock 时集群 GPA Get 失败/缺失，status 降级为 null，不阻断总览
-			Expect(result.Envs[0].Autoscaling.Status).To(BeNil())
-			Expect(result.Envs[0].Resources.CPULimits).To(Equal("2"))
-			Expect(result.Envs[0].Resources.CPURequests).To(Equal("1"))
-			Expect(result.Envs[0].Resources.MemoryLimits).To(Equal("4Gi"))
-			Expect(result.Envs[0].Resources.MemoryRequests).To(Equal("2Gi"))
+			mockey.PatchConvey("gpa CR absent in cluster", GinkgoT(), func() {
+				mockGPAClusterClientChain()
+				mockey.Mock((*gpa.ClusterClient).GetStatus).Return(nil, gpa.ErrCRNotFound).Build()
+
+				result, err := svc.GetOverview(ctx, trpcApp)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Envs).To(HaveLen(1))
+				Expect(result.Envs[0].Autoscaling).NotTo(BeNil())
+				Expect(result.Envs[0].Autoscaling.Enabled).To(BeTrue())
+				Expect(result.Envs[0].Autoscaling.MinReplicas).To(Equal(int32(4)))
+				Expect(result.Envs[0].Autoscaling.MaxReplicas).To(Equal(int32(12)))
+				Expect(result.Envs[0].Autoscaling.Metrics).To(ConsistOf(
+					AutoscalingMetric{Resource: string(gpa.ResourceCPU), AverageUtilization: 60},
+					AutoscalingMetric{Resource: string(gpa.ResourceMemory), AverageUtilization: 70},
+				))
+				Expect(result.Envs[0].Autoscaling.ComputeByLimits).To(BeFalse())
+				// 集群中 CR 不存在时 status 降级为 null，不阻断总览
+				Expect(result.Envs[0].Autoscaling.Status).To(BeNil())
+				Expect(result.Envs[0].Resources.CPULimits).To(Equal("2"))
+				Expect(result.Envs[0].Resources.CPURequests).To(Equal("1"))
+				Expect(result.Envs[0].Resources.MemoryLimits).To(Equal("4Gi"))
+				Expect(result.Envs[0].Resources.MemoryRequests).To(Equal("2Gi"))
+			})
 		})
 
 		It("attaches gpa CR status including Failed phase for frontend display", func() {
@@ -253,7 +273,8 @@ var _ = Describe("overview.Service", func() {
 			Expect(gpaConfigStore.Create(ctx, cfg)).To(Succeed())
 
 			mockey.PatchConvey("gpa status failed", GinkgoT(), func() {
-				mockey.Mock((*gpa.GPAService).Get).Return(&gpa.GPAStatus{
+				mockGPAClusterClientChain()
+				mockey.Mock((*gpa.ClusterClient).GetStatus).Return(&gpa.GPAStatus{
 					CurrentReplicas: 3,
 					DesiredReplicas: 4,
 					Phase:           "Failed",

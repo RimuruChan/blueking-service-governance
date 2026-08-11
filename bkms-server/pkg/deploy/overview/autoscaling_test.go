@@ -25,31 +25,31 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"golang.org/x/sync/semaphore"
 
 	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
 )
 
 var _ = Describe("autoscaling helpers", func() {
-	var (
-		ctx context.Context
-		svc *Service
-		env *envmodel.Environment
-	)
+	Describe("queryAutoscalingStatusForTarget", func() {
+		var (
+			ctx    context.Context
+			sem    *semaphore.Weighted
+			client *gpa.ClusterClient
+			target autoscalingTarget
+		)
 
-	BeforeEach(func() {
-		ctx = context.Background()
-		svc = &Service{gpaService: gpa.NewGPAService(nil)}
-		env = &envmodel.Environment{
-			Name:    "prod",
-			Cluster: envmodel.BizCluster{ClusterID: "cls-1", Namespace: "ns-1"},
-		}
-	})
+		BeforeEach(func() {
+			ctx = context.Background()
+			sem = semaphore.NewWeighted(maxConcurrentK8sRequests)
+			client = &gpa.ClusterClient{}
+			target = autoscalingTarget{envName: "prod", namespace: "ns-1", crName: "gpa-app"}
+		})
 
-	Describe("queryAutoscalingStatusForEnv", func() {
 		It("maps CR status fields on success", func() {
 			mockey.PatchConvey("gpa get succeeds", GinkgoT(), func() {
-				mockey.Mock((*gpa.GPAService).Get).Return(&gpa.GPAStatus{
+				mockey.Mock((*gpa.ClusterClient).GetStatus).Return(&gpa.GPAStatus{
 					CurrentReplicas: 3,
 					DesiredReplicas: 5,
 					LastScaleTime:   "2026-08-11T10:00:00Z",
@@ -57,7 +57,7 @@ var _ = Describe("autoscaling helpers", func() {
 					StatusMessage:   "scaling in progress",
 				}, nil).Build()
 
-				status := svc.queryAutoscalingStatusForEnv(ctx, env, "gpa-app")
+				status := queryAutoscalingStatusForTarget(ctx, sem, client, "cls-1", target)
 				Expect(status).NotTo(BeNil())
 				Expect(status.CurrentReplicas).To(Equal(int32(3)))
 				Expect(status.DesiredReplicas).To(Equal(int32(5)))
@@ -69,30 +69,78 @@ var _ = Describe("autoscaling helpers", func() {
 
 		It("returns nil when the CR does not exist in cluster", func() {
 			mockey.PatchConvey("gpa CR not found", GinkgoT(), func() {
-				mockey.Mock((*gpa.GPAService).Get).Return(nil, gpa.ErrCRNotFound).Build()
+				mockey.Mock((*gpa.ClusterClient).GetStatus).Return(nil, gpa.ErrCRNotFound).Build()
 
-				Expect(svc.queryAutoscalingStatusForEnv(ctx, env, "gpa-app")).To(BeNil())
+				Expect(queryAutoscalingStatusForTarget(ctx, sem, client, "cls-1", target)).To(BeNil())
 			})
 		})
 
 		It("returns nil when the cluster query fails", func() {
 			mockey.PatchConvey("gpa get fails", GinkgoT(), func() {
-				mockey.Mock((*gpa.GPAService).Get).Return(nil, errors.New("cluster unreachable")).Build()
+				mockey.Mock((*gpa.ClusterClient).GetStatus).Return(nil, errors.New("cluster unreachable")).Build()
 
-				Expect(svc.queryAutoscalingStatusForEnv(ctx, env, "gpa-app")).To(BeNil())
+				Expect(queryAutoscalingStatusForTarget(ctx, sem, client, "cls-1", target)).To(BeNil())
 			})
 		})
+	})
 
-		It("returns nil when the cluster query panics", func() {
-			mockey.PatchConvey("gpa get panics", GinkgoT(), func() {
-				mockey.Mock((*gpa.GPAService).Get).To(func(
-					_ *gpa.GPAService, _ context.Context, _ *envmodel.Environment, _ string,
-				) (*gpa.GPAStatus, error) {
-					panic("failed to build config from local kubeconfig")
-				}).Build()
+	Describe("groupAutoscalingTargetsByCluster", func() {
+		newEnv := func(name, clusterID, namespace string) envmodel.Environment {
+			return envmodel.Environment{
+				Name:    name,
+				Cluster: envmodel.BizCluster{ClusterID: clusterID, Namespace: namespace},
+			}
+		}
+		newRow := func(envName string, autoscaling *AutoscalingInfo) EnvRow {
+			return EnvRow{EnvName: envName, Autoscaling: autoscaling}
+		}
 
-				Expect(svc.queryAutoscalingStatusForEnv(ctx, env, "gpa-app")).To(BeNil())
-			})
+		It("groups enabled targets by cluster with namespace and CR name", func() {
+			envs := []envmodel.Environment{
+				newEnv("dev", "cls-1", "ns-dev"),
+				newEnv("test", "cls-1", "ns-test"),
+				newEnv("prod", "cls-2", "ns-prod"),
+			}
+			rows := []EnvRow{
+				newRow("dev", &AutoscalingInfo{Enabled: true, CRName: "gpa-dev"}),
+				newRow("test", &AutoscalingInfo{Enabled: true, CRName: "gpa-test"}),
+				newRow("prod", &AutoscalingInfo{Enabled: true, CRName: "gpa-prod"}),
+			}
+
+			byCluster := groupAutoscalingTargetsByCluster(envs, rows)
+			Expect(byCluster).To(HaveLen(2))
+			Expect(byCluster["cls-1"].targets).To(ConsistOf(
+				autoscalingTarget{envName: "dev", namespace: "ns-dev", crName: "gpa-dev"},
+				autoscalingTarget{envName: "test", namespace: "ns-test", crName: "gpa-test"},
+			))
+			Expect(byCluster["cls-2"].targets).To(ConsistOf(
+				autoscalingTarget{envName: "prod", namespace: "ns-prod", crName: "gpa-prod"},
+			))
+		})
+
+		It("skips rows without an enabled gpa config", func() {
+			envs := []envmodel.Environment{
+				newEnv("no-config", "cls-1", "ns-1"),
+				newEnv("disabled", "cls-1", "ns-2"),
+				newEnv("no-cr-name", "cls-1", "ns-3"),
+			}
+			rows := []EnvRow{
+				newRow("no-config", nil),
+				newRow("disabled", &AutoscalingInfo{Enabled: false, CRName: "gpa-disabled"}),
+				newRow("no-cr-name", &AutoscalingInfo{Enabled: true}),
+			}
+
+			Expect(groupAutoscalingTargetsByCluster(envs, rows)).To(BeEmpty())
+		})
+
+		It("skips rows whose env is missing or has no cluster", func() {
+			envs := []envmodel.Environment{newEnv("no-cluster", "", "ns-1")}
+			rows := []EnvRow{
+				newRow("no-cluster", &AutoscalingInfo{Enabled: true, CRName: "gpa-a"}),
+				newRow("not-tracked", &AutoscalingInfo{Enabled: true, CRName: "gpa-b"}),
+			}
+
+			Expect(groupAutoscalingTargetsByCluster(envs, rows)).To(BeEmpty())
 		})
 	})
 })

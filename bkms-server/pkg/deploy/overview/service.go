@@ -24,6 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
+	"golang.org/x/sync/semaphore"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/autodeploy"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
@@ -41,7 +42,8 @@ import (
 // 部署总览只统计该泳道，不展示非基线泳道的部署状态与实例。
 const defaultTrafficLaneName = ""
 
-// maxConcurrentK8sRequests K8s API 并发请求数上限，防止对集群 API Server 造成过大压力。
+// maxConcurrentK8sRequests 单次总览请求内在途 K8s 请求数上限，防止对集群 API Server
+// 与 BCS 网关造成过大压力。
 const maxConcurrentK8sRequests = 10
 
 // Service 组装应用部署总览。
@@ -121,17 +123,19 @@ func (s *Service) GetOverview(ctx context.Context, application *bkmsapp.Applicat
 
 	// 实例数与 GPA 状态互不依赖，并行回查集群；任一侧失败只降级对应字段。
 	// 两侧只读 rows、各自产出 map，待 Wait 后再单线程合并，避免并发写同一批行。
+	// 两侧共用一个闸门，使在途 K8s 请求总数受 maxConcurrentK8sRequests 约束。
+	sem := semaphore.NewWeighted(maxConcurrentK8sRequests)
 	var (
 		instanceCounts      instanceCountsByEnv
 		autoscalingStatuses autoscalingStatusByEnv
 	)
 	g, gctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		instanceCounts = queryInstanceCounts(gctx, recordsForInstances)
+		instanceCounts = queryInstanceCounts(gctx, sem, recordsForInstances)
 		return nil
 	})
 	g.Go(func() error {
-		autoscalingStatuses = s.queryAutoscalingStatuses(gctx, sources.trackedEnvs, rows)
+		autoscalingStatuses = s.queryAutoscalingStatuses(gctx, sem, sources.trackedEnvs, rows)
 		return nil
 	})
 	_ = g.Wait()
@@ -149,31 +153,51 @@ func (s *Service) GetOverview(ctx context.Context, application *bkmsapp.Applicat
 }
 
 // loadEnvRowSources 批量读取组装表格行所需的各数据源。
+//
+// 四组查询互不依赖，并发发起以省去逐个叠加的 DB 往返；任一失败即整体失败，
+// 因为缺任何一组都无法给出完整的总览。
 func (s *Service) loadEnvRowSources(
 	ctx context.Context,
 	application *bkmsapp.Application,
 ) (*envRowSources, error) {
-	trackedEnvs, err := s.listTrackedEnvs(ctx, application)
-	if err != nil {
-		return nil, err
-	}
-
-	autoscalingByEnv, err := s.listAutoscalingConfigsByEnv(ctx, application.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	defaultResources, envOverrideResources, err := s.listAppResourceSpecs(ctx, application.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	// 批量结果可能含已不在 AppIDs 中的历史环境，assembleEnvRows 只按 trackedEnvs 取用。
-	statusesByEnv, deployByEnv, err := s.deployStatusService.ListLatestByAppLane(
-		ctx, application.ID, application.Type, defaultTrafficLaneName,
+	var (
+		trackedEnvs          []envmodel.Environment
+		autoscalingByEnv     map[string]*AutoscalingInfo
+		defaultResources     *appspec.ResourcesSpec
+		envOverrideResources map[string]*appspec.ResourcesSpec
+		statusesByEnv        map[string]*deploystatus.LatestDeployStatus
+		deployByEnv          map[string]*appmodel.Record
 	)
-	if err != nil {
-		return nil, errors.Wrap(err, "list latest deploy statuses")
+
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		var err error
+		trackedEnvs, err = s.listTrackedEnvs(gctx, application)
+		return err
+	})
+	g.Go(func() error {
+		var err error
+		autoscalingByEnv, err = s.listAutoscalingConfigsByEnv(gctx, application.ID)
+		return err
+	})
+	g.Go(func() error {
+		var err error
+		defaultResources, envOverrideResources, err = s.listAppResourceSpecs(gctx, application.ID)
+		return err
+	})
+	g.Go(func() error {
+		// 批量结果可能含已不在 AppIDs 中的历史环境，assembleEnvRows 只按 trackedEnvs 取用。
+		var err error
+		statusesByEnv, deployByEnv, err = s.deployStatusService.ListLatestByAppLane(
+			gctx, application.ID, application.Type, defaultTrafficLaneName,
+		)
+		if err != nil {
+			return errors.Wrap(err, "list latest deploy statuses")
+		}
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		return nil, err
 	}
 
 	return &envRowSources{
