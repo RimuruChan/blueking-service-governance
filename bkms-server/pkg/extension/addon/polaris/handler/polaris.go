@@ -28,6 +28,7 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/instancestats"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/serializer"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
@@ -537,4 +538,57 @@ func (h *Handler) PutEnvWeight(c *gin.Context) {
 	)
 
 	ginutils.OK(c, new(serializer.PutEnvWeightOutput).FromModel(updatedConfig))
+}
+
+// GetEnvInstanceStats 获取北极星配置在各环境下的实例统计。
+//
+//	@ID			GetEnvInstanceStats
+//	@Summary	获取北极星配置各环境实例统计
+//	@Tags		polaris-config
+//	@Produce	json
+//	@Security	BkUserInfo
+//	@Security	BkUserCredential
+//	@Param		appID		path		string	true	"应用 ID"
+//	@Param		configName	path		string	true	"配置名称"
+//	@Success	200			{object}	serializer.GetEnvInstanceStatsOutput
+//	@Failure	400			{object}	bkerrs.GinErrorOutput
+//	@Failure	404			{object}	bkerrs.GinErrorOutput
+//	@Failure	500			{object}	bkerrs.GinErrorOutput
+//	@Router		/apps/{appID}/deps/polaris-configs/{configName}/env-instance-stats [get]
+func (h *Handler) GetEnvInstanceStats(c *gin.Context) {
+	var uriInput serializer.AppConfigNameURIInput
+	if err := ginutils.BindURI(c, &uriInput); err != nil {
+		bkerrs.AbortWithErr(c, err)
+		return
+	}
+
+	ctx := c.Request.Context()
+
+	app, err := perm.ValidateAppByID(ctx, h.registry, uriInput.AppID, perm.TypeView)
+	if err != nil {
+		bkerrs.AbortWithErr(c, err)
+		return
+	}
+
+	config, err := h.registry.PolarisConfigStore.Get(ctx, app.ID, uriInput.ConfigName)
+	if err != nil {
+		if errors.Is(err, polaris.ErrConfigNotFound) {
+			bkerrs.AbortWithErr(c, bkerrs.Errorf(
+				bkerrs.ErrCodeNotFound,
+				"polaris config(%s) not found in app(%s)",
+				uriInput.ConfigName, uriInput.AppID,
+			))
+			return
+		}
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "get polaris config"))
+		return
+	}
+
+	stats, err := instancestats.NewCollector(h.registry.AppModelDeployRecordStore).Collect(ctx, app.ID, config)
+	if err != nil {
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "collect env instance stats"))
+		return
+	}
+
+	ginutils.OK(c, new(serializer.GetEnvInstanceStatsOutput).FromModel(stats))
 }

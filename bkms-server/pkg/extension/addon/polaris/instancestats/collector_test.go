@@ -1,0 +1,223 @@
+/*
+ * TencentBlueKing is pleased to support the open source community by making
+ * 蓝鲸智云 - 服务治理 (BlueKing Service Governance) available.
+ * Copyright (C) Tencent. All rights reserved.
+ * Licensed under the MIT License (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *  http://opensource.org/licenses/MIT
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied. See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * We undertake not to change the open source license (MIT license) applicable
+ * to the current version of the project delivered to anyone in the future.
+ */
+
+package instancestats_test
+
+import (
+	"context"
+
+	"github.com/TencentBlueKing/gopkg/stringx"
+	"github.com/bytedance/mockey"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
+	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/instancestats"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	k8sclient "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/client"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
+	polarisInfra "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/polaris"
+)
+
+var _ = Describe("Collector", func() {
+	var (
+		ctx     context.Context
+		appID   string
+		store   appmodeldeploy.RecordStore
+		config  *polaris.PolarisConfig
+		mockers []*mockey.Mocker
+	)
+
+	BeforeEach(func() {
+		var err error
+		ctx = context.Background()
+		appID = "test-app-" + stringx.Random(6)
+		store, err = appmodeldeploy.NewRecordStoreMongo(database.Client(), database.Name())
+		Expect(err).NotTo(HaveOccurred())
+
+		config = &polaris.PolarisConfig{
+			AppID: appID,
+			Properties: polaris.Properties{
+				PolarisName:      "service-a",
+				PolarisNamespace: "Production",
+				ServicePort:      8080,
+			},
+			ScopeEnvNames: []string{"stable", "test"},
+			EnvStates: map[string]polaris.PolarisEnvState{
+				"stable": {
+					AppliedFields: &polaris.RedeployRequiredFields{
+						InstanceKey:  "demo",
+						PolarisToken: "token",
+						ServicePort:  8080,
+					},
+				},
+			},
+		}
+	})
+
+	AfterEach(func() {
+		for _, mocker := range mockers {
+			mocker.Release()
+		}
+	})
+
+	It("counts matched healthy, isolated and total instances", func() {
+		_, err := store.Create(ctx, &appmodeldeploy.Record{
+			AppID:           appID,
+			EnvName:         "stable",
+			TrafficLaneName: "",
+			ClusterID:       "BCS-K8S-1",
+			Namespace:       "default",
+			LabelSelector:   map[string]string{"app": "demo"},
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		mockers = append(mockers, mockey.Mock(cluster.NewConfig).Return(&cluster.Config{}).Build())
+		mockers = append(mockers, mockey.Mock(k8sclient.NewWithGVR).
+			To(func(*cluster.Config, schema.GroupVersionResource) *k8sclient.Client {
+				return &k8sclient.Client{}
+			}).
+			Build())
+		mockers = append(mockers, mockey.Mock((*k8sclient.Client).List).
+			To(func(
+				*k8sclient.Client,
+				context.Context,
+				string,
+				metav1.ListOptions,
+			) (*unstructured.UnstructuredList, error) {
+				return &unstructured.UnstructuredList{Items: []unstructured.Unstructured{
+					{Object: map[string]any{"status": map[string]any{"podIP": "10.0.0.1"}}},
+					{Object: map[string]any{"status": map[string]any{"podIP": "10.0.0.2"}}},
+				}}, nil
+			}).
+			Build())
+		mockers = append(mockers, mockey.Mock(polarisInfra.GetInstances).
+			Return([]*polarisInfra.Instance{
+				{IP: "10.0.0.1", Port: 8080, IsHealthy: true},
+				{IP: "10.0.0.2", Port: 8080, IsHealthy: true, IsIsolated: true},
+				{IP: "10.0.0.2", Port: 9090, IsHealthy: true},
+				{IP: "10.0.0.9", Port: 8080, IsHealthy: true},
+			}, nil).
+			Build())
+
+		result, err := instancestats.NewCollector(store).Collect(ctx, appID, config)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result["stable"]).To(Equal(instancestats.Stats{
+			HealthyInstanceCount:  2,
+			IsolatedInstanceCount: 1,
+			TotalInstanceCount:    2,
+		}))
+		Expect(result["test"]).To(Equal(instancestats.Stats{}))
+	})
+
+	It("returns zeros without querying dependencies for undeployed environments", func() {
+		config.EnvStates = nil
+
+		result, err := instancestats.NewCollector(store).Collect(ctx, appID, config)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(map[string]instancestats.Stats{
+			"stable": {},
+			"test":   {},
+		}))
+	})
+
+	It("returns an error when the deployed environment has no deploy record", func() {
+		_, err := instancestats.NewCollector(store).Collect(ctx, appID, config)
+
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("get latest deploy record for env stable"))
+	})
+
+	It("returns an error when listing pods fails", func() {
+		_, err := store.Create(ctx, &appmodeldeploy.Record{
+			AppID:           appID,
+			EnvName:         "stable",
+			TrafficLaneName: "",
+			ClusterID:       "BCS-K8S-1",
+			Namespace:       "default",
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		mockers = append(mockers, mockey.Mock(cluster.NewConfig).Return(&cluster.Config{}).Build())
+		mockers = append(mockers, mockey.Mock(k8sclient.NewWithGVR).
+			To(func(*cluster.Config, schema.GroupVersionResource) *k8sclient.Client {
+				return &k8sclient.Client{}
+			}).
+			Build())
+		mockers = append(mockers, mockey.Mock((*k8sclient.Client).List).
+			Return(nil, errors.New("list pods failed")).
+			Build())
+
+		_, err = instancestats.NewCollector(store).Collect(ctx, appID, config)
+
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("list pod IPs for env stable"))
+	})
+
+	It("returns an error when listing Polaris instances fails", func() {
+		_, err := store.Create(ctx, &appmodeldeploy.Record{
+			AppID:           appID,
+			EnvName:         "stable",
+			TrafficLaneName: "",
+			ClusterID:       "BCS-K8S-1",
+			Namespace:       "default",
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		mockers = append(mockers, mockey.Mock(cluster.NewConfig).Return(&cluster.Config{}).Build())
+		mockers = append(mockers, mockey.Mock(k8sclient.NewWithGVR).
+			To(func(*cluster.Config, schema.GroupVersionResource) *k8sclient.Client {
+				return &k8sclient.Client{}
+			}).
+			Build())
+		mockers = append(mockers, mockey.Mock((*k8sclient.Client).List).
+			Return(&unstructured.UnstructuredList{}, nil).
+			Build())
+		mockers = append(mockers, mockey.Mock(polarisInfra.GetInstances).
+			Return(nil, errors.New("list Polaris instances failed")).
+			Build())
+
+		_, err = instancestats.NewCollector(store).Collect(ctx, appID, config)
+
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring("get polaris instances for service Production/service-a"))
+	})
+})
+
+var _ = Describe("CountMatched", func() {
+	It("ignores nil and unmatched instances", func() {
+		stats := instancestats.CountMatched(
+			map[string]struct{}{"10.0.0.1": {}},
+			8080,
+			[]*polarisInfra.Instance{
+				nil,
+				{IP: "10.0.0.2", Port: 8080, IsHealthy: true},
+				{IP: "10.0.0.1", Port: 9090, IsHealthy: true},
+			},
+		)
+
+		Expect(stats).To(Equal(instancestats.Stats{}))
+	})
+})

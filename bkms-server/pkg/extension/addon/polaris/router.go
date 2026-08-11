@@ -29,6 +29,7 @@ type PolarisConfigHandler interface {
 	ListAppPolarisConfigVars(c *gin.Context)
 	ValidateAppPolarisConfig(c *gin.Context)
 	PutEnvWeight(c *gin.Context)
+	GetEnvInstanceStats(c *gin.Context)
 }
 
 // Register registers Gin polaris-config routes.
@@ -49,4 +50,6 @@ func Register(rg *gin.RouterGroup, h PolarisConfigHandler) {
 
 	// 更新已部署环境的北极星实例权重
 	rg.PUT("/apps/:appID/deps/polaris-configs/:configName/envs/:envName/weight", h.PutEnvWeight)
+	// 获取北极星配置各环境的实例统计
+	rg.GET("/apps/:appID/deps/polaris-configs/:configName/env-instance-stats", h.GetEnvInstanceStats)
 }

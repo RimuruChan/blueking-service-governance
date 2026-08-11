@@ -28,6 +28,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/instancestats"
 	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
 )
 
@@ -373,5 +374,41 @@ type PutEnvWeightOutput struct {
 // FromModel fills output fields from the updated config.
 func (o *PutEnvWeightOutput) FromModel(config *polaris.PolarisConfig) *PutEnvWeightOutput {
 	o.Data = new(PolarisConfigOutputObj).FromModel(*config, nil)
+	return o
+}
+
+// -----------------------------------------------------------------------------
+// Env instance stats
+// -----------------------------------------------------------------------------
+
+// GetEnvInstanceStatsOutput is the JSON response for per-env polaris instance stats.
+type GetEnvInstanceStatsOutput struct {
+	// 各环境的北极星实例统计，key 为环境名
+	Data map[string]EnvInstanceStatsOutput `json:"data"`
+}
+
+// EnvInstanceStatsOutput is the JSON representation of matched polaris instance counts.
+type EnvInstanceStatsOutput struct {
+	// 匹配实例中健康的数量（isHealthy == true）
+	HealthyInstanceCount int32 `json:"healthyInstanceCount"`
+	// 匹配实例中隔离的数量（isIsolated == true）
+	IsolatedInstanceCount int32 `json:"isolatedInstanceCount"`
+	// 匹配到本环境 Pod 的实例总数
+	TotalInstanceCount int32 `json:"totalInstanceCount"`
+}
+
+// FromModel fills output fields from collected env instance stats.
+func (o *GetEnvInstanceStatsOutput) FromModel(
+	stats map[string]instancestats.Stats,
+) *GetEnvInstanceStatsOutput {
+	data := make(map[string]EnvInstanceStatsOutput, len(stats))
+	for envName, s := range stats {
+		data[envName] = EnvInstanceStatsOutput{
+			HealthyInstanceCount:  int32(s.HealthyInstanceCount),  //nolint:gosec // G115: counts fit in int32
+			IsolatedInstanceCount: int32(s.IsolatedInstanceCount), //nolint:gosec // G115: counts fit in int32
+			TotalInstanceCount:    int32(s.TotalInstanceCount),    //nolint:gosec // G115: counts fit in int32
+		}
+	}
+	o.Data = data
 	return o
 }

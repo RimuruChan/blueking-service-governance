@@ -3932,6 +3932,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/apps/{appID}/deps/polaris-configs/{configName}/env-instance-stats": {
+            "get": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "polaris-config"
+                ],
+                "summary": "获取北极星配置各环境实例统计",
+                "operationId": "GetEnvInstanceStats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "应用 ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置名称",
+                        "name": "configName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/serializer.GetEnvInstanceStatsOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            }
+        },
         "/apps/{appID}/deps/polaris-configs/{configName}/envs/{envName}/weight": {
             "put": {
                 "security": [
@@ -21992,6 +22054,23 @@ const docTemplate = `{
                 }
             }
         },
+        "serializer.EnvInstanceStatsOutput": {
+            "type": "object",
+            "properties": {
+                "healthyInstanceCount": {
+                    "description": "匹配实例中健康的数量（isHealthy == true）",
+                    "type": "integer"
+                },
+                "isolatedInstanceCount": {
+                    "description": "匹配实例中隔离的数量（isIsolated == true）",
+                    "type": "integer"
+                },
+                "totalInstanceCount": {
+                    "description": "匹配到本环境 Pod 的实例总数",
+                    "type": "integer"
+                }
+            }
+        },
         "serializer.EnvOutput": {
             "type": "object",
             "properties": {
@@ -22866,6 +22945,18 @@ const docTemplate = `{
             "properties": {
                 "data": {
                     "$ref": "#/definitions/serializer.GetEnvApmOutput"
+                }
+            }
+        },
+        "serializer.GetEnvInstanceStatsOutput": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "各环境的北极星实例统计，key 为环境名",
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/serializer.EnvInstanceStatsOutput"
+                    }
                 }
             }
         },
