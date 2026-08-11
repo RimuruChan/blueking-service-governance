@@ -145,6 +145,54 @@ var _ = Describe("Collector", func() {
 		Expect(result.TotalHealthyInstanceWeight).To(Equal(280))
 	})
 
+	It("marks the env when a pod carries the polaris weight annotation", func() {
+		_, err := store.Create(ctx, &appmodeldeploy.Record{
+			AppID:           appID,
+			EnvName:         "stable",
+			TrafficLaneName: "",
+			ClusterID:       "BCS-K8S-1",
+			Namespace:       "default",
+			LabelSelector:   map[string]string{"app": "demo"},
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		mockers = append(mockers, mockey.Mock(cluster.NewConfig).Return(&cluster.Config{}).Build())
+		mockers = append(mockers, mockey.Mock(k8sclient.NewWithGVR).
+			To(func(*cluster.Config, schema.GroupVersionResource) *k8sclient.Client {
+				return &k8sclient.Client{}
+			}).
+			Build())
+		mockers = append(mockers, mockey.Mock((*k8sclient.Client).List).
+			To(func(
+				*k8sclient.Client,
+				context.Context,
+				string,
+				metav1.ListOptions,
+			) (*unstructured.UnstructuredList, error) {
+				return &unstructured.UnstructuredList{Items: []unstructured.Unstructured{
+					{Object: map[string]any{"status": map[string]any{"podIP": "127.0.0.1"}}},
+					{Object: map[string]any{
+						"metadata": map[string]any{
+							"annotations": map[string]any{polaris.AnnotationKeyWeight: "20"},
+						},
+						"status": map[string]any{"podIP": "127.0.0.2"},
+					}},
+				}}, nil
+			}).
+			Build())
+		mockers = append(mockers, mockey.Mock(polarisInfra.GetInstances).
+			Return([]*polarisInfra.Instance{
+				{IP: "127.0.0.1", Port: 8080, Weight: 100, IsHealthy: true},
+			}, nil).
+			Build())
+
+		result, err := instancestats.NewCollector(store).Collect(ctx, appID, config)
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result.EnvStats["stable"].WeightOverridden).To(BeTrue())
+		Expect(result.EnvStats["test"].WeightOverridden).To(BeFalse())
+	})
+
 	It("uses the latest deploy record even when its status is not deployed", func() {
 		// 较早的成功记录：若误用 GetLatestByStatuses(Deployed) 会落到这里
 		_, err := store.Create(ctx, &appmodeldeploy.Record{

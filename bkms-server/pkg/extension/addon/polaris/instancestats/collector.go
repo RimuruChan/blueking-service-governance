@@ -41,12 +41,17 @@ import (
 )
 
 // Stats 单个环境匹配到的北极星实例统计。
-// healthy 为 isHealthy && !isIsolated && weight > 0；isolated 为 isIsolated。
 type Stats struct {
-	HealthyInstanceCount  int // isHealthy && !isIsolated && weight > 0
-	HealthyInstanceWeight int // 健康实例的权重总和
-	IsolatedInstanceCount int // isIsolated
-	TotalInstanceCount    int // 匹配到本环境的实例总数
+	// HealthyInstanceCount 健康实例数，健康指可接流量：isHealthy && !isIsolated && weight > 0
+	HealthyInstanceCount int
+	// HealthyInstanceWeight 健康实例的权重总和
+	HealthyInstanceWeight int
+	// IsolatedInstanceCount 被隔离（isIsolated）的实例数
+	IsolatedInstanceCount int
+	// TotalInstanceCount 匹配到本环境的实例总数
+	TotalInstanceCount int
+	// WeightOverridden 本环境存在被单独设置权重的 Pod（注解 AnnotationKeyWeight）
+	WeightOverridden bool
 }
 
 // Result 一次 Collect 的汇总结果。
@@ -97,7 +102,7 @@ func (c *Collector) Collect(
 		if err != nil {
 			return nil, errors.Wrapf(err, "get latest deploy record for env %s", envName)
 		}
-		podIPs, err := listPodIPs(ctx, record)
+		pods, err := listEnvPods(ctx, record)
 		if err != nil {
 			return nil, errors.Wrapf(err, "list pod IPs for env %s", envName)
 		}
@@ -116,7 +121,9 @@ func (c *Collector) Collect(
 		}
 
 		// 用本环境 Pod IP 集合从全量北极星实例中筛出属于该环境的子集
-		envStats[envName] = CountMatched(podIPs, config.ServicePort, instances)
+		stats := CountMatched(pods.ips, config.ServicePort, instances)
+		stats.WeightOverridden = pods.weightOverridden
+		envStats[envName] = stats
 	}
 
 	healthyCount, healthyWeight := summarizeHealthy(instances)
@@ -183,8 +190,16 @@ func envNames(config *polaris.PolarisConfig) []string {
 	return lo.Uniq(append(config.ScopeEnvNames, lo.Keys(config.EnvStates)...))
 }
 
-// listPodIPs 根据主部署记录拉取该环境全部 Pod，提取 podIP 集合用于后续匹配。
-func listPodIPs(ctx context.Context, record *appmodeldeploy.Record) (map[string]struct{}, error) {
+// envPods 单个环境主部署 Pod 的汇总信息。
+type envPods struct {
+	// ips 用于与北极星实例做 IP 匹配
+	ips map[string]struct{}
+	// weightOverridden 是否存在被单独设置权重的 Pod
+	weightOverridden bool
+}
+
+// listEnvPods 根据主部署记录拉取该环境全部 Pod，提取 podIP 集合与权重覆盖标记。
+func listEnvPods(ctx context.Context, record *appmodeldeploy.Record) (*envPods, error) {
 	client := k8sclient.NewWithGVR(cluster.NewConfig(record.ClusterID), gvr.Po)
 	labelSelector := labels.SelectorFromSet(record.LabelSelector).String()
 	pods, err := client.List(ctx, record.Namespace, metav1.ListOptions{LabelSelector: labelSelector})
@@ -201,7 +216,15 @@ func listPodIPs(ctx context.Context, record *appmodeldeploy.Record) (map[string]
 		ip := mapx.GetStr(pod.Object, "status.podIP")
 		return ip, ip != ""
 	})
-	return lo.SliceToMap(ips, func(ip string) (string, struct{}) {
-		return ip, struct{}{}
-	}), nil
+	// 平台侧覆盖单实例权重的唯一入口是给 Pod 打 AnnotationKeyWeight 注解
+	weightOverridden := lo.SomeBy(pods.Items, func(pod unstructured.Unstructured) bool {
+		_, ok := pod.GetAnnotations()[polaris.AnnotationKeyWeight]
+		return ok
+	})
+	return &envPods{
+		ips: lo.SliceToMap(ips, func(ip string) (string, struct{}) {
+			return ip, struct{}{}
+		}),
+		weightOverridden: weightOverridden,
+	}, nil
 }

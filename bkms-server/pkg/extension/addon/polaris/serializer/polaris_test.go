@@ -302,6 +302,7 @@ var _ = Describe("GetEnvInstanceStatsOutput", func() {
 					HealthyInstanceWeight: 300,
 					IsolatedInstanceCount: 1,
 					TotalInstanceCount:    4,
+					WeightOverridden:      true,
 				},
 			},
 			TotalHealthyInstanceCount:  7,
@@ -313,6 +314,7 @@ var _ = Describe("GetEnvInstanceStatsOutput", func() {
 			HealthyInstanceWeight: 300,
 			IsolatedInstanceCount: 1,
 			TotalInstanceCount:    4,
+			WeightOverridden:      true,
 		}))
 		Expect(output.Data.TotalHealthyInstanceCount).To(Equal(int32(7)))
 		Expect(output.Data.TotalHealthyInstanceWeight).To(Equal(int32(520)))
