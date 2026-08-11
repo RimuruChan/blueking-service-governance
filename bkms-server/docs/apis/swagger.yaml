@@ -1157,9 +1157,10 @@ definitions:
     type: object
   serializer.AppDeployOverviewEnvObj:
     properties:
-      autoscalingEnabled:
-        description: 是否开启自动扩缩容
-        type: boolean
+      autoscaling:
+        allOf:
+        - $ref: '#/definitions/serializer.DeployOverviewAutoscalingObj'
+        description: 自动扩缩容配置摘要；无 GPA 配置时为 null
       deployStatus:
         description: 部署状态（原始枚举）
         type: string
@@ -3216,6 +3217,57 @@ definitions:
         type: string
       status:
         description: 卸载状态
+        type: string
+    type: object
+  serializer.DeployOverviewAutoscalingMetricObj:
+    properties:
+      averageUtilization:
+        description: 平均使用率阈值（百分比）
+        type: integer
+      resource:
+        description: 指标资源类型：cpu / memory
+        type: string
+    type: object
+  serializer.DeployOverviewAutoscalingObj:
+    properties:
+      computeByLimits:
+        description: 利用率计算基准：true 以 limits 为基准，false 以 requests 为基准
+        type: boolean
+      enabled:
+        description: 是否启用
+        type: boolean
+      maxReplicas:
+        description: 最大副本数
+        type: integer
+      metrics:
+        description: 指标模式扩缩容指标列表
+        items:
+          $ref: '#/definitions/serializer.DeployOverviewAutoscalingMetricObj'
+        type: array
+      minReplicas:
+        description: 最小副本数
+        type: integer
+      status:
+        allOf:
+        - $ref: '#/definitions/serializer.DeployOverviewAutoscalingStatusObj'
+        description: 集群 GPA CR 运行状态；未启用 / CR 缺失 / 查询失败时为 null
+    type: object
+  serializer.DeployOverviewAutoscalingStatusObj:
+    properties:
+      currentReplicas:
+        description: 当前副本数
+        type: integer
+      desiredReplicas:
+        description: 期望副本数
+        type: integer
+      lastScaleTime:
+        description: 上次扩缩容时间（RFC3339 字符串，可能为空）
+        type: string
+      phase:
+        description: Phase：Active / Paused / Limited / Failed / Initializing / Unknown
+        type: string
+      statusMessage:
+        description: 非 True condition 的汇总消息；出错时可展示
         type: string
     type: object
   serializer.DeployOverviewInstancesObj:

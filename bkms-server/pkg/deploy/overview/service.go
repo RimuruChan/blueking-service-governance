@@ -20,11 +20,14 @@ package overview
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/autodeploy"
+	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
@@ -46,6 +49,7 @@ type Service struct {
 	appSpecStore        appspec.AppSpecStore
 	appModelStore       workloadappmodel.AppModelStore
 	gpaConfigStore      gpa.GPAConfigStore
+	gpaService          *gpa.GPAService
 	deployStatusService *deploystatus.DeployStatusService
 }
 
@@ -65,6 +69,7 @@ func NewService(
 		appSpecStore:   appSpecStore,
 		appModelStore:  appModelStore,
 		gpaConfigStore: gpaConfigStore,
+		gpaService:     gpa.NewGPAService(appModelStore),
 		deployStatusService: deploystatus.NewDeployStatusService(
 			appStore,
 			envStore,
@@ -95,7 +100,7 @@ func (s *Service) Build(ctx context.Context, application *bkmsapp.Application) (
 		return nil, err
 	}
 
-	autoscalingByEnv, err := s.listAutoscalingEnabledByEnv(ctx, application.ID)
+	autoscalingByEnv, err := s.listAutoscalingByEnv(ctx, application.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -116,12 +121,23 @@ func (s *Service) Build(ctx context.Context, application *bkmsapp.Application) (
 	rows, recordsForInstances := assembleEnvRows(
 		trackedEnvs, autoscalingByEnv, defaultResources, envOverrideResources, statusesByEnv, deployByEnv,
 	)
-	instanceCounts := queryInstanceCounts(ctx, recordsForInstances)
-	for i := range rows {
-		if c, ok := instanceCounts[rows[i].EnvName]; ok {
-			rows[i].Instances = c
+
+	// 实例数与 GPA 状态互不依赖，并行回查集群；任一侧失败只降级对应字段。
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		instanceCounts := queryInstanceCounts(gctx, recordsForInstances)
+		for i := range rows {
+			if c, ok := instanceCounts[rows[i].EnvName]; ok {
+				rows[i].Instances = c
+			}
 		}
-	}
+		return nil
+	})
+	g.Go(func() error {
+		s.attachAutoscalingStatuses(gctx, trackedEnvs, rows)
+		return nil
+	})
+	_ = g.Wait()
 
 	return &Result{Envs: rows}, nil
 }
@@ -140,9 +156,9 @@ func (s *Service) listTrackedEnvs(
 	}), nil
 }
 
-// listAutoscalingEnabledByEnv 返回各环境是否开启 GPA；无配置的环境视为 false。
-func (s *Service) listAutoscalingEnabledByEnv(ctx context.Context, appID string) (map[string]bool, error) {
-	out := map[string]bool{}
+// listAutoscalingByEnv 返回各环境 GPA 配置摘要；无配置的环境不出现在 map 中。
+func (s *Service) listAutoscalingByEnv(ctx context.Context, appID string) (map[string]*AutoscalingInfo, error) {
+	out := map[string]*AutoscalingInfo{}
 	if s.gpaConfigStore == nil {
 		return out, nil
 	}
@@ -151,11 +167,84 @@ func (s *Service) listAutoscalingEnabledByEnv(ctx context.Context, appID string)
 		return nil, errors.Wrap(err, "list gpa configs")
 	}
 	for _, cfg := range configs {
-		if cfg != nil {
-			out[cfg.EnvName] = cfg.Enabled
+		if cfg == nil {
+			continue
+		}
+		metrics := make([]AutoscalingMetric, 0, len(cfg.Metrics))
+		for _, m := range cfg.Metrics {
+			metrics = append(metrics, AutoscalingMetric{
+				Resource:           string(m.Resource),
+				AverageUtilization: m.AverageUtilization,
+			})
+		}
+		out[cfg.EnvName] = &AutoscalingInfo{
+			Enabled:         cfg.Enabled,
+			CRName:          cfg.Name,
+			MinReplicas:     cfg.MinReplicas,
+			MaxReplicas:     cfg.MaxReplicas,
+			Metrics:         metrics,
+			ComputeByLimits: cfg.ComputeByLimits,
 		}
 	}
 	return out, nil
+}
+
+// attachAutoscalingStatuses 为已启用 GPA 的环境并发回查集群 CR 状态。
+// CR 不存在或查询失败时 Status 保持 nil，不使整次总览失败（与 instances 降级策略一致）。
+func (s *Service) attachAutoscalingStatuses(
+	ctx context.Context,
+	trackedEnvs []envmodel.Environment,
+	rows []EnvRow,
+) {
+	if s.gpaService == nil {
+		return
+	}
+	envByName := lo.KeyBy(trackedEnvs, func(env envmodel.Environment) string { return env.Name })
+
+	g, gctx := errgroup.WithContext(ctx)
+	for i := range rows {
+		info := rows[i].Autoscaling
+		if info == nil || !info.Enabled || info.CRName == "" {
+			continue
+		}
+		env, ok := envByName[rows[i].EnvName]
+		if !ok || env.Cluster.ClusterID == "" {
+			continue
+		}
+		g.Go(func() error {
+			defer func() {
+				if r := recover(); r != nil {
+					log.ErrorAttrs(gctx, "query deploy overview gpa status panicked",
+						slog.String("env_name", rows[i].EnvName),
+						slog.String("cluster_id", env.Cluster.ClusterID),
+						slog.String("gpa_name", rows[i].Autoscaling.CRName),
+						slog.Any("panic", r),
+					)
+				}
+			}()
+			status, err := s.gpaService.Get(gctx, &env, rows[i].Autoscaling.CRName)
+			if err != nil {
+				if !errors.Is(err, gpa.ErrCRNotFound) {
+					log.ErrorAttrs(gctx, "query deploy overview gpa status failed",
+						slog.String("env_name", rows[i].EnvName),
+						slog.String("cluster_id", env.Cluster.ClusterID),
+						slog.String("gpa_name", rows[i].Autoscaling.CRName),
+						slog.Any("error", err),
+					)
+				}
+				return nil
+			}
+			rows[i].Autoscaling.Status = &AutoscalingStatus{
+				CurrentReplicas: status.CurrentReplicas,
+				DesiredReplicas: status.DesiredReplicas,
+				LastScaleTime:   status.LastScaleTime,
+				Phase:           status.Phase,
+				StatusMessage:   status.StatusMessage,
+			}
+			return nil
+		})
+	}
+	_ = g.Wait()
 }
 
 // loadAppResourceSpecs 一次拉取应用全部 AppSpec，拆出默认 resources 与各环境覆盖。
@@ -203,7 +292,7 @@ func (s *Service) loadAppResourceSpecs(
 // 部署状态 / 部署记录 map 可能含非 tracked 环境，此处只按 trackedEnvs 取用。
 func assembleEnvRows(
 	trackedEnvs []envmodel.Environment,
-	autoscalingByEnv map[string]bool,
+	autoscalingByEnv map[string]*AutoscalingInfo,
 	defaultResources *appspec.ResourcesSpec,
 	envOverrideResources map[string]*appspec.ResourcesSpec,
 	statusesByEnv map[string]*deploystatus.LatestDeployStatus,
@@ -215,13 +304,13 @@ func assembleEnvRows(
 	for i := range trackedEnvs {
 		env := &trackedEnvs[i]
 		row := EnvRow{
-			EnvID:              env.ID.Hex(),
-			EnvName:            env.Name,
-			EnvDisplayName:     env.DisplayName,
-			EnvType:            env.Type,
-			EnvKind:            string(env.GetKind()),
-			DeployStatus:       deploystatus.StatusUnknown,
-			AutoscalingEnabled: autoscalingByEnv[env.Name],
+			EnvID:          env.ID.Hex(),
+			EnvName:        env.Name,
+			EnvDisplayName: env.DisplayName,
+			EnvType:        env.Type,
+			EnvKind:        string(env.GetKind()),
+			DeployStatus:   deploystatus.StatusUnknown,
+			Autoscaling:    autoscalingByEnv[env.Name],
 			Resources: toAPIResourceSpec(
 				resourcessection.Merge(defaultResources, envOverrideResources[env.Name]),
 			),

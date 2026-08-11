@@ -443,6 +443,19 @@ type DeployOverviewInstancesObj struct {
 	Abnormal int32 `json:"abnormal"`
 }
 
+// FromModel fills output fields from instance counts.
+func (o *DeployOverviewInstancesObj) FromModel(counts *overview.InstanceCounts) *DeployOverviewInstancesObj {
+	if counts == nil {
+		return nil
+	}
+	*o = DeployOverviewInstancesObj{
+		Running:  counts.Running,
+		Expected: counts.Expected,
+		Abnormal: counts.Abnormal,
+	}
+	return o
+}
+
 // DeployOverviewResourcesObj is app-spec effective resource quantities (passthrough).
 type DeployOverviewResourcesObj struct {
 	// CPU limits（Kubernetes quantity 字符串）
@@ -453,6 +466,96 @@ type DeployOverviewResourcesObj struct {
 	MemoryLimits string `json:"memoryLimits,omitempty"`
 	// Memory requests
 	MemoryRequests string `json:"memoryRequests,omitempty"`
+}
+
+// FromModel fills output fields from effective resource quantities.
+func (o *DeployOverviewResourcesObj) FromModel(resources overview.ResourceSpec) *DeployOverviewResourcesObj {
+	*o = DeployOverviewResourcesObj{
+		CPULimits:      resources.CPULimits,
+		CPURequests:    resources.CPURequests,
+		MemoryLimits:   resources.MemoryLimits,
+		MemoryRequests: resources.MemoryRequests,
+	}
+	return o
+}
+
+// DeployOverviewAutoscalingMetricObj is one GPA metric shown in deploy overview.
+type DeployOverviewAutoscalingMetricObj struct {
+	// 指标资源类型：cpu / memory
+	Resource string `json:"resource"`
+	// 平均使用率阈值（百分比）
+	AverageUtilization int32 `json:"averageUtilization"`
+}
+
+// DeployOverviewAutoscalingObj is GPA config summary for one env row.
+// Null when the env has no GPA config.
+type DeployOverviewAutoscalingObj struct {
+	// 是否启用
+	Enabled bool `json:"enabled"`
+	// 最小副本数
+	MinReplicas int32 `json:"minReplicas"`
+	// 最大副本数
+	MaxReplicas int32 `json:"maxReplicas"`
+	// 指标模式扩缩容指标列表
+	Metrics []DeployOverviewAutoscalingMetricObj `json:"metrics"`
+	// 利用率计算基准：true 以 limits 为基准，false 以 requests 为基准
+	ComputeByLimits bool `json:"computeByLimits"`
+	// 集群 GPA CR 运行状态；未启用 / CR 缺失 / 查询失败时为 null
+	Status *DeployOverviewAutoscalingStatusObj `json:"status"`
+}
+
+// DeployOverviewAutoscalingStatusObj is the GPA CR runtime status (aligned with GPA detail API).
+type DeployOverviewAutoscalingStatusObj struct {
+	// 当前副本数
+	CurrentReplicas int32 `json:"currentReplicas"`
+	// 期望副本数
+	DesiredReplicas int32 `json:"desiredReplicas"`
+	// 上次扩缩容时间（RFC3339 字符串，可能为空）
+	LastScaleTime string `json:"lastScaleTime"`
+	// Phase：Active / Paused / Limited / Failed / Initializing / Unknown
+	Phase string `json:"phase"`
+	// 非 True condition 的汇总消息；出错时可展示
+	StatusMessage string `json:"statusMessage"`
+}
+
+// FromModel fills output fields from a GPA runtime status.
+func (o *DeployOverviewAutoscalingStatusObj) FromModel(
+	status *overview.AutoscalingStatus,
+) *DeployOverviewAutoscalingStatusObj {
+	if status == nil {
+		return nil
+	}
+	*o = DeployOverviewAutoscalingStatusObj{
+		CurrentReplicas: status.CurrentReplicas,
+		DesiredReplicas: status.DesiredReplicas,
+		LastScaleTime:   status.LastScaleTime,
+		Phase:           status.Phase,
+		StatusMessage:   status.StatusMessage,
+	}
+	return o
+}
+
+// FromModel fills output fields from a GPA config summary.
+func (o *DeployOverviewAutoscalingObj) FromModel(info *overview.AutoscalingInfo) *DeployOverviewAutoscalingObj {
+	if info == nil {
+		return nil
+	}
+	metrics := make([]DeployOverviewAutoscalingMetricObj, 0, len(info.Metrics))
+	for _, metric := range info.Metrics {
+		metrics = append(metrics, DeployOverviewAutoscalingMetricObj{
+			Resource:           metric.Resource,
+			AverageUtilization: metric.AverageUtilization,
+		})
+	}
+	*o = DeployOverviewAutoscalingObj{
+		Enabled:         info.Enabled,
+		MinReplicas:     info.MinReplicas,
+		MaxReplicas:     info.MaxReplicas,
+		Metrics:         metrics,
+		ComputeByLimits: info.ComputeByLimits,
+		Status:          new(DeployOverviewAutoscalingStatusObj).FromModel(info.Status),
+	}
+	return o
 }
 
 // AppDeployOverviewEnvObj is one environment row in the deploy overview table.
@@ -471,12 +574,29 @@ type AppDeployOverviewEnvObj struct {
 	DeployStatus string `json:"deployStatus"`
 	// 实例数；不可用时为 null
 	Instances *DeployOverviewInstancesObj `json:"instances"`
-	// 是否开启自动扩缩容
-	AutoscalingEnabled bool `json:"autoscalingEnabled"`
+	// 自动扩缩容配置摘要；无 GPA 配置时为 null
+	Autoscaling *DeployOverviewAutoscalingObj `json:"autoscaling"`
 	// 资源规格（app-spec 生效值）
 	Resources DeployOverviewResourcesObj `json:"resources"`
 	// 最近一次部署开始时间；无记录时省略
 	LastDeployStartedAt *time.Time `json:"lastDeployStartedAt,omitempty"`
+}
+
+// FromModel fills output fields from one deploy overview row.
+func (o *AppDeployOverviewEnvObj) FromModel(row overview.EnvRow) *AppDeployOverviewEnvObj {
+	*o = AppDeployOverviewEnvObj{
+		EnvID:               row.EnvID,
+		EnvName:             row.EnvName,
+		EnvDisplayName:      row.EnvDisplayName,
+		EnvType:             row.EnvType,
+		EnvKind:             row.EnvKind,
+		DeployStatus:        row.DeployStatus,
+		Instances:           new(DeployOverviewInstancesObj).FromModel(row.Instances),
+		Autoscaling:         new(DeployOverviewAutoscalingObj).FromModel(row.Autoscaling),
+		Resources:           *new(DeployOverviewResourcesObj).FromModel(row.Resources),
+		LastDeployStartedAt: row.LastDeployStartedAt,
+	}
+	return o
 }
 
 // GetAppDeployOverviewOutput is the JSON response for querying app deploy overview.
@@ -485,40 +605,18 @@ type GetAppDeployOverviewOutput struct {
 	Data []*AppDeployOverviewEnvObj `json:"data"`
 }
 
-// FromOverview maps an overview.Result into the HTTP response payload.
-func FromOverview(result *overview.Result) *GetAppDeployOverviewOutput {
+// FromModel fills output fields from a deploy overview result.
+func (o *GetAppDeployOverviewOutput) FromModel(result *overview.Result) *GetAppDeployOverviewOutput {
 	if result == nil {
-		return &GetAppDeployOverviewOutput{Data: []*AppDeployOverviewEnvObj{}}
+		o.Data = []*AppDeployOverviewEnvObj{}
+		return o
 	}
 	envs := make([]*AppDeployOverviewEnvObj, 0, len(result.Envs))
 	for i := range result.Envs {
-		row := result.Envs[i]
-		envObj := &AppDeployOverviewEnvObj{
-			EnvID:              row.EnvID,
-			EnvName:            row.EnvName,
-			EnvDisplayName:     row.EnvDisplayName,
-			EnvType:            row.EnvType,
-			EnvKind:            row.EnvKind,
-			DeployStatus:       row.DeployStatus,
-			AutoscalingEnabled: row.AutoscalingEnabled,
-			Resources: DeployOverviewResourcesObj{
-				CPULimits:      row.Resources.CPULimits,
-				CPURequests:    row.Resources.CPURequests,
-				MemoryLimits:   row.Resources.MemoryLimits,
-				MemoryRequests: row.Resources.MemoryRequests,
-			},
-			LastDeployStartedAt: row.LastDeployStartedAt,
-		}
-		if row.Instances != nil {
-			envObj.Instances = &DeployOverviewInstancesObj{
-				Running:  row.Instances.Running,
-				Expected: row.Instances.Expected,
-				Abnormal: row.Instances.Abnormal,
-			}
-		}
-		envs = append(envs, envObj)
+		envs = append(envs, new(AppDeployOverviewEnvObj).FromModel(result.Envs[i]))
 	}
-	return &GetAppDeployOverviewOutput{Data: envs}
+	o.Data = envs
+	return o
 }
 
 func emptySliceIfNil[T any](items []T) []T {

@@ -611,7 +611,7 @@ func (h *Handler) GetAppDeployOverview(c *gin.Context) {
 		return
 	}
 
-	ginutils.OK(c, serializer.FromOverview(result))
+	ginutils.OK(c, new(serializer.GetAppDeployOverviewOutput).FromModel(result))
 }
 
 // createAppByType 根据应用类型创建特定资源

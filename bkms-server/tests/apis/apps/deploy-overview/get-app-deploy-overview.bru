@@ -46,10 +46,26 @@ tests {
       expect(item).to.have.property("envType");
       expect(item).to.have.property("envKind");
       expect(item).to.have.property("deployStatus");
-      expect(item).to.have.property("autoscalingEnabled");
+      expect(item).to.have.property("autoscaling");
       expect(item).to.have.property("resources");
       // instances may be null when workloads are not present in the test env
       expect(item).to.have.property("instances");
+      // autoscaling is null when the env has no GPA config
+      if (item.autoscaling !== null) {
+        expect(item.autoscaling).to.have.property("enabled");
+        expect(item.autoscaling).to.have.property("minReplicas");
+        expect(item.autoscaling).to.have.property("maxReplicas");
+        expect(item.autoscaling).to.have.property("metrics");
+        expect(item.autoscaling).to.have.property("computeByLimits");
+        // status may be null when GPA is disabled / CR missing / cluster query failed
+        expect(item.autoscaling).to.have.property("status");
+        if (item.autoscaling.status !== null) {
+          expect(item.autoscaling.status).to.have.property("phase");
+          expect(item.autoscaling.status).to.have.property("statusMessage");
+          expect(item.autoscaling.status).to.have.property("currentReplicas");
+          expect(item.autoscaling.status).to.have.property("desiredReplicas");
+        }
+      }
     });
   });
 }

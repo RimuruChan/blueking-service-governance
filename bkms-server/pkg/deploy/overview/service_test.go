@@ -190,7 +190,7 @@ var _ = Describe("overview.Service", func() {
 			Expect(result.Envs[0].EnvKind).To(Equal(string(envmodel.EnvironmentKindFeature)))
 		})
 
-		It("fills resources from effective app-spec and gpa autoscaling flag", func() {
+		It("fills resources from effective app-spec and gpa autoscaling summary", func() {
 			trpcApp := newTrpcApp()
 			env := dbfactory.Env(ctx, envSvc, trpcApp.WorkspaceID)
 			Expect(envStore.AddApp(ctx, env.ID, trpcApp.ID)).To(Succeed())
@@ -207,10 +207,11 @@ var _ = Describe("overview.Service", func() {
 			cfg := &gpa.GPAConfig{
 				AppID:       trpcApp.ID,
 				EnvName:     env.Name,
-				MinReplicas: 1,
-				MaxReplicas: 5,
+				MinReplicas: 4,
+				MaxReplicas: 12,
 				Metrics: []gpa.GPAMetric{
 					{Resource: gpa.ResourceCPU, AverageUtilization: 60},
+					{Resource: gpa.ResourceMemory, AverageUtilization: 70},
 				},
 			}
 			Expect(gpaConfigStore.Create(ctx, cfg)).To(Succeed())
@@ -218,11 +219,59 @@ var _ = Describe("overview.Service", func() {
 			result, err := svc.Build(ctx, trpcApp)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.Envs).To(HaveLen(1))
-			Expect(result.Envs[0].AutoscalingEnabled).To(BeTrue())
+			Expect(result.Envs[0].Autoscaling).NotTo(BeNil())
+			Expect(result.Envs[0].Autoscaling.Enabled).To(BeTrue())
+			Expect(result.Envs[0].Autoscaling.MinReplicas).To(Equal(int32(4)))
+			Expect(result.Envs[0].Autoscaling.MaxReplicas).To(Equal(int32(12)))
+			Expect(result.Envs[0].Autoscaling.Metrics).To(ConsistOf(
+				AutoscalingMetric{Resource: string(gpa.ResourceCPU), AverageUtilization: 60},
+				AutoscalingMetric{Resource: string(gpa.ResourceMemory), AverageUtilization: 70},
+			))
+			Expect(result.Envs[0].Autoscaling.ComputeByLimits).To(BeFalse())
+			// 无 mock 时集群 GPA Get 失败/缺失，status 降级为 null，不阻断总览
+			Expect(result.Envs[0].Autoscaling.Status).To(BeNil())
 			Expect(result.Envs[0].Resources.CPULimits).To(Equal("2"))
 			Expect(result.Envs[0].Resources.CPURequests).To(Equal("1"))
 			Expect(result.Envs[0].Resources.MemoryLimits).To(Equal("4Gi"))
 			Expect(result.Envs[0].Resources.MemoryRequests).To(Equal("2Gi"))
+		})
+
+		It("attaches gpa CR status including Failed phase for frontend display", func() {
+			trpcApp := newTrpcApp()
+			env := dbfactory.Env(ctx, envSvc, trpcApp.WorkspaceID)
+			Expect(envStore.AddApp(ctx, env.ID, trpcApp.ID)).To(Succeed())
+
+			cfg := &gpa.GPAConfig{
+				AppID:       trpcApp.ID,
+				EnvName:     env.Name,
+				MinReplicas: 4,
+				MaxReplicas: 12,
+				Metrics: []gpa.GPAMetric{
+					{Resource: gpa.ResourceCPU, AverageUtilization: 60},
+				},
+			}
+			Expect(gpaConfigStore.Create(ctx, cfg)).To(Succeed())
+
+			mockey.PatchConvey("gpa status failed", GinkgoT(), func() {
+				mockey.Mock((*gpa.GPAService).Get).Return(&gpa.GPAStatus{
+					CurrentReplicas: 3,
+					DesiredReplicas: 4,
+					Phase:           "Failed",
+					StatusMessage:   "the GPA controller was unable to get the target's current scale: not found",
+				}, nil).Build()
+
+				result, err := svc.Build(ctx, trpcApp)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Envs).To(HaveLen(1))
+				Expect(result.Envs[0].Autoscaling).NotTo(BeNil())
+				Expect(result.Envs[0].Autoscaling.Status).NotTo(BeNil())
+				Expect(result.Envs[0].Autoscaling.Status.Phase).To(Equal("Failed"))
+				Expect(
+					result.Envs[0].Autoscaling.Status.StatusMessage,
+				).To(ContainSubstring("unable to get the target"))
+				Expect(result.Envs[0].Autoscaling.Status.CurrentReplicas).To(Equal(int32(3)))
+				Expect(result.Envs[0].Autoscaling.Status.DesiredReplicas).To(Equal(int32(4)))
+			})
 		})
 
 		It("counts ready/abnormal pods and GD replicas on successful k8s queries", func() {
