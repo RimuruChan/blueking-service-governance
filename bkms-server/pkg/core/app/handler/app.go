@@ -37,6 +37,7 @@ import (
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/serializer"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/overview"
 	deploystatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/status"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
@@ -557,6 +558,60 @@ func (h *Handler) GetAppDeployStatuses(c *gin.Context) {
 			},
 		),
 	})
+}
+
+// GetAppDeployOverview 查询 trpc/taf 应用在全部已关联环境上的部署总览。
+//
+//	@ID			GetAppDeployOverview
+//	@Summary	查询应用在各环境上的部署总览（仅 trpc/taf）
+//	@Tags		app
+//	@Produce	json
+//	@Security	BkUserInfo
+//	@Security	BkUserCredential
+//	@Param		appID	path		string	true	"应用 ID"
+//	@Success	200		{object}	serializer.GetAppDeployOverviewOutput
+//	@Failure	400		{object}	bkerrs.GinErrorOutput
+//	@Router		/apps/{appID}/deploy-overview [get]
+func (h *Handler) GetAppDeployOverview(c *gin.Context) {
+	var uriInput serializer.AppURIInput
+	if err := ginutils.BindURI(c, &uriInput); err != nil {
+		bkerrs.AbortWithErr(c, err)
+		return
+	}
+
+	ctx := c.Request.Context()
+	app, err := ginperm.ValidateAppByID(ctx, h.registry, uriInput.AppID, ginperm.TypeView)
+	if err != nil {
+		bkerrs.AbortWithErr(c, err)
+		return
+	}
+
+	if !bkmsapp.IsAppModelType(app.Type) {
+		bkerrs.AbortWithErr(c, bkerrs.Errorf(
+			bkerrs.ErrCodeInvalidArgument,
+			"deploy overview is only supported for trpc/taf apps, got type %q",
+			app.Type,
+		))
+		return
+	}
+
+	svc := overview.NewService(
+		h.registry.EnvStore,
+		h.registry.AppStore,
+		h.registry.AppSpecStore,
+		h.registry.AppModelStore,
+		h.registry.BuildAutoDeployRecordStore,
+		h.registry.AppModelDeployRecordStore,
+		h.registry.HelmDeployRecordStore,
+		h.registry.GPAConfigStore,
+	)
+	result, err := svc.Build(ctx, app)
+	if err != nil {
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "build app deploy overview"))
+		return
+	}
+
+	ginutils.OK(c, serializer.FromOverview(result))
 }
 
 // createAppByType 根据应用类型创建特定资源

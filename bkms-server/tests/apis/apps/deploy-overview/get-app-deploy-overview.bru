@@ -1,0 +1,60 @@
+meta {
+  name: get-app-deploy-overview
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{serviceURL}}/apps/{{deployOverviewAppID}}/deploy-overview
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body: isJson
+}
+
+script:pre-request {
+  const common = require("./common")
+
+  if (!bru.getVar("deployOverviewAppID")) {
+    const suffix = bru.getVar("randomSuffix");
+    const workspaceID = `deploy-overview-ws-${suffix}`;
+    const appID = `deploy-overview-app-${suffix}`;
+
+    await common.createWorkspace({ id: workspaceID });
+    const app = await common.createTrpcApp({
+      id: appID,
+      name: appID,
+      workspaceID,
+    });
+
+    bru.setVar("deployOverviewWorkspaceID", workspaceID);
+    bru.setVar("deployOverviewAppID", app.id);
+  }
+}
+
+tests {
+  test("should get app deploy overview for trpc app", () => {
+    expect(res.body.data).to.be.an("array");
+
+    res.body.data.forEach((item) => {
+      expect(item).to.have.property("envID");
+      expect(item).to.have.property("envName");
+      expect(item).to.have.property("envDisplayName");
+      expect(item).to.have.property("envType");
+      expect(item).to.have.property("envKind");
+      expect(item).to.have.property("deployStatus");
+      expect(item).to.have.property("autoscalingEnabled");
+      expect(item).to.have.property("resources");
+      // instances may be null when workloads are not present in the test env
+      expect(item).to.have.property("instances");
+    });
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

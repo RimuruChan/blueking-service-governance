@@ -196,6 +196,26 @@ var _ = Describe("RecordStoreMongo", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
+		It("should list latest record per env for one traffic lane", func() {
+			_, err := store.Create(ctx, &recordA)
+			Expect(err).NotTo(HaveOccurred())
+			time.Sleep(5 * time.Millisecond)
+			_, err = store.Create(ctx, &recordB)
+			Expect(err).NotTo(HaveOccurred())
+
+			otherEnv := recordA
+			otherEnv.EnvName = "prod-" + stringx.Random(4)
+			otherEnv.ImageTag = "prod-v1"
+			_, err = store.Create(ctx, &otherEnv)
+			Expect(err).NotTo(HaveOccurred())
+
+			latestByEnv, err := store.ListLatestByApp(ctx, appID, trafficLaneName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latestByEnv).To(HaveLen(2))
+			Expect(latestByEnv[envName].ImageTag).To(Equal("v1.0.1"))
+			Expect(latestByEnv[otherEnv.EnvName].ImageTag).To(Equal("prod-v1"))
+		})
+
 		It("should filter by envName correctly", func() {
 			// 为 staging 环境创建记录
 			recordA.EnvName = "staging"

@@ -51,6 +51,8 @@ type AppHandler interface {
 	DeleteAppComponent(c *gin.Context)
 	// 应用部署状态
 	GetAppDeployStatuses(c *gin.Context)
+	// 应用部署总览（trpc/taf）
+	GetAppDeployOverview(c *gin.Context)
 }
 
 // Register registers Gin app routes.
@@ -84,4 +86,6 @@ func Register(rg *gin.RouterGroup, h AppHandler) {
 	rg.DELETE("/apps/:appID/components/:compName", h.DeleteAppComponent)
 	// 查询应用在各环境及各泳道上的部署状态
 	rg.GET("/apps/:appID/deploy-statuses", h.GetAppDeployStatuses)
+	// 查询应用在全部已关联环境上的部署总览（仅 trpc/taf）
+	rg.GET("/apps/:appID/deploy-overview", h.GetAppDeployOverview)
 }

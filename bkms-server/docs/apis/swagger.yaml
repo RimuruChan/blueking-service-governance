@@ -1155,6 +1155,41 @@ definitions:
         description: 环境变量值
         type: string
     type: object
+  serializer.AppDeployOverviewEnvObj:
+    properties:
+      autoscalingEnabled:
+        description: 是否开启自动扩缩容
+        type: boolean
+      deployStatus:
+        description: 部署状态（原始枚举）
+        type: string
+      envDisplayName:
+        description: 环境展示名称
+        type: string
+      envID:
+        description: 环境 ID
+        type: string
+      envKind:
+        description: 环境类别（standard / feature）
+        type: string
+      envName:
+        description: 环境名称（英文标识）
+        type: string
+      envType:
+        description: 环境类型（development / test / staging / production）
+        type: string
+      instances:
+        allOf:
+        - $ref: '#/definitions/serializer.DeployOverviewInstancesObj'
+        description: 实例数；不可用时为 null
+      lastDeployStartedAt:
+        description: 最近一次部署开始时间；无记录时省略
+        type: string
+      resources:
+        allOf:
+        - $ref: '#/definitions/serializer.DeployOverviewResourcesObj'
+        description: 资源规格（app-spec 生效值）
+    type: object
   serializer.AppDetailOutputObj:
     properties:
       appModelSpec:
@@ -3183,6 +3218,33 @@ definitions:
         description: 卸载状态
         type: string
     type: object
+  serializer.DeployOverviewInstancesObj:
+    properties:
+      abnormal:
+        description: 存在但未 Ready 的 Pod 数
+        type: integer
+      expected:
+        description: 期望副本数（workload spec.replicas）
+        type: integer
+      running:
+        description: Ready Pod 数
+        type: integer
+    type: object
+  serializer.DeployOverviewResourcesObj:
+    properties:
+      cpuLimits:
+        description: CPU limits（Kubernetes quantity 字符串）
+        type: string
+      cpuRequests:
+        description: CPU requests
+        type: string
+      memoryLimits:
+        description: Memory limits
+        type: string
+      memoryRequests:
+        description: Memory requests
+        type: string
+    type: object
   serializer.DeployableImageTagOutputObj:
     properties:
       builtAt:
@@ -4060,6 +4122,14 @@ definitions:
     properties:
       data:
         $ref: '#/definitions/serializer.AppConfigFileVersionOutputObj'
+    type: object
+  serializer.GetAppDeployOverviewOutput:
+    properties:
+      data:
+        description: 已关联（AppIDs）环境行
+        items:
+          $ref: '#/definitions/serializer.AppDeployOverviewEnvObj'
+        type: array
     type: object
   serializer.GetAppDeployStatusesOutput:
     properties:
@@ -10752,6 +10822,32 @@ paths:
       summary: 更新应用组件
       tags:
       - app-components
+  /apps/{appID}/deploy-overview:
+    get:
+      operationId: GetAppDeployOverview
+      parameters:
+      - description: 应用 ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/serializer.GetAppDeployOverviewOutput'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/bkerrs.GinErrorOutput'
+      security:
+      - BkUserInfo: []
+      - BkUserCredential: []
+      summary: 查询应用在各环境上的部署总览（仅 trpc/taf）
+      tags:
+      - app
   /apps/{appID}/deploy-statuses:
     get:
       operationId: GetAppDeployStatuses

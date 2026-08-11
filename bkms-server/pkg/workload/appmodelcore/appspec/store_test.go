@@ -138,6 +138,24 @@ var _ = Describe("AppSpecStore", func() {
 		Expect(envNames).To(Equal([]string{envName}))
 	})
 
+	It("lists all specs including the default entry", func() {
+		err := store.Upsert(ctx, &AppSpec{
+			AppID:   appID,
+			EnvName: DefaultEnvName,
+			Resources: &ResourcesSpec{
+				Replicas: lo.ToPtr(int32(1)),
+			},
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(store.Upsert(ctx, spec)).To(Succeed())
+
+		specs, err := store.ListByApp(ctx, appID)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(specs).To(HaveLen(2))
+		envNames := lo.Map(specs, func(s *AppSpec, _ int) string { return s.EnvName })
+		Expect(envNames).To(ConsistOf(DefaultEnvName, envName))
+	})
+
 	It("ignores env docs with no configured sections when listing env names", func() {
 		err := store.SetSections(ctx, AppSpec{
 			AppID:   appID,

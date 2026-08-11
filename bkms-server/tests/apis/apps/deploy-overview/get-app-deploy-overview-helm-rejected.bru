@@ -1,0 +1,50 @@
+meta {
+  name: get-app-deploy-overview-helm-rejected
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{serviceURL}}/apps/{{deployOverviewHelmAppID}}/deploy-overview
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+}
+
+script:pre-request {
+  const common = require("./common")
+
+  if (!bru.getVar("deployOverviewHelmAppID")) {
+    const suffix = bru.getVar("randomSuffix");
+    const workspaceID = bru.getVar("deployOverviewWorkspaceID") || `deploy-overview-ws-${suffix}`;
+    const appID = `deploy-overview-helm-${suffix}`;
+
+    if (!bru.getVar("deployOverviewWorkspaceID")) {
+      await common.createWorkspace({ id: workspaceID });
+      bru.setVar("deployOverviewWorkspaceID", workspaceID);
+    }
+
+    const app = await common.createHelmApp({
+      id: appID,
+      name: appID,
+      workspaceID,
+    });
+
+    bru.setVar("deployOverviewHelmAppID", app.id);
+  }
+}
+
+tests {
+  test("should reject helm app with 400", () => {
+    expect(res.status).to.equal(400);
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

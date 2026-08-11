@@ -24,6 +24,7 @@ import (
 
 	build "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/overview"
 	deploystatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/status"
 	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
@@ -425,6 +426,99 @@ func (o *AppDeployedEnvOutputObj) FromModel(row deploystatus.AppDeployStatus) *A
 type GetAppDeployStatusesOutput struct {
 	// 应用部署的环境列表，包含标准环境和当前应用拥有的特性环境
 	Data []*AppDeployedEnvOutputObj `json:"data"`
+}
+
+// -----------------------------------------------------------------------------
+// App deploy overview API serializers
+// -----------------------------------------------------------------------------
+
+// DeployOverviewInstancesObj is running / expected / abnormal instance counts.
+// Omitted (null) when the workload cannot be queried.
+type DeployOverviewInstancesObj struct {
+	// Ready Pod 数
+	Running int32 `json:"running"`
+	// 期望副本数（workload spec.replicas）
+	Expected int32 `json:"expected"`
+	// 存在但未 Ready 的 Pod 数
+	Abnormal int32 `json:"abnormal"`
+}
+
+// DeployOverviewResourcesObj is app-spec effective resource quantities (passthrough).
+type DeployOverviewResourcesObj struct {
+	// CPU limits（Kubernetes quantity 字符串）
+	CPULimits string `json:"cpuLimits,omitempty"`
+	// CPU requests
+	CPURequests string `json:"cpuRequests,omitempty"`
+	// Memory limits
+	MemoryLimits string `json:"memoryLimits,omitempty"`
+	// Memory requests
+	MemoryRequests string `json:"memoryRequests,omitempty"`
+}
+
+// AppDeployOverviewEnvObj is one environment row in the deploy overview table.
+type AppDeployOverviewEnvObj struct {
+	// 环境 ID
+	EnvID string `json:"envID"`
+	// 环境名称（英文标识）
+	EnvName string `json:"envName"`
+	// 环境展示名称
+	EnvDisplayName string `json:"envDisplayName"`
+	// 环境类型（development / test / staging / production）
+	EnvType string `json:"envType"`
+	// 环境类别（standard / feature）
+	EnvKind string `json:"envKind"`
+	// 部署状态（原始枚举）
+	DeployStatus string `json:"deployStatus"`
+	// 实例数；不可用时为 null
+	Instances *DeployOverviewInstancesObj `json:"instances"`
+	// 是否开启自动扩缩容
+	AutoscalingEnabled bool `json:"autoscalingEnabled"`
+	// 资源规格（app-spec 生效值）
+	Resources DeployOverviewResourcesObj `json:"resources"`
+	// 最近一次部署开始时间；无记录时省略
+	LastDeployStartedAt *time.Time `json:"lastDeployStartedAt,omitempty"`
+}
+
+// GetAppDeployOverviewOutput is the JSON response for querying app deploy overview.
+type GetAppDeployOverviewOutput struct {
+	// 已关联（AppIDs）环境行
+	Data []*AppDeployOverviewEnvObj `json:"data"`
+}
+
+// FromOverview maps an overview.Result into the HTTP response payload.
+func FromOverview(result *overview.Result) *GetAppDeployOverviewOutput {
+	if result == nil {
+		return &GetAppDeployOverviewOutput{Data: []*AppDeployOverviewEnvObj{}}
+	}
+	envs := make([]*AppDeployOverviewEnvObj, 0, len(result.Envs))
+	for i := range result.Envs {
+		row := result.Envs[i]
+		envObj := &AppDeployOverviewEnvObj{
+			EnvID:              row.EnvID,
+			EnvName:            row.EnvName,
+			EnvDisplayName:     row.EnvDisplayName,
+			EnvType:            row.EnvType,
+			EnvKind:            row.EnvKind,
+			DeployStatus:       row.DeployStatus,
+			AutoscalingEnabled: row.AutoscalingEnabled,
+			Resources: DeployOverviewResourcesObj{
+				CPULimits:      row.Resources.CPULimits,
+				CPURequests:    row.Resources.CPURequests,
+				MemoryLimits:   row.Resources.MemoryLimits,
+				MemoryRequests: row.Resources.MemoryRequests,
+			},
+			LastDeployStartedAt: row.LastDeployStartedAt,
+		}
+		if row.Instances != nil {
+			envObj.Instances = &DeployOverviewInstancesObj{
+				Running:  row.Instances.Running,
+				Expected: row.Instances.Expected,
+				Abnormal: row.Instances.Abnormal,
+			}
+		}
+		envs = append(envs, envObj)
+	}
+	return &GetAppDeployOverviewOutput{Data: envs}
 }
 
 func emptySliceIfNil[T any](items []T) []T {

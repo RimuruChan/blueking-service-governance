@@ -126,6 +126,7 @@ func (c *Client) PaginateList(
 }
 
 // List 获取资源列表（全量）
+// namespace 传 metav1.NamespaceAll 时，会跨所有命名空间 List
 func (c *Client) List(
 	ctx context.Context, namespace string, opts metav1.ListOptions,
 ) (*unstructured.UnstructuredList, error) {

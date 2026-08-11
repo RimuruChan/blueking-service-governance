@@ -63,6 +63,15 @@ func (f *fakeBuildAutoDeployStore) GetLatest(_ context.Context, _, _, _ string) 
 	return f.record, nil
 }
 
+func (f *fakeBuildAutoDeployStore) ListLatestByApp(
+	_ context.Context, _, _ string,
+) (map[string]*autodeploy.Record, error) {
+	if f.record == nil {
+		return map[string]*autodeploy.Record{}, nil
+	}
+	return map[string]*autodeploy.Record{f.record.EnvName: f.record}, nil
+}
+
 func (f *fakeBuildAutoDeployStore) GetByBuildID(_ context.Context, _, buildID string) (*autodeploy.Record, error) {
 	if f.record != nil && f.record.BuildID == buildID {
 		return f.record, nil

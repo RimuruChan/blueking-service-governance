@@ -21,6 +21,7 @@ package status
 
 import (
 	"context"
+	"time"
 
 	"github.com/hashicorp/go-set/v3"
 	"github.com/pkg/errors"
@@ -59,9 +60,11 @@ type AppDeployStatus struct {
 	ImageTag        string
 }
 
-type latestDeployStatus struct {
-	Status   string
-	ImageTag string
+// LatestDeployStatus is the latest deploy status for one app+env+lane, including start time.
+type LatestDeployStatus struct {
+	Status    string
+	ImageTag  string
+	StartedAt time.Time
 }
 
 // DeployStatusService 应用部署状态查询
@@ -269,7 +272,7 @@ func (s *DeployStatusService) buildDeployStatuses(
 
 	// 遍历每个泳道，获取部署状态
 	for _, laneName := range laneNames {
-		deployStatus, err := s.getLatestDeployStatus(ctx, appID, appType, envName, laneName)
+		deployStatus, err := s.GetLatestDeployStatus(ctx, appID, appType, envName, laneName)
 		if err != nil {
 			// 如果部署记录不存在，可以忽略错误，继续下一个泳道
 			if errors.Is(err, ErrDeployRecordNotFound) {
@@ -319,10 +322,21 @@ func (s *DeployStatusService) buildDeployStatuses(
 	}}, nil
 }
 
-func (s *DeployStatusService) getLatestDeployStatus(
+// GetLatestDeployStatus 获取应用在指定环境、泳道下的最新部署状态。
+//
+// Args:
+//   - appID 应用 ID
+//   - appType 应用类型
+//   - envName 环境名称
+//   - laneName 泳道名称，空字符串表示默认（基线）泳道
+//
+// Returns:
+//   - 最新部署状态；无记录时返回 ErrDeployRecordNotFound
+//   - error
+func (s *DeployStatusService) GetLatestDeployStatus(
 	ctx context.Context,
 	appID, appType, envName, laneName string,
-) (*latestDeployStatus, error) {
+) (*LatestDeployStatus, error) {
 	switch {
 	case app.IsAppModelType(appType):
 		// AppModel 应用可能存在一键构建部署记录；优先根据记录关联关系和创建时间选择真正最新的状态。
@@ -348,10 +362,64 @@ func (s *DeployStatusService) getLatestDeployStatus(
 		if record == nil {
 			return nil, ErrDeployRecordNotFound
 		}
-		return &latestDeployStatus{Status: string(record.Status), ImageTag: record.ImageTag}, nil
+		return &LatestDeployStatus{
+			Status:    string(record.Status),
+			ImageTag:  record.ImageTag,
+			StartedAt: record.StartedAt,
+		}, nil
 	default:
 		return nil, ErrUnsupportedAppType
 	}
+}
+
+// ListLatestByAppLane 批量获取应用在指定泳道下各环境的最新部署状态与 AppModel 部署记录。
+// 仅支持 AppModel 类型应用（trpc/taf）；通过两次批量查询完成，复杂度与环境数无关。
+//
+// Args:
+//   - appID 应用 ID
+//   - appType 应用类型
+//   - laneName 泳道名称，空字符串表示默认（基线）泳道
+//
+// Returns:
+//   - map[envName]*LatestDeployStatus，无部署记录的环境不出现在 map 中
+//   - map[envName]*appmodel.Record，各环境最新 AppModel 部署记录（无记录的环境不出现）
+//   - error
+func (s *DeployStatusService) ListLatestByAppLane(
+	ctx context.Context,
+	appID, appType, laneName string,
+) (map[string]*LatestDeployStatus, map[string]*appmodel.Record, error) {
+	if !app.IsAppModelType(appType) {
+		return nil, nil, ErrUnsupportedAppType
+	}
+
+	// 一次聚合拉齐该泳道下各环境最新的一键构建部署记录与 AppModel 部署记录。
+	buildByEnv, err := s.BuildAutoDeployRecordStore.ListLatestByApp(ctx, appID, laneName)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "list latest build auto deploy records")
+	}
+	deployByEnv, err := s.AppModelDeployRecordStore.ListLatestByApp(ctx, appID, laneName)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "list latest appmodel deploy records")
+	}
+
+	// 两类记录覆盖的环境并集；某环境可能只有其中一类记录。
+	envNames := make(map[string]struct{}, len(buildByEnv)+len(deployByEnv))
+	for envName := range buildByEnv {
+		envNames[envName] = struct{}{}
+	}
+	for envName := range deployByEnv {
+		envNames[envName] = struct{}{}
+	}
+
+	// 按环境比较两类记录的关联关系与时间，选出真正最新的状态。
+	statuses := make(map[string]*LatestDeployStatus, len(envNames))
+	for envName := range envNames {
+		status := selectLatestStatus(buildByEnv[envName], deployByEnv[envName])
+		if status != nil {
+			statuses[envName] = status
+		}
+	}
+	return statuses, deployByEnv, nil
 }
 
 func (s *DeployStatusService) getLatestBuildAutoDeployRecord(
@@ -400,23 +468,43 @@ func (s *DeployStatusService) getLatestHelmDeployRecord(
 func selectLatestStatus(
 	buildRecord *autodeploy.Record,
 	deployRecord *appmodel.Record,
-) *latestDeployStatus {
+) *LatestDeployStatus {
 	if buildRecord == nil && deployRecord == nil {
 		return nil
 	}
 	if deployRecord == nil {
-		return &latestDeployStatus{Status: buildRecord.Status, ImageTag: buildRecord.ImageTag}
+		return &LatestDeployStatus{
+			Status:    buildRecord.Status,
+			ImageTag:  buildRecord.ImageTag,
+			StartedAt: buildRecord.StartedAt,
+		}
 	}
 	if buildRecord == nil {
-		return &latestDeployStatus{Status: string(deployRecord.Status), ImageTag: deployRecord.ImageTag}
+		return &LatestDeployStatus{
+			Status:    string(deployRecord.Status),
+			ImageTag:  deployRecord.ImageTag,
+			StartedAt: deployRecord.StartedAt,
+		}
 	}
 	// 如果构建部署记录的 DeployID 与应用模型部署记录的 ID 关联，说明该构建部署对应的就是这条应用模型部署，直接返回构建部署状态。
 	if buildRecord.DeployID != "" && buildRecord.DeployID == deployRecord.ID.Hex() {
-		return &latestDeployStatus{Status: buildRecord.Status, ImageTag: buildRecord.ImageTag}
+		return &LatestDeployStatus{
+			Status:    buildRecord.Status,
+			ImageTag:  buildRecord.ImageTag,
+			StartedAt: buildRecord.StartedAt,
+		}
 	}
 	// 否则根据创建时间选择最新的状态，避免构建部署记录和应用模型部署记录不一致时返回过时的状态。
 	if buildRecord.CreatedAt.Before(deployRecord.CreatedAt) {
-		return &latestDeployStatus{Status: string(deployRecord.Status), ImageTag: deployRecord.ImageTag}
+		return &LatestDeployStatus{
+			Status:    string(deployRecord.Status),
+			ImageTag:  deployRecord.ImageTag,
+			StartedAt: deployRecord.StartedAt,
+		}
 	}
-	return &latestDeployStatus{Status: buildRecord.Status, ImageTag: buildRecord.ImageTag}
+	return &LatestDeployStatus{
+		Status:    buildRecord.Status,
+		ImageTag:  buildRecord.ImageTag,
+		StartedAt: buildRecord.StartedAt,
+	}
 }

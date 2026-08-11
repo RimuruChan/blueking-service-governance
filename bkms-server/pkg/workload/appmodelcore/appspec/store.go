@@ -41,6 +41,9 @@ type AppSpecStore interface {
 	// ListEnvNamesByApp lists env names that have app spec configured, the default env("") is excluded.
 	ListEnvNamesByApp(ctx context.Context, appID string) ([]string, error)
 
+	// ListByApp lists all AppSpec documents for an app, including the default (envName="") entry.
+	ListByApp(ctx context.Context, appID string) ([]*AppSpec, error)
+
 	// Upsert creates or replaces app spec.
 	Upsert(ctx context.Context, spec *AppSpec) error
 
@@ -129,6 +132,28 @@ func (s *AppSpecStoreMongo) ListEnvNamesByApp(ctx context.Context, appID string)
 	}
 	sort.Strings(envNames)
 	return envNames, nil
+}
+
+// ListByApp returns all AppSpec documents for an application, including the default entry.
+func (s *AppSpecStoreMongo) ListByApp(ctx context.Context, appID string) ([]*AppSpec, error) {
+	cursor, err := s.collection.Find(ctx, bson.M{"appID": appID})
+	if err != nil {
+		return nil, errors.Wrap(err, "listing app specs")
+	}
+	defer cursor.Close(ctx)
+
+	specs := make([]*AppSpec, 0)
+	for cursor.Next(ctx) {
+		spec := new(AppSpec)
+		if err := cursor.Decode(spec); err != nil {
+			return nil, errors.Wrap(err, "decoding app spec")
+		}
+		specs = append(specs, Clone(spec))
+	}
+	if err := cursor.Err(); err != nil {
+		return nil, errors.Wrap(err, "iterating app specs")
+	}
+	return specs, nil
 }
 
 // Upsert validates and replaces an application specification, creating it when absent.

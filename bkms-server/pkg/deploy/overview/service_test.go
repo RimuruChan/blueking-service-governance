@@ -1,0 +1,347 @@
+/*
+ * TencentBlueKing is pleased to support the open source community by making
+ * 蓝鲸智云 - 服务治理 (BlueKing Service Governance) available.
+ * Copyright (C) Tencent. All rights reserved.
+ * Licensed under the MIT License (the "License"); you may not use this file except
+ * in compliance with the License. You may obtain a copy of the License at
+ *
+ *  http://opensource.org/licenses/MIT
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under
+ * the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ * either express or implied. See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * We undertake not to change the open source license (MIT license) applicable
+ * to the current version of the project delivered to anyone in the future.
+ */
+
+package overview
+
+import (
+	"context"
+	"time"
+
+	"github.com/bytedance/mockey"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
+	"github.com/samber/lo"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/autodeploy"
+	build "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
+	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
+	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
+	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
+	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
+	helmdeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/helm"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	k8sclient "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/client"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
+	k8skind "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
+)
+
+var _ = Describe("overview.Service", func() {
+	var (
+		ctx                        context.Context
+		diApp                      *fxtest.App
+		appStore                   bkmsapp.ApplicationStore
+		appModelStore              appmodel.AppModelStore
+		appSpecStore               appspec.AppSpecStore
+		appConfigFileStore         appcfg.AppConfigFileStore
+		appConfigFileVersionStore  appcfg.AppConfigFileVersionStore
+		buildConfigStore           build.ConfigStore
+		buildAutoDeployRecordStore autodeploy.RecordStore
+		envStore                   envmodel.EnvironmentStore
+		envSvc                     *bkmsenv.EnvService
+		appModelDeployRecordStore  appmodeldeploy.RecordStore
+		helmDeployRecordStore      helmdeploy.RecordStore
+		gpaConfigStore             gpa.GPAConfigStore
+		svc                        *Service
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		// Note: do not include gpa.FxModule here — it nests appmodel.FxModule and would
+		// conflict with the explicit appmodel.FxModule used by other providers.
+		diApp = fxtest.New(
+			GinkgoT(),
+			bkmsapp.FxModule,
+			appmodel.FxModule,
+			appspec.FxModule,
+			appcfg.FxModule,
+			bkmsenv.FxModule,
+			appmodeldeploy.FxModule,
+			helmdeploy.FxModule,
+			build.FxModule,
+			fx.Populate(
+				&appStore,
+				&appModelStore,
+				&appSpecStore,
+				&appConfigFileStore,
+				&appConfigFileVersionStore,
+				&buildConfigStore,
+				&envStore,
+				&envSvc,
+				&appModelDeployRecordStore,
+				&helmDeployRecordStore,
+			),
+		)
+		diApp.RequireStart()
+
+		var err error
+		buildAutoDeployRecordStore, err = autodeploy.NewRecordStoreMongo(database.Client(), database.Name())
+		Expect(err).NotTo(HaveOccurred())
+		gpaConfigStore, err = gpa.NewGPAConfigStoreMongo(database.Client(), database.Name())
+		Expect(err).NotTo(HaveOccurred())
+
+		svc = NewService(
+			envStore,
+			appStore,
+			appSpecStore,
+			appModelStore,
+			buildAutoDeployRecordStore,
+			appModelDeployRecordStore,
+			helmDeployRecordStore,
+			gpaConfigStore,
+		)
+	})
+
+	AfterEach(func() {
+		Expect(envStore.DeleteAll(ctx)).To(Succeed())
+		diApp.RequireStop()
+	})
+
+	newTrpcApp := func() *bkmsapp.Application {
+		trpcApp, _ := dbfactory.TrpcApplication(ctx, &dbfactory.TrpcApplicationStores{
+			AppStore:                  appStore,
+			AppModelStore:             appModelStore,
+			AppConfigFileStore:        appConfigFileStore,
+			AppConfigFileVersionStore: appConfigFileVersionStore,
+			BuildConfigStore:          buildConfigStore,
+		}, nil)
+		return trpcApp
+	}
+
+	Describe("Build", func() {
+		It("rejects non AppModel application types", func() {
+			_, err := svc.Build(ctx, &bkmsapp.Application{ID: "h1", Type: bkmsapp.AppTypeHelm})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("unsupported app type"))
+		})
+
+		It("returns empty envs when no environment has the app in AppIDs", func() {
+			trpcApp := newTrpcApp()
+			_ = dbfactory.Env(ctx, envSvc, trpcApp.WorkspaceID)
+
+			result, err := svc.Build(ctx, trpcApp)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Envs).To(BeEmpty())
+		})
+
+		It("includes only envs with AppIDs membership and default-lane status", func() {
+			trpcApp := newTrpcApp()
+			tracked := dbfactory.Env(ctx, envSvc, trpcApp.WorkspaceID)
+			untracked := dbfactory.Env(ctx, envSvc, trpcApp.WorkspaceID)
+			Expect(envStore.AddApp(ctx, tracked.ID, trpcApp.ID)).To(Succeed())
+
+			startedAt := time.Now().UTC().Truncate(time.Millisecond)
+			_, err := appModelDeployRecordStore.Create(ctx, &appmodeldeploy.Record{
+				WorkspaceID: trpcApp.WorkspaceID,
+				AppID:       trpcApp.ID,
+				EnvName:     tracked.Name,
+				Status:      appmodeldeploy.StatusDeployed,
+				ImageTag:    "v9",
+				StartedAt:   startedAt,
+				// 不填 ClusterID：本用例只验证部署状态，不走 K8s 实例查询
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			result, err := svc.Build(ctx, trpcApp)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Envs).To(HaveLen(1))
+			Expect(result.Envs[0].EnvName).To(Equal(tracked.Name))
+			Expect(result.Envs[0].EnvName).NotTo(Equal(untracked.Name))
+			Expect(result.Envs[0].DeployStatus).To(Equal(string(appmodeldeploy.StatusDeployed)))
+			Expect(result.Envs[0].LastDeployStartedAt).NotTo(BeNil())
+			Expect(result.Envs[0].Instances).To(BeNil())
+		})
+
+		It("includes owned feature envs only when AppIDs contains the app", func() {
+			trpcApp := newTrpcApp()
+			source := dbfactory.Env(ctx, envSvc, trpcApp.WorkspaceID)
+			_ = dbfactory.FeatEnv(ctx, envSvc, trpcApp, source)
+			featWithApp := dbfactory.FeatEnv(ctx, envSvc, trpcApp, source)
+			Expect(envStore.AddApp(ctx, featWithApp.ID, trpcApp.ID)).To(Succeed())
+
+			result, err := svc.Build(ctx, trpcApp)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Envs).To(HaveLen(1))
+			Expect(result.Envs[0].EnvName).To(Equal(featWithApp.Name))
+			Expect(result.Envs[0].EnvKind).To(Equal(string(envmodel.EnvironmentKindFeature)))
+		})
+
+		It("fills resources from effective app-spec and gpa autoscaling flag", func() {
+			trpcApp := newTrpcApp()
+			env := dbfactory.Env(ctx, envSvc, trpcApp.WorkspaceID)
+			Expect(envStore.AddApp(ctx, env.ID, trpcApp.ID)).To(Succeed())
+
+			Expect(appspec.SetDefault(ctx, appSpecStore, appModelStore, trpcApp.ID, &appspec.AppSpec{
+				Resources: &appspec.ResourcesSpec{
+					CPULimits:      lo.ToPtr("2"),
+					CPURequests:    lo.ToPtr("1"),
+					MemoryLimits:   lo.ToPtr("4Gi"),
+					MemoryRequests: lo.ToPtr("2Gi"),
+				},
+			})).To(Succeed())
+
+			cfg := &gpa.GPAConfig{
+				AppID:       trpcApp.ID,
+				EnvName:     env.Name,
+				MinReplicas: 1,
+				MaxReplicas: 5,
+				Metrics: []gpa.GPAMetric{
+					{Resource: gpa.ResourceCPU, AverageUtilization: 60},
+				},
+			}
+			Expect(gpaConfigStore.Create(ctx, cfg)).To(Succeed())
+
+			result, err := svc.Build(ctx, trpcApp)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Envs).To(HaveLen(1))
+			Expect(result.Envs[0].AutoscalingEnabled).To(BeTrue())
+			Expect(result.Envs[0].Resources.CPULimits).To(Equal("2"))
+			Expect(result.Envs[0].Resources.CPURequests).To(Equal("1"))
+			Expect(result.Envs[0].Resources.MemoryLimits).To(Equal("4Gi"))
+			Expect(result.Envs[0].Resources.MemoryRequests).To(Equal("2Gi"))
+		})
+
+		It("counts ready/abnormal pods and GD replicas on successful k8s queries", func() {
+			trpcApp := newTrpcApp()
+			env := dbfactory.Env(ctx, envSvc, trpcApp.WorkspaceID)
+			Expect(envStore.AddApp(ctx, env.ID, trpcApp.ID)).To(Succeed())
+
+			ns := "ns-prod"
+			clusterID := "cluster-prod"
+			gdName := trpcApp.Name
+			labelSel := map[string]string{"app.kubernetes.io/name": trpcApp.Name}
+
+			_, err := appModelDeployRecordStore.Create(ctx, &appmodeldeploy.Record{
+				WorkspaceID:   trpcApp.WorkspaceID,
+				AppID:         trpcApp.ID,
+				EnvName:       env.Name,
+				Status:        appmodeldeploy.StatusDeployed,
+				ClusterID:     clusterID,
+				Namespace:     ns,
+				LabelSelector: labelSel,
+				ResourceKeys: appmodeldeploy.ResourceKeys{
+					{Kind: k8skind.GameDeploy, Name: gdName},
+				},
+				ImageTag:  "v1",
+				StartedAt: time.Now().UTC(),
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			mockey.PatchConvey("k8s query success", GinkgoT(), func() {
+				mockey.Mock(cluster.NewConfig).To(func(id string) *cluster.Config {
+					return &cluster.Config{ClusterID: id}
+				}).Build()
+				mockey.Mock(k8sclient.NewPodClient).Return(&k8sclient.PodClient{}).Build()
+				mockey.Mock(k8sclient.NewWithGVR).Return(&k8sclient.Client{}).Build()
+
+				mockey.Mock((*k8sclient.Client).List).To(func(
+					_ *k8sclient.Client, _ context.Context, gotNS string, opts metav1.ListOptions,
+				) (*unstructured.UnstructuredList, error) {
+					Expect(gotNS).To(Equal(ns))
+					Expect(opts.LabelSelector).NotTo(BeEmpty())
+					return &unstructured.UnstructuredList{Items: []unstructured.Unstructured{
+						{Object: map[string]any{
+							"metadata": map[string]any{"namespace": ns, "name": "p1"},
+							"status": map[string]any{
+								"conditions": []any{
+									map[string]any{"type": "Ready", "status": "True"},
+								},
+							},
+						}},
+						{Object: map[string]any{
+							"metadata": map[string]any{"namespace": ns, "name": "p2"},
+							"status": map[string]any{
+								"conditions": []any{
+									map[string]any{"type": "Ready", "status": "False"},
+								},
+							},
+						}},
+					}}, nil
+				}).Build()
+
+				mockey.Mock((*k8sclient.Client).Get).To(func(
+					_ *k8sclient.Client, _ context.Context, gotNS, name string, _ metav1.GetOptions,
+				) (*unstructured.Unstructured, error) {
+					Expect(gotNS).To(Equal(ns))
+					Expect(name).To(Equal(gdName))
+					return &unstructured.Unstructured{Object: map[string]any{
+						"metadata": map[string]any{"namespace": ns, "name": gdName},
+						"spec":     map[string]any{"replicas": int64(3)},
+					}}, nil
+				}).Build()
+
+				result, err := svc.Build(ctx, trpcApp)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Envs).To(HaveLen(1))
+				Expect(result.Envs[0].Instances).NotTo(BeNil())
+				Expect(result.Envs[0].Instances.Running).To(Equal(int32(1)))
+				Expect(result.Envs[0].Instances.Abnormal).To(Equal(int32(1)))
+				Expect(result.Envs[0].Instances.Expected).To(Equal(int32(3)))
+			})
+		})
+
+		It("sets instances null when env k8s query fails without failing the request", func() {
+			trpcApp := newTrpcApp()
+			env := dbfactory.Env(ctx, envSvc, trpcApp.WorkspaceID)
+			Expect(envStore.AddApp(ctx, env.ID, trpcApp.ID)).To(Succeed())
+
+			_, err := appModelDeployRecordStore.Create(ctx, &appmodeldeploy.Record{
+				WorkspaceID:   trpcApp.WorkspaceID,
+				AppID:         trpcApp.ID,
+				EnvName:       env.Name,
+				Status:        appmodeldeploy.StatusDeployed,
+				ClusterID:     "cluster-down",
+				Namespace:     "ns-x",
+				LabelSelector: map[string]string{"app": "x"},
+				ResourceKeys: appmodeldeploy.ResourceKeys{
+					{Kind: k8skind.GameDeploy, Name: "gd-x"},
+				},
+				ImageTag:  "v1",
+				StartedAt: time.Now().UTC(),
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			mockey.PatchConvey("k8s query failure", GinkgoT(), func() {
+				mockey.Mock(cluster.NewConfig).Return(&cluster.Config{}).Build()
+				mockey.Mock(k8sclient.NewPodClient).Return(&k8sclient.PodClient{}).Build()
+				mockey.Mock(k8sclient.NewWithGVR).Return(&k8sclient.Client{}).Build()
+				mockey.Mock((*k8sclient.Client).List).Return(
+					nil, errors.New("cluster unreachable"),
+				).Build()
+				mockey.Mock((*k8sclient.Client).Get).Return(
+					nil, errors.New("cluster unreachable"),
+				).Build()
+
+				result, err := svc.Build(ctx, trpcApp)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Envs).To(HaveLen(1))
+				Expect(result.Envs[0].Instances).To(BeNil())
+				Expect(result.Envs[0].DeployStatus).To(Equal(string(appmodeldeploy.StatusDeployed)))
+			})
+		})
+	})
+})

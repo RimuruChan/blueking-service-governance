@@ -3631,6 +3631,49 @@ const docTemplate = `{
                 }
             }
         },
+        "/apps/{appID}/deploy-overview": {
+            "get": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "app"
+                ],
+                "summary": "查询应用在各环境上的部署总览（仅 trpc/taf）",
+                "operationId": "GetAppDeployOverview",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "应用 ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/serializer.GetAppDeployOverviewOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            }
+        },
         "/apps/{appID}/deploy-statuses": {
             "get": {
                 "security": [
@@ -18591,6 +18634,59 @@ const docTemplate = `{
                 }
             }
         },
+        "serializer.AppDeployOverviewEnvObj": {
+            "type": "object",
+            "properties": {
+                "autoscalingEnabled": {
+                    "description": "是否开启自动扩缩容",
+                    "type": "boolean"
+                },
+                "deployStatus": {
+                    "description": "部署状态（原始枚举）",
+                    "type": "string"
+                },
+                "envDisplayName": {
+                    "description": "环境展示名称",
+                    "type": "string"
+                },
+                "envID": {
+                    "description": "环境 ID",
+                    "type": "string"
+                },
+                "envKind": {
+                    "description": "环境类别（standard / feature）",
+                    "type": "string"
+                },
+                "envName": {
+                    "description": "环境名称（英文标识）",
+                    "type": "string"
+                },
+                "envType": {
+                    "description": "环境类型（development / test / staging / production）",
+                    "type": "string"
+                },
+                "instances": {
+                    "description": "实例数；不可用时为 null",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/serializer.DeployOverviewInstancesObj"
+                        }
+                    ]
+                },
+                "lastDeployStartedAt": {
+                    "description": "最近一次部署开始时间；无记录时省略",
+                    "type": "string"
+                },
+                "resources": {
+                    "description": "资源规格（app-spec 生效值）",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/serializer.DeployOverviewResourcesObj"
+                        }
+                    ]
+                }
+            }
+        },
         "serializer.AppDetailOutputObj": {
             "type": "object",
             "properties": {
@@ -21578,6 +21674,44 @@ const docTemplate = `{
                 }
             }
         },
+        "serializer.DeployOverviewInstancesObj": {
+            "type": "object",
+            "properties": {
+                "abnormal": {
+                    "description": "存在但未 Ready 的 Pod 数",
+                    "type": "integer"
+                },
+                "expected": {
+                    "description": "期望副本数（workload spec.replicas）",
+                    "type": "integer"
+                },
+                "running": {
+                    "description": "Ready Pod 数",
+                    "type": "integer"
+                }
+            }
+        },
+        "serializer.DeployOverviewResourcesObj": {
+            "type": "object",
+            "properties": {
+                "cpuLimits": {
+                    "description": "CPU limits（Kubernetes quantity 字符串）",
+                    "type": "string"
+                },
+                "cpuRequests": {
+                    "description": "CPU requests",
+                    "type": "string"
+                },
+                "memoryLimits": {
+                    "description": "Memory limits",
+                    "type": "string"
+                },
+                "memoryRequests": {
+                    "description": "Memory requests",
+                    "type": "string"
+                }
+            }
+        },
         "serializer.DeployableImageTagOutputObj": {
             "type": "object",
             "properties": {
@@ -22842,6 +22976,18 @@ const docTemplate = `{
             "properties": {
                 "data": {
                     "$ref": "#/definitions/serializer.AppConfigFileVersionOutputObj"
+                }
+            }
+        },
+        "serializer.GetAppDeployOverviewOutput": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "已关联（AppIDs）环境行",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/serializer.AppDeployOverviewEnvObj"
+                    }
                 }
             }
         },
