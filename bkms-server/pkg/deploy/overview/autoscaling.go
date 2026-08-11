@@ -119,24 +119,13 @@ func (s *Service) queryAutoscalingStatuses(
 
 // queryAutoscalingStatusForEnv 回查单个环境的 GPA CR 状态。
 //
-// CR 不存在、集群不可达、或构造集群客户端 panic（本地 kubeconfig 缺失）时返回 nil，
+// CR 不存在、集群不可达时返回 nil，
 // 由调用方降级为「状态不可用」。
 func (s *Service) queryAutoscalingStatusForEnv(
 	ctx context.Context,
 	env *envmodel.Environment,
 	crName string,
 ) *AutoscalingStatus {
-	defer func() {
-		if r := recover(); r != nil {
-			log.ErrorAttrs(ctx, "query deploy overview gpa status panicked",
-				slog.String("env_name", env.Name),
-				slog.String("cluster_id", env.Cluster.ClusterID),
-				slog.String("gpa_name", crName),
-				slog.Any("panic", r),
-			)
-		}
-	}()
-
 	status, err := s.gpaService.Get(ctx, env, crName)
 	if err != nil {
 		if !errors.Is(err, gpa.ErrCRNotFound) {
