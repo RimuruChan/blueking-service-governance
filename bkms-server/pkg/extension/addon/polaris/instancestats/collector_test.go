@@ -27,6 +27,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -34,7 +36,6 @@ import (
 	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/instancestats"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
 	k8sclient "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/client"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
 	polarisInfra "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/polaris"
@@ -46,15 +47,20 @@ var _ = Describe("Collector", func() {
 		appID   string
 		store   appmodeldeploy.RecordStore
 		config  *polaris.PolarisConfig
+		diApp   *fxtest.App
 		mockers []*mockey.Mocker
 	)
 
 	BeforeEach(func() {
-		var err error
 		ctx = context.Background()
 		appID = "test-app-" + stringx.Random(6)
-		store, err = appmodeldeploy.NewRecordStoreMongo(database.Client(), database.Name())
-		Expect(err).NotTo(HaveOccurred())
+
+		diApp = fxtest.New(
+			GinkgoT(),
+			appmodeldeploy.FxModule,
+			fx.Populate(&store),
+		)
+		diApp.RequireStart()
 
 		config = &polaris.PolarisConfig{
 			AppID: appID,
@@ -80,6 +86,7 @@ var _ = Describe("Collector", func() {
 		for _, mocker := range mockers {
 			mocker.Release()
 		}
+		diApp.RequireStop()
 	})
 
 	It("counts matched healthy, isolated and total instances", func() {
@@ -124,12 +131,14 @@ var _ = Describe("Collector", func() {
 		result, err := instancestats.NewCollector(store).Collect(ctx, appID, config)
 
 		Expect(err).NotTo(HaveOccurred())
-		Expect(result["stable"]).To(Equal(instancestats.Stats{
+		Expect(result.EnvStats["stable"]).To(Equal(instancestats.Stats{
 			HealthyInstanceCount:  2,
 			IsolatedInstanceCount: 1,
 			TotalInstanceCount:    2,
 		}))
-		Expect(result["test"]).To(Equal(instancestats.Stats{}))
+		Expect(result.EnvStats["test"]).To(Equal(instancestats.Stats{}))
+		// 含非平台匹配实例（127.0.0.9 / 异端口），全量大于各环境匹配数之和
+		Expect(result.PolarisInstanceCount).To(Equal(4))
 	})
 
 	It("uses the latest deploy record even when its status is not deployed", func() {
@@ -189,10 +198,11 @@ var _ = Describe("Collector", func() {
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(listedNamespace).To(Equal("new-ns"))
-		Expect(result["stable"]).To(Equal(instancestats.Stats{
+		Expect(result.EnvStats["stable"]).To(Equal(instancestats.Stats{
 			HealthyInstanceCount: 1,
 			TotalInstanceCount:   1,
 		}))
+		Expect(result.PolarisInstanceCount).To(Equal(1))
 	})
 
 	It("returns zeros without querying dependencies for undeployed environments", func() {
@@ -201,9 +211,12 @@ var _ = Describe("Collector", func() {
 		result, err := instancestats.NewCollector(store).Collect(ctx, appID, config)
 
 		Expect(err).NotTo(HaveOccurred())
-		Expect(result).To(Equal(map[string]instancestats.Stats{
-			"stable": {},
-			"test":   {},
+		Expect(result).To(Equal(&instancestats.Result{
+			EnvStats: map[string]instancestats.Stats{
+				"stable": {},
+				"test":   {},
+			},
+			PolarisInstanceCount: 0,
 		}))
 	})
 

@@ -48,6 +48,14 @@ type Stats struct {
 	TotalInstanceCount    int // 匹配到本环境的实例总数
 }
 
+// Result 一次 Collect 的汇总结果。
+type Result struct {
+	// EnvStats 各环境匹配到的实例统计
+	EnvStats map[string]Stats
+	// PolarisInstanceCount 北极星服务下全部实例数（含非平台注册），未拉取时为 0
+	PolarisInstanceCount int
+}
+
 // Collector 拉取并汇总北极星配置在各环境下的实例统计。
 type Collector struct {
 	deployRecordStore appmodeldeploy.RecordStore
@@ -58,15 +66,15 @@ func NewCollector(deployRecordStore appmodeldeploy.RecordStore) *Collector {
 	return &Collector{deployRecordStore: deployRecordStore}
 }
 
-// Collect 返回配置关联各环境的实例统计。
+// Collect 返回配置关联各环境的实例统计，以及北极星服务全量实例数。
 // 未部署环境直接返回全 0；部署记录 / Pod / 北极星查询失败则整体报错。
 func (c *Collector) Collect(
 	ctx context.Context,
 	appID string,
 	config *polaris.PolarisConfig,
-) (map[string]Stats, error) {
+) (*Result, error) {
 	envNames := envNames(config)
-	result := make(map[string]Stats, len(envNames))
+	envStats := make(map[string]Stats, len(envNames))
 
 	// 同一配置下各环境共享同一个北极星服务，实例列表只需拉取一次
 	var (
@@ -77,7 +85,7 @@ func (c *Collector) Collect(
 	for _, envName := range envNames {
 		// 未部署：没有 AppliedFields，不打集群 / 北极星，固定返回 0
 		if !config.GetEnvState(envName).IsDeployed() {
-			result[envName] = Stats{}
+			envStats[envName] = Stats{}
 			continue
 		}
 
@@ -105,9 +113,15 @@ func (c *Collector) Collect(
 		}
 
 		// 用本环境 Pod IP 集合从全量北极星实例中筛出属于该环境的子集
-		result[envName] = CountMatched(podIPs, config.ServicePort, instances)
+		envStats[envName] = CountMatched(podIPs, config.ServicePort, instances)
 	}
-	return result, nil
+
+	return &Result{
+		EnvStats: envStats,
+		PolarisInstanceCount: lo.CountBy(instances, func(inst *polarisInfra.Instance) bool {
+			return inst != nil
+		}),
+	}, nil
 }
 
 // CountMatched 按 Pod IP + 服务端口匹配北极星实例并统计。

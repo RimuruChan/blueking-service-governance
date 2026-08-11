@@ -294,19 +294,23 @@ var _ = Describe("AppConfigEnvNameURIInput", func() {
 })
 
 var _ = Describe("GetEnvInstanceStatsOutput", func() {
-	It("maps per-environment instance counts", func() {
-		output := new(serializer.GetEnvInstanceStatsOutput).FromModel(map[string]instancestats.Stats{
-			"stable": {
-				HealthyInstanceCount:  3,
-				IsolatedInstanceCount: 1,
-				TotalInstanceCount:    4,
+	It("maps per-environment instance counts and polaris total", func() {
+		output := new(serializer.GetEnvInstanceStatsOutput).FromModel(&instancestats.Result{
+			EnvStats: map[string]instancestats.Stats{
+				"stable": {
+					HealthyInstanceCount:  3,
+					IsolatedInstanceCount: 1,
+					TotalInstanceCount:    4,
+				},
 			},
+			PolarisInstanceCount: 7,
 		})
 
-		Expect(output.Data["stable"]).To(Equal(serializer.EnvInstanceStatsOutput{
+		Expect(output.Data.EnvStats["stable"]).To(Equal(serializer.EnvInstanceStatsOutput{
 			HealthyInstanceCount:  3,
 			IsolatedInstanceCount: 1,
 			TotalInstanceCount:    4,
 		}))
+		Expect(output.Data.PolarisInstanceCount).To(Equal(int32(7)))
 	})
 })

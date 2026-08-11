@@ -22952,11 +22952,23 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "data": {
-                    "description": "各环境的北极星实例统计，key 为环境名",
+                    "$ref": "#/definitions/serializer.GetEnvInstanceStatsOutputObj"
+                }
+            }
+        },
+        "serializer.GetEnvInstanceStatsOutputObj": {
+            "type": "object",
+            "properties": {
+                "envStats": {
+                    "description": "各环境匹配到的北极星实例统计，key 为环境名",
                     "type": "object",
                     "additionalProperties": {
                         "$ref": "#/definitions/serializer.EnvInstanceStatsOutput"
                     }
+                },
+                "polarisInstanceCount": {
+                    "description": "北极星服务下全部实例数（含非平台注册的实例，例如迁移业务）",
+                    "type": "integer"
                 }
             }
         },

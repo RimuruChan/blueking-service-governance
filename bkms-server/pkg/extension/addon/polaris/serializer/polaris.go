@@ -383,8 +383,15 @@ func (o *PutEnvWeightOutput) FromModel(config *polaris.PolarisConfig) *PutEnvWei
 
 // GetEnvInstanceStatsOutput is the JSON response for per-env polaris instance stats.
 type GetEnvInstanceStatsOutput struct {
-	// 各环境的北极星实例统计，key 为环境名
-	Data map[string]EnvInstanceStatsOutput `json:"data"`
+	Data *GetEnvInstanceStatsOutputObj `json:"data"`
+}
+
+// GetEnvInstanceStatsOutputObj is the payload of GetEnvInstanceStats.
+type GetEnvInstanceStatsOutputObj struct {
+	// 各环境匹配到的北极星实例统计，key 为环境名
+	EnvStats map[string]EnvInstanceStatsOutput `json:"envStats"`
+	// 北极星服务下全部实例数（含非平台注册的实例，例如迁移业务）
+	PolarisInstanceCount int32 `json:"polarisInstanceCount"`
 }
 
 // EnvInstanceStatsOutput is the JSON representation of matched polaris instance counts.
@@ -398,17 +405,21 @@ type EnvInstanceStatsOutput struct {
 }
 
 // FromModel fills output fields from collected env instance stats.
-func (o *GetEnvInstanceStatsOutput) FromModel(
-	stats map[string]instancestats.Stats,
-) *GetEnvInstanceStatsOutput {
-	data := make(map[string]EnvInstanceStatsOutput, len(stats))
-	for envName, s := range stats {
-		data[envName] = EnvInstanceStatsOutput{
-			HealthyInstanceCount:  int32(s.HealthyInstanceCount),  //nolint:gosec // G115: counts fit in int32
-			IsolatedInstanceCount: int32(s.IsolatedInstanceCount), //nolint:gosec // G115: counts fit in int32
-			TotalInstanceCount:    int32(s.TotalInstanceCount),    //nolint:gosec // G115: counts fit in int32
-		}
+func (o *GetEnvInstanceStatsOutput) FromModel(result *instancestats.Result) *GetEnvInstanceStatsOutput {
+	obj := &GetEnvInstanceStatsOutputObj{
+		EnvStats: map[string]EnvInstanceStatsOutput{},
 	}
-	o.Data = data
+	if result != nil {
+		obj.EnvStats = make(map[string]EnvInstanceStatsOutput, len(result.EnvStats))
+		for envName, s := range result.EnvStats {
+			obj.EnvStats[envName] = EnvInstanceStatsOutput{
+				HealthyInstanceCount:  int32(s.HealthyInstanceCount),  //nolint:gosec // G115: counts fit in int32
+				IsolatedInstanceCount: int32(s.IsolatedInstanceCount), //nolint:gosec // G115: counts fit in int32
+				TotalInstanceCount:    int32(s.TotalInstanceCount),    //nolint:gosec // G115: counts fit in int32
+			}
+		}
+		obj.PolarisInstanceCount = int32(result.PolarisInstanceCount) //nolint:gosec // G115: counts fit in int32
+	}
+	o.Data = obj
 	return o
 }
