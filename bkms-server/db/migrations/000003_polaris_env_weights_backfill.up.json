@@ -1,0 +1,69 @@
+[
+  {
+    "update": "polaris_configs",
+    "updates": [
+      {
+        "q": {
+          "weight": {
+            "$exists": true
+          }
+        },
+        "u": [
+          {
+            "$set": {
+              "envWeights": {
+                "$mergeObjects": [
+                  {
+                    "$arrayToObject": {
+                      "$map": {
+                        "input": {
+                          "$setUnion": [
+                            {
+                              "$ifNull": [
+                                "$scopeEnvNames",
+                                []
+                              ]
+                            },
+                            {
+                              "$map": {
+                                "input": {
+                                  "$objectToArray": {
+                                    "$ifNull": [
+                                      "$envStates",
+                                      {}
+                                    ]
+                                  }
+                                },
+                                "as": "state",
+                                "in": "$$state.k"
+                              }
+                            }
+                          ]
+                        },
+                        "as": "env",
+                        "in": {
+                          "k": "$$env",
+                          "v": "$weight"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "$ifNull": [
+                      "$envWeights",
+                      {}
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "$unset": "weight"
+          }
+        ],
+        "multi": true
+      }
+    ]
+  }
+]

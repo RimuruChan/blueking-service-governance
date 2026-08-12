@@ -399,12 +399,12 @@ Create/PATCH serializer 不声明 `weight` 或 `envWeights`；旧客户端继续
 
 ## 12. 存量数据迁移与发布顺序
 
-迁移由独立运维脚本完成，不放进服务代码。脚本必须幂等，支持 dry-run，并输出扫描配置数、待回填环境数、实际更新数和异常数。
+迁移由 golang-migrate 的 `000003_polaris_env_weights_backfill` 完成，语句逐段说明见同目录的 `.md`。
 
-1. 发布前遍历 `polaris_configs`。对每条配置取 `scopeEnvNames` 与 `envStates` 中存在 `appliedFields` 的环境并集，仅为缺失的 `envWeights.<env>` 回填 `100`；已有显式环境权重和旧顶层 `weight` 暂时保留。
-2. 发布新代码。之后的新建配置和新加入 scope 的环境会自动获得 `100`。
-3. 发布后用相同脚本再次 backfill，覆盖发布窗口内旧版本可能写入的数据。
-4. cleanup 阶段从所有配置删除废弃的顶层 `weight`。
-5. 验证所有 eligible 环境都存在 `envWeights`，且顶层 `weight` 数量为 `0`。
+**回填规则**：对每条 `polaris_configs`，取 `scopeEnvNames` 与 `envStates` 的 key 的并集作为目标环境，仅为缺失的 `envWeights.<env>` 写入该配置旧的顶层 `weight`，随后在同一条聚合管道里删除顶层 `weight`。已显式设置过的环境权重原样保留，因此重复执行结果一致。顶层 `weight` 字段缺失的文档整条跳过（属于新代码写入的数据）；`weight` 为 `0` 是显式配置，照常回填。
 
-旧配置级 `weight`（包括 `10` 或其他自定义值）不再继承，eligible 环境统一回填 `100`，这是本次明确的行为变更。
+**继承旧值而不是统一回填 100**，因为旧代码写进 PolarisConfig CR 的 `spec.services[0].weight` 就是配置级 `weight`（接口默认 `10`）。若回填 `100`，平台认知与现网就会不一致，任何一次 CR patch（改 scope、改权重、重新部署）都会把线上单实例权重从 `10` 抬到 `100`。
+
+**发布顺序**由 Helm 保证：`migrate-job` 先执行，web / worker 的 initContainer 等待该 Job 完成后才启动，因此迁移一定早于新代码生效。
+
+**残留风险**：滚动更新窗口内，尚未下线的旧版本 Pod 若新建配置，仍会写顶层 `weight` 而不写 `envWeights`，这类数据迁移已经跑过、不会被覆盖，其环境会回落到 `DefaultEnvWeight`。发布后执行 `db.polaris_configs.countDocuments({ weight: { $exists: true } })` 核对，结果应为 `0`，非 `0` 则按同样规则手工补齐。
