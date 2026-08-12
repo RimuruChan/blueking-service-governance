@@ -166,7 +166,7 @@ var _ = Describe("PolarisConfigStore", func() {
 				before, err := store.Get(ctx, testAppID, configName)
 				Expect(err).NotTo(HaveOccurred())
 
-				// MongoDB 时间精度为毫秒，等待一小段时间以确保 updatedAt 可比较
+				// MongoDB DateTime 精度为毫秒，断言 updatedAt 被刷新需要等到下一个精度窗口
 				time.Sleep(5 * time.Millisecond)
 				Expect(store.UpsertEnvWeight(ctx, testAppID, configName, "dev", 0)).To(Succeed())
 
