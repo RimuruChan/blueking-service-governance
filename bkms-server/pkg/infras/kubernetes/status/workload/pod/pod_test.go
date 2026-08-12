@@ -422,9 +422,10 @@ var _ = Describe("PodStatusParser", func() {
 })
 
 var _ = Describe("IsReady", func() {
-	It("should return true when Ready condition is True", func() {
+	It("should return true when the pod is running and ready", func() {
 		Expect(podstatus.IsReady(map[string]any{
 			"status": map[string]any{
+				"phase": "Running",
 				"conditions": []any{
 					map[string]any{"type": "Ready", "status": "True"},
 				},
@@ -432,19 +433,33 @@ var _ = Describe("IsReady", func() {
 		})).To(BeTrue())
 	})
 
-	It("should return true when pod completed normally", func() {
+	It("should return false when the pod exited successfully", func() {
 		Expect(podstatus.IsReady(map[string]any{
 			"status": map[string]any{
+				"phase": "Succeeded",
 				"conditions": []any{
 					map[string]any{"type": "Ready", "status": "False", "reason": "PodCompleted"},
 				},
 			},
-		})).To(BeTrue())
+		})).To(BeFalse())
+	})
+
+	// kubelet 对终态 Pod 一律写 reason=PodCompleted，异常退出也是如此，不能当作就绪
+	It("should return false when the pod exited abnormally", func() {
+		Expect(podstatus.IsReady(map[string]any{
+			"status": map[string]any{
+				"phase": "Failed",
+				"conditions": []any{
+					map[string]any{"type": "Ready", "status": "False", "reason": "PodCompleted"},
+				},
+			},
+		})).To(BeFalse())
 	})
 
 	It("should return false when Ready condition is False", func() {
 		Expect(podstatus.IsReady(map[string]any{
 			"status": map[string]any{
+				"phase": "Running",
 				"conditions": []any{
 					map[string]any{"type": "Ready", "status": "False"},
 				},
@@ -456,8 +471,20 @@ var _ = Describe("IsReady", func() {
 		Expect(podstatus.IsReady(map[string]any{})).To(BeFalse())
 		Expect(podstatus.IsReady(map[string]any{
 			"status": map[string]any{
+				"phase": "Running",
 				"conditions": []any{
 					map[string]any{"type": "Initialized", "status": "True"},
+				},
+			},
+		})).To(BeFalse())
+	})
+
+	It("should return false when the pod is not running yet", func() {
+		Expect(podstatus.IsReady(map[string]any{
+			"status": map[string]any{
+				"phase": "Pending",
+				"conditions": []any{
+					map[string]any{"type": "Ready", "status": "True"},
 				},
 			},
 		})).To(BeFalse())

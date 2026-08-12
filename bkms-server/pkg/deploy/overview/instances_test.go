@@ -46,25 +46,39 @@ var _ = Describe("instance helpers", func() {
 	})
 
 	Describe("countPodStates", func() {
-		newPod := func(readyStatus string) unstructured.Unstructured {
+		newPod := func(phase, readyStatus string) unstructured.Unstructured {
 			return unstructured.Unstructured{Object: map[string]any{
 				"status": map[string]any{
+					"phase":      phase,
 					"conditions": []any{map[string]any{"type": "Ready", "status": readyStatus}},
 				},
 			}}
 		}
 
-		It("counts ready pods as running and the others as abnormal", func() {
+		It("counts running and ready pods as running, the others as abnormal", func() {
 			running, abnormal := countPodStates([]unstructured.Unstructured{
-				newPod("True"), newPod("False"), newPod("True"),
+				newPod("Running", "True"), newPod("Running", "False"), newPod("Running", "True"),
 			})
 			Expect(running).To(Equal(int32(2)))
 			Expect(abnormal).To(Equal(int32(1)))
 		})
 
+		It("counts terminated pods as abnormal even when reported as completed", func() {
+			running, abnormal := countPodStates([]unstructured.Unstructured{
+				{Object: map[string]any{"status": map[string]any{
+					"phase": "Failed",
+					"conditions": []any{
+						map[string]any{"type": "Ready", "status": "False", "reason": "PodCompleted"},
+					},
+				}}},
+			})
+			Expect(running).To(BeZero())
+			Expect(abnormal).To(Equal(int32(1)))
+		})
+
 		It("counts pods without a Ready condition as abnormal", func() {
 			running, abnormal := countPodStates([]unstructured.Unstructured{
-				{Object: map[string]any{"status": map[string]any{}}},
+				{Object: map[string]any{"status": map[string]any{"phase": "Running"}}},
 			})
 			Expect(running).To(BeZero())
 			Expect(abnormal).To(Equal(int32(1)))

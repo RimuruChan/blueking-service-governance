@@ -30,9 +30,6 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload"
 )
 
-// podCompletedReason Pod 正常跑完退出时 Ready condition 的 reason
-const podCompletedReason = "PodCompleted"
-
 // Parser Pod 状态解析器
 type Parser struct {
 	Manifest     map[string]any
@@ -151,15 +148,19 @@ func (p *Parser) updateByContainerStatuses(podStatus *PartialPodStatus) {
 	}
 }
 
-// IsReady 判断 Pod 是否就绪：Ready condition 为 True，
-// 或因 PodCompleted 结束（正常跑完退出的 Pod 视为健康，不计入异常）。
+// IsReady 判断 Pod 是否就绪：phase 为 Running 且 Ready condition 为 True。
+//
+// 不能把 Ready condition 的 reason=PodCompleted 视为就绪：kubelet 对所有进入终态的 Pod
+// 都写这个 reason，正常退出（phase Succeeded）与异常退出（phase Failed）无从区分。
 func IsReady(manifest map[string]any) bool {
+	if mapx.GetStr(manifest, "status.phase") != string(v1.PodRunning) {
+		return false
+	}
 	cond := workload.GetCondition(manifest, string(v1.PodReady))
 	if cond == nil {
 		return false
 	}
-	return mapx.GetStr(cond, "status") == string(v1.ConditionTrue) ||
-		mapx.GetStr(cond, "reason") == podCompletedReason
+	return mapx.GetStr(cond, "status") == string(v1.ConditionTrue)
 }
 
 // hasPodInitializedCondition 判断 pod 是否 initialized

@@ -333,6 +333,7 @@ var _ = Describe("overview.Service", func() {
 						{Object: map[string]any{
 							"metadata": map[string]any{"namespace": ns, "name": "p1"},
 							"status": map[string]any{
+								"phase": "Running",
 								"conditions": []any{
 									map[string]any{"type": "Ready", "status": "True"},
 								},
@@ -341,6 +342,7 @@ var _ = Describe("overview.Service", func() {
 						{Object: map[string]any{
 							"metadata": map[string]any{"namespace": ns, "name": "p2"},
 							"status": map[string]any{
+								"phase": "Running",
 								"conditions": []any{
 									map[string]any{"type": "Ready", "status": "False"},
 								},
