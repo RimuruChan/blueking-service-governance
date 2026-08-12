@@ -26,6 +26,7 @@ import (
 	"sync"
 
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	"golang.org/x/sync/semaphore"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -50,12 +51,9 @@ type deployRecordForEnv struct {
 // 缺 key 或值为 nil 均表示不可用（序列化为 JSON null）；与「0 运行 / 0 异常」不同。
 type instanceCountsByEnv map[string]*InstanceCounts
 
-// clusterDeployBatch 同一集群上需要一并查询的环境部署记录。
-// 约定：同一集群内各环境的 (clusterID, namespace) 唯一。
-type clusterDeployBatch struct {
-	clusterID string
-	items     []deployRecordForEnv
-}
+// deployRecordsByCluster clusterID -> 该集群上需要一并查询的环境部署记录。
+// 约定：同一集群内各环境的 namespace 唯一。
+type deployRecordsByCluster map[string][]deployRecordForEnv
 
 // clusterQuerier 单集群内查询实例数所需的客户端与共享并发闸门。
 // 客户端按集群创建一次，供该集群下各环境复用。
@@ -102,9 +100,9 @@ func queryInstanceCounts(
 		mu sync.Mutex
 		wg sync.WaitGroup
 	)
-	for _, batch := range byCluster {
+	for clusterID, items := range byCluster {
 		wg.Go(func() {
-			counts := queryInstanceCountsForCluster(ctx, sem, batch.clusterID, batch.items)
+			counts := queryInstanceCountsForCluster(ctx, sem, clusterID, items)
 			mu.Lock()
 			defer mu.Unlock()
 			maps.Copy(out, counts)
@@ -115,20 +113,13 @@ func queryInstanceCounts(
 }
 
 // groupDeployRecordsByCluster 按 ClusterID 分组；无 ClusterID 的记录无法查 K8s，直接丢弃。
-func groupDeployRecordsByCluster(records []deployRecordForEnv) map[string]*clusterDeployBatch {
-	byCluster := map[string]*clusterDeployBatch{}
-	for _, item := range records {
-		if item.Record == nil || item.Record.ClusterID == "" {
-			continue
-		}
-		b, ok := byCluster[item.Record.ClusterID]
-		if !ok {
-			b = &clusterDeployBatch{clusterID: item.Record.ClusterID}
-			byCluster[item.Record.ClusterID] = b
-		}
-		b.items = append(b.items, item)
-	}
-	return byCluster
+func groupDeployRecordsByCluster(records []deployRecordForEnv) deployRecordsByCluster {
+	queryable := lo.Filter(records, func(item deployRecordForEnv, _ int) bool {
+		return item.Record != nil && item.Record.ClusterID != ""
+	})
+	return lo.GroupBy(queryable, func(item deployRecordForEnv) string {
+		return item.Record.ClusterID
+	})
 }
 
 // queryInstanceCountsForCluster 并发查询单集群上各环境的实例数。

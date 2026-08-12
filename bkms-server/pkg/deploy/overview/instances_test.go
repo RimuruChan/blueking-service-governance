@@ -23,6 +23,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
 	k8skind "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
@@ -41,6 +42,72 @@ var _ = Describe("instance helpers", func() {
 		It("returns not found when replicas missing", func() {
 			_, ok := extractGameDeployReplicas(map[string]any{"spec": map[string]any{}})
 			Expect(ok).To(BeFalse())
+		})
+	})
+
+	Describe("countPodStates", func() {
+		newPod := func(readyStatus string) unstructured.Unstructured {
+			return unstructured.Unstructured{Object: map[string]any{
+				"status": map[string]any{
+					"conditions": []any{map[string]any{"type": "Ready", "status": readyStatus}},
+				},
+			}}
+		}
+
+		It("counts ready pods as running and the others as abnormal", func() {
+			running, abnormal := countPodStates([]unstructured.Unstructured{
+				newPod("True"), newPod("False"), newPod("True"),
+			})
+			Expect(running).To(Equal(int32(2)))
+			Expect(abnormal).To(Equal(int32(1)))
+		})
+
+		It("counts pods without a Ready condition as abnormal", func() {
+			running, abnormal := countPodStates([]unstructured.Unstructured{
+				{Object: map[string]any{"status": map[string]any{}}},
+			})
+			Expect(running).To(BeZero())
+			Expect(abnormal).To(Equal(int32(1)))
+		})
+
+		It("returns zeros for an empty pod list", func() {
+			running, abnormal := countPodStates(nil)
+			Expect(running).To(BeZero())
+			Expect(abnormal).To(BeZero())
+		})
+	})
+
+	Describe("extractGameDeployName", func() {
+		It("picks the GameDeployment out of the recorded resources", func() {
+			name := extractGameDeployName(&appmodel.Record{ResourceKeys: appmodel.ResourceKeys{
+				{Kind: k8skind.SVC, Name: "svc-app"},
+				{Kind: k8skind.GameDeploy, Name: "app"},
+			}})
+			Expect(name).To(Equal("app"))
+		})
+
+		It("returns an empty name when no GameDeployment was recorded", func() {
+			Expect(extractGameDeployName(&appmodel.Record{})).To(BeEmpty())
+		})
+	})
+
+	Describe("groupDeployRecordsByCluster", func() {
+		It("groups records of the same cluster together", func() {
+			byCluster := groupDeployRecordsByCluster([]deployRecordForEnv{
+				{EnvName: "dev", Record: &appmodel.Record{ClusterID: "cls-1"}},
+				{EnvName: "test", Record: &appmodel.Record{ClusterID: "cls-1"}},
+				{EnvName: "prod", Record: &appmodel.Record{ClusterID: "cls-2"}},
+			})
+			Expect(byCluster).To(HaveLen(2))
+			Expect(byCluster["cls-1"]).To(HaveLen(2))
+			Expect(byCluster["cls-2"]).To(HaveLen(1))
+		})
+
+		It("drops records that cannot locate a cluster", func() {
+			Expect(groupDeployRecordsByCluster([]deployRecordForEnv{
+				{EnvName: "no-record"},
+				{EnvName: "no-cluster", Record: &appmodel.Record{}},
+			})).To(BeEmpty())
 		})
 	})
 

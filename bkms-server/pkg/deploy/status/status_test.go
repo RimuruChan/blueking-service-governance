@@ -43,7 +43,6 @@ import (
 	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
 	helmdeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/helm"
 	. "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/status"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/trafficmanager"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 )
@@ -104,6 +103,7 @@ var _ = Describe("DeployStatusService", func() {
 			appmodel.FxModule,
 			appcfg.FxModule,
 			bkmsenv.FxModule,
+			autodeploy.FxModule,
 			appmodeldeploy.FxModule,
 			helmdeploy.FxModule,
 			build.FxModule,
@@ -115,14 +115,12 @@ var _ = Describe("DeployStatusService", func() {
 				&buildConfigStore,
 				&envStore,
 				&envSvc,
+				&buildAutoDeployRecordStore,
 				&appModelDeployRecordStore,
 				&helmDeployRecordStore,
 			),
 		)
 		diApp.RequireStart()
-		var err error
-		buildAutoDeployRecordStore, err = autodeploy.NewRecordStoreMongo(database.Client(), database.Name())
-		Expect(err).NotTo(HaveOccurred())
 
 		svc = NewDeployStatusService(
 			appStore,

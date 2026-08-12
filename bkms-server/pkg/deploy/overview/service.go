@@ -289,8 +289,7 @@ func assembleEnvRows(sources *envRowSources) ([]EnvRow, []deployRecordForEnv) {
 		if latest := sources.statusesByEnv[env.Name]; latest != nil {
 			row.DeployStatus = latest.Status
 			if !latest.StartedAt.IsZero() {
-				t := latest.StartedAt
-				row.LastDeployStartedAt = &t
+				row.LastDeployStartedAt = lo.ToPtr(latest.StartedAt)
 			}
 		}
 		if rec := sources.deployByEnv[env.Name]; rec != nil {
@@ -306,18 +305,10 @@ func toResourceSpec(spec *appspec.ResourcesSpec) ResourceSpec {
 	if spec == nil {
 		return ResourceSpec{}
 	}
-	out := ResourceSpec{}
-	if spec.CPULimits != nil {
-		out.CPULimits = *spec.CPULimits
+	return ResourceSpec{
+		CPULimits:      lo.FromPtr(spec.CPULimits),
+		CPURequests:    lo.FromPtr(spec.CPURequests),
+		MemoryLimits:   lo.FromPtr(spec.MemoryLimits),
+		MemoryRequests: lo.FromPtr(spec.MemoryRequests),
 	}
-	if spec.CPURequests != nil {
-		out.CPURequests = *spec.CPURequests
-	}
-	if spec.MemoryLimits != nil {
-		out.MemoryLimits = *spec.MemoryLimits
-	}
-	if spec.MemoryRequests != nil {
-		out.MemoryRequests = *spec.MemoryRequests
-	}
-	return out
 }

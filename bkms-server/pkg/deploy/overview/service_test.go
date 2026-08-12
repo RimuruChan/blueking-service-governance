@@ -43,7 +43,6 @@ import (
 	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
 	helmdeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/helm"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
 	k8sclient "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/client"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/discovery"
@@ -73,15 +72,16 @@ var _ = Describe("overview.Service", func() {
 
 	BeforeEach(func() {
 		ctx = context.Background()
-		// Note: do not include gpa.FxModule here — it nests appmodel.FxModule and would
-		// conflict with the explicit appmodel.FxModule used by other providers.
+		// Note: gpa.FxModule nests appmodel.FxModule, so appmodel.FxModule must not be
+		// listed again here — fx would reject the duplicate providers.
 		diApp = fxtest.New(
 			GinkgoT(),
 			bkmsapp.FxModule,
-			appmodel.FxModule,
+			gpa.FxModule,
 			appspec.FxModule,
 			appcfg.FxModule,
 			bkmsenv.FxModule,
+			autodeploy.FxModule,
 			appmodeldeploy.FxModule,
 			helmdeploy.FxModule,
 			build.FxModule,
@@ -94,17 +94,13 @@ var _ = Describe("overview.Service", func() {
 				&buildConfigStore,
 				&envStore,
 				&envSvc,
+				&buildAutoDeployRecordStore,
 				&appModelDeployRecordStore,
 				&helmDeployRecordStore,
+				&gpaConfigStore,
 			),
 		)
 		diApp.RequireStart()
-
-		var err error
-		buildAutoDeployRecordStore, err = autodeploy.NewRecordStoreMongo(database.Client(), database.Name())
-		Expect(err).NotTo(HaveOccurred())
-		gpaConfigStore, err = gpa.NewGPAConfigStoreMongo(database.Client(), database.Name())
-		Expect(err).NotTo(HaveOccurred())
 
 		svc = NewService(
 			envStore,
@@ -413,5 +409,22 @@ var _ = Describe("overview.Service", func() {
 				Expect(result.Envs[0].DeployStatus).To(Equal(string(appmodeldeploy.StatusDeployed)))
 			})
 		})
+	})
+})
+
+var _ = Describe("toResourceSpec", func() {
+	It("returns an empty spec when the app has no resources section", func() {
+		Expect(toResourceSpec(nil)).To(Equal(ResourceSpec{}))
+	})
+
+	It("copies the set fields and leaves the unset ones empty", func() {
+		out := toResourceSpec(&appspec.ResourcesSpec{
+			CPULimits:      lo.ToPtr("2"),
+			MemoryRequests: lo.ToPtr("1Gi"),
+		})
+		Expect(out.CPULimits).To(Equal("2"))
+		Expect(out.MemoryRequests).To(Equal("1Gi"))
+		Expect(out.CPURequests).To(BeEmpty())
+		Expect(out.MemoryLimits).To(BeEmpty())
 	})
 })

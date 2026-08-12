@@ -109,11 +109,11 @@ var _ = Describe("autoscaling helpers", func() {
 
 			byCluster := groupAutoscalingTargetsByCluster(envs, rows)
 			Expect(byCluster).To(HaveLen(2))
-			Expect(byCluster["cls-1"].targets).To(ConsistOf(
+			Expect(byCluster["cls-1"]).To(ConsistOf(
 				autoscalingTarget{envName: "dev", namespace: "ns-dev", crName: "gpa-dev"},
 				autoscalingTarget{envName: "test", namespace: "ns-test", crName: "gpa-test"},
 			))
-			Expect(byCluster["cls-2"].targets).To(ConsistOf(
+			Expect(byCluster["cls-2"]).To(ConsistOf(
 				autoscalingTarget{envName: "prod", namespace: "ns-prod", crName: "gpa-prod"},
 			))
 		})

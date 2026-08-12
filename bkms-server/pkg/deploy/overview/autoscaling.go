@@ -50,19 +50,17 @@ func (s *Service) listAutoscalingConfigsByEnv(
 		if cfg == nil {
 			continue
 		}
-		metrics := make([]AutoscalingMetric, 0, len(cfg.Metrics))
-		for _, m := range cfg.Metrics {
-			metrics = append(metrics, AutoscalingMetric{
-				Resource:           string(m.Resource),
-				AverageUtilization: m.AverageUtilization,
-			})
-		}
 		out[cfg.EnvName] = &AutoscalingInfo{
-			Enabled:         cfg.Enabled,
-			CRName:          cfg.Name,
-			MinReplicas:     cfg.MinReplicas,
-			MaxReplicas:     cfg.MaxReplicas,
-			Metrics:         metrics,
+			Enabled:     cfg.Enabled,
+			CRName:      cfg.Name,
+			MinReplicas: cfg.MinReplicas,
+			MaxReplicas: cfg.MaxReplicas,
+			Metrics: lo.Map(cfg.Metrics, func(m gpa.GPAMetric, _ int) AutoscalingMetric {
+				return AutoscalingMetric{
+					Resource:           string(m.Resource),
+					AverageUtilization: m.AverageUtilization,
+				}
+			}),
 			ComputeByLimits: cfg.ComputeByLimits,
 		}
 	}
@@ -76,11 +74,8 @@ type autoscalingTarget struct {
 	crName    string
 }
 
-// autoscalingClusterBatch 同一集群上需要一并回查的 GPA CR。
-type autoscalingClusterBatch struct {
-	clusterID string
-	targets   []autoscalingTarget
-}
+// autoscalingTargetsByCluster clusterID -> 该集群上需要一并回查的 GPA CR。
+type autoscalingTargetsByCluster map[string][]autoscalingTarget
 
 // queryAutoscalingStatuses 为已启用 GPA 的环境按集群并发回查集群 CR 状态。
 //
@@ -105,9 +100,9 @@ func (s *Service) queryAutoscalingStatuses(
 		mu sync.Mutex
 		wg sync.WaitGroup
 	)
-	for _, batch := range byCluster {
+	for clusterID, targets := range byCluster {
 		wg.Go(func() {
-			statuses := s.queryAutoscalingStatusesForCluster(ctx, sem, batch.clusterID, batch.targets)
+			statuses := s.queryAutoscalingStatusesForCluster(ctx, sem, clusterID, targets)
 			mu.Lock()
 			defer mu.Unlock()
 			maps.Copy(out, statuses)
@@ -122,10 +117,10 @@ func (s *Service) queryAutoscalingStatuses(
 func groupAutoscalingTargetsByCluster(
 	trackedEnvs []envmodel.Environment,
 	rows []EnvRow,
-) map[string]*autoscalingClusterBatch {
+) autoscalingTargetsByCluster {
 	envByName := lo.KeyBy(trackedEnvs, func(env envmodel.Environment) string { return env.Name })
 
-	byCluster := map[string]*autoscalingClusterBatch{}
+	byCluster := autoscalingTargetsByCluster{}
 	for i := range rows {
 		info := rows[i].Autoscaling
 		if info == nil || !info.Enabled || info.CRName == "" {
@@ -135,12 +130,7 @@ func groupAutoscalingTargetsByCluster(
 		if !ok || env.Cluster.ClusterID == "" {
 			continue
 		}
-		batch, ok := byCluster[env.Cluster.ClusterID]
-		if !ok {
-			batch = &autoscalingClusterBatch{clusterID: env.Cluster.ClusterID}
-			byCluster[env.Cluster.ClusterID] = batch
-		}
-		batch.targets = append(batch.targets, autoscalingTarget{
+		byCluster[env.Cluster.ClusterID] = append(byCluster[env.Cluster.ClusterID], autoscalingTarget{
 			envName:   rows[i].EnvName,
 			namespace: env.Cluster.Namespace,
 			crName:    info.CRName,
