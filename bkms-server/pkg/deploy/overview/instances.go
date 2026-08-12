@@ -22,10 +22,10 @@ import (
 	"context"
 	"log/slog"
 	"maps"
+	"math"
 	"sync"
 
 	"github.com/pkg/errors"
-	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -98,18 +98,19 @@ func queryInstanceCounts(
 	}
 
 	byCluster := groupDeployRecordsByCluster(records)
-	var mu sync.Mutex
-	g, gctx := errgroup.WithContext(ctx)
+	var (
+		mu sync.Mutex
+		wg sync.WaitGroup
+	)
 	for _, batch := range byCluster {
-		g.Go(func() error {
-			counts := queryInstanceCountsForCluster(gctx, sem, batch.clusterID, batch.items)
+		wg.Go(func() {
+			counts := queryInstanceCountsForCluster(ctx, sem, batch.clusterID, batch.items)
 			mu.Lock()
 			defer mu.Unlock()
 			maps.Copy(out, counts)
-			return nil
 		})
 	}
-	_ = g.Wait()
+	wg.Wait()
 	return out
 }
 
@@ -159,31 +160,32 @@ func queryInstanceCountsForCluster(
 
 	querier := newClusterQuerier(clusterID, sem)
 
-	var mu sync.Mutex
-	g, gctx := errgroup.WithContext(ctx)
+	var (
+		mu sync.Mutex
+		wg sync.WaitGroup
+	)
 	for _, item := range items {
-		g.Go(func() error {
-			counts, err := queryInstanceCountsForEnv(gctx, querier, item)
+		wg.Go(func() {
+			counts, err := queryInstanceCountsForEnv(ctx, querier, item)
 			if err != nil {
-				log.ErrorAttrs(gctx, "query deploy overview instances failed",
+				log.ErrorAttrs(ctx, "query deploy overview instances failed",
 					slog.String("cluster_id", clusterID),
 					slog.String("env_name", item.EnvName),
 					slog.String("namespace", item.Record.Namespace),
 					slog.Any("error", err),
 				)
-				return nil
+				return
 			}
 			if counts == nil {
-				// 缺 GD / replicas 等不可用场景，按设计降级为 null，不记错误日志
-				return nil
+				// 缺 GD / replicas / labelSelector 等不可用场景，按设计降级为 null，不记错误日志
+				return
 			}
 			mu.Lock()
 			out[item.EnvName] = counts
 			mu.Unlock()
-			return nil
 		})
 	}
-	_ = g.Wait()
+	wg.Wait()
 	return out
 }
 
@@ -198,6 +200,15 @@ func queryInstanceCountsForEnv(
 	if gdName == "" {
 		return nil, nil
 	}
+	// 空 selector 会被 K8s 视为匹配全部，而标准环境的 namespace 由多个应用共用，
+	// 那样统计到的是整个 namespace 的实例。宁可降级为「不可用」，也不给出错误数字。
+	if len(item.Record.LabelSelector) == 0 {
+		log.WarnAttrs(ctx, "deploy overview skips instances, deploy record has no label selector",
+			slog.String("env_name", item.EnvName),
+			slog.String("namespace", item.Record.Namespace),
+		)
+		return nil, nil
+	}
 
 	var (
 		pods     []unstructured.Unstructured
@@ -207,17 +218,15 @@ func queryInstanceCountsForEnv(
 		gdOK     bool
 	)
 
-	g, gctx := errgroup.WithContext(ctx)
-	// 错误经 podsErr / gdErr 带回，两个查询都返回 nil，避免其中一个失败就取消另一个
-	g.Go(func() error {
-		pods, podsErr = listPods(gctx, querier, item)
-		return nil
+	// 两个查询各自把错误带回，互不取消：其中一个失败仍可让另一个跑完
+	var wg sync.WaitGroup
+	wg.Go(func() {
+		pods, podsErr = listPods(ctx, querier, item)
 	})
-	g.Go(func() error {
-		expected, gdOK, gdErr = getGameDeployReplicas(gctx, querier, item, gdName)
-		return nil
+	wg.Go(func() {
+		expected, gdOK, gdErr = getGameDeployReplicas(ctx, querier, item, gdName)
 	})
-	_ = g.Wait()
+	wg.Wait()
 
 	if podsErr != nil {
 		return nil, podsErr
@@ -261,9 +270,12 @@ func extractGameDeployName(rec *appmodel.Record) string {
 
 // listPods 在环境命名空间内按 LabelSelector List Pod。
 //
-// 指定 ResourceVersion="0"，让 apiserver 直接从 watch cache 返回，不必走 etcd 的 quorum read：
-// 这是本接口里最大的一笔查询（整个 Pod 列表），而总览只用于展示运行/异常实例数，
-// 可以接受 cache 落后主库几百毫秒；需要强一致读的场景（如部署前置校验）不应复用本函数。
+// selector 取自部署记录，值就是 GameDeployment 的 selector，所以只数得到这个 workload 的 Pod：
+// 泳道的 workload 另有名字，不会被算进来；滚动更新期间新旧两代 Pod 并存，Running 可能暂时超过
+// Expected，这是真实状态。
+//
+// ResourceVersion="0" 表示读 apiserver 的 watch cache，不走 etcd。Pod 列表是本接口最大的一笔
+// 查询，而总览只展示实例数，容忍数据略旧；需要强一致读的地方不要复用本函数。
 func listPods(
 	ctx context.Context,
 	querier *clusterQuerier,
@@ -316,7 +328,7 @@ func extractGameDeployReplicas(manifest map[string]any) (int32, bool) {
 	if !found {
 		return 0, false
 	}
-	if replicas < 0 || replicas > int64(^uint32(0)>>1) {
+	if replicas < 0 || replicas > math.MaxInt32 {
 		return 0, false
 	}
 	return int32(replicas), true //nolint:gosec // bounded by check above

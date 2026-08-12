@@ -26,7 +26,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
-	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 
 	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
@@ -43,9 +42,6 @@ func (s *Service) listAutoscalingConfigsByEnv(
 	appID string,
 ) (map[string]*AutoscalingInfo, error) {
 	out := map[string]*AutoscalingInfo{}
-	if s.gpaConfigStore == nil {
-		return out, nil
-	}
 	configs, err := s.gpaConfigStore.ListByApp(ctx, appID)
 	if err != nil {
 		return nil, errors.Wrap(err, "list gpa configs")
@@ -103,23 +99,21 @@ func (s *Service) queryAutoscalingStatuses(
 	rows []EnvRow,
 ) autoscalingStatusByEnv {
 	out := make(autoscalingStatusByEnv, len(rows))
-	if s.gpaService == nil {
-		return out
-	}
 
 	byCluster := groupAutoscalingTargetsByCluster(trackedEnvs, rows)
-	var mu sync.Mutex
-	g, gctx := errgroup.WithContext(ctx)
+	var (
+		mu sync.Mutex
+		wg sync.WaitGroup
+	)
 	for _, batch := range byCluster {
-		g.Go(func() error {
-			statuses := s.queryAutoscalingStatusesForCluster(gctx, sem, batch.clusterID, batch.targets)
+		wg.Go(func() {
+			statuses := s.queryAutoscalingStatusesForCluster(ctx, sem, batch.clusterID, batch.targets)
 			mu.Lock()
 			defer mu.Unlock()
 			maps.Copy(out, statuses)
-			return nil
 		})
 	}
-	_ = g.Wait()
+	wg.Wait()
 	return out
 }
 
@@ -171,6 +165,13 @@ func (s *Service) queryAutoscalingStatusesForCluster(
 	out := make(autoscalingStatusByEnv, len(targets))
 	clusterClient, err := s.gpaService.NewClusterClient(clusterID)
 	if err != nil {
+		// 集群未安装 GPA 组件属预期状态（配置可能建于组件卸载之前），不计入错误日志
+		if errors.Is(err, gpa.ErrComponentNotInstalled) {
+			log.WarnAttrs(ctx, "deploy overview skips gpa status, component not installed in cluster",
+				slog.String("cluster_id", clusterID),
+			)
+			return out
+		}
 		log.ErrorAttrs(ctx, "create deploy overview gpa cluster client failed",
 			slog.String("cluster_id", clusterID),
 			slog.Any("error", err),
@@ -178,21 +179,22 @@ func (s *Service) queryAutoscalingStatusesForCluster(
 		return out
 	}
 
-	var mu sync.Mutex
-	g, gctx := errgroup.WithContext(ctx)
+	var (
+		mu sync.Mutex
+		wg sync.WaitGroup
+	)
 	for _, target := range targets {
-		g.Go(func() error {
-			status := queryAutoscalingStatusForTarget(gctx, sem, clusterClient, clusterID, target)
+		wg.Go(func() {
+			status := queryAutoscalingStatusForTarget(ctx, sem, clusterClient, clusterID, target)
 			if status == nil {
-				return nil
+				return
 			}
 			mu.Lock()
 			out[target.envName] = status
 			mu.Unlock()
-			return nil
 		})
 	}
-	_ = g.Wait()
+	wg.Wait()
 	return out
 }
 
@@ -205,7 +207,13 @@ func queryAutoscalingStatusForTarget(
 	clusterID string,
 	target autoscalingTarget,
 ) *AutoscalingStatus {
+	// 仅在 ctx 结束（客户端断连 / 请求超时）时失败，此时响应已无人接收，记日志便于与 CR 缺失区分
 	if err := sem.Acquire(ctx, 1); err != nil {
+		log.WarnAttrs(ctx, "deploy overview gives up gpa status query",
+			slog.String("env_name", target.envName),
+			slog.String("cluster_id", clusterID),
+			slog.Any("error", err),
+		)
 		return nil
 	}
 	defer sem.Release(1)

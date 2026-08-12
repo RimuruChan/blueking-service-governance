@@ -141,10 +141,14 @@ type ClusterClient struct {
 //
 // Returns:
 //   - 集群 GPA CR 客户端
-//   - error，集群未安装 GPA 组件时其中包含 discovery.ErrKindNotFound
+//   - error，集群未安装 GPA 组件时为 ErrComponentNotInstalled
 func (s *GPAService) NewClusterClient(clusterID string) (*ClusterClient, error) {
 	cli, err := s.newK8sClient(clusterID)
 	if err != nil {
+		// discovery 阶段无法解析 GeneralPodAutoscaler 资源类型，说明集群未安装 GPA 组件
+		if isComponentNotInstalledErr(err) {
+			return nil, errors.Wrapf(ErrComponentNotInstalled, "cluster %s", clusterID)
+		}
 		return nil, errors.Wrap(err, "create k8s client for gpa")
 	}
 	return &ClusterClient{cli: cli}, nil

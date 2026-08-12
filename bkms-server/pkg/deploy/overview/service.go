@@ -20,6 +20,7 @@ package overview
 
 import (
 	"context"
+	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
@@ -64,6 +65,8 @@ func NewService(
 	appModelStore workloadappmodel.AppModelStore,
 	buildAutoDeployRecordStore autodeploy.RecordStore,
 	appModelDeployRecordStore appmodel.RecordStore,
+	// helmDeployRecordStore 总览只处理 AppModel 类型应用，用不到 helm 记录，
+	// 但它是 deploystatus.NewDeployStatusService 的必需依赖，需原样透传。
 	helmDeployRecordStore helm.RecordStore,
 	gpaConfigStore gpa.GPAConfigStore,
 ) *Service {
@@ -128,17 +131,15 @@ func (s *Service) GetOverview(ctx context.Context, application *bkmsapp.Applicat
 	var (
 		instanceCounts      instanceCountsByEnv
 		autoscalingStatuses autoscalingStatusByEnv
+		wg                  sync.WaitGroup
 	)
-	g, gctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
-		instanceCounts = queryInstanceCounts(gctx, sem, recordsForInstances)
-		return nil
+	wg.Go(func() {
+		instanceCounts = queryInstanceCounts(ctx, sem, recordsForInstances)
 	})
-	g.Go(func() error {
-		autoscalingStatuses = s.queryAutoscalingStatuses(gctx, sem, sources.trackedEnvs, rows)
-		return nil
+	wg.Go(func() {
+		autoscalingStatuses = s.queryAutoscalingStatuses(ctx, sem, sources.trackedEnvs, rows)
 	})
-	_ = g.Wait()
+	wg.Wait()
 
 	for i := range rows {
 		if counts, ok := instanceCounts[rows[i].EnvName]; ok {
