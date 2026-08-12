@@ -145,7 +145,7 @@ var _ = Describe("Collector", func() {
 		Expect(result.TotalHealthyInstanceWeight).To(Equal(280))
 	})
 
-	It("marks the env when a pod carries the polaris weight annotation", func() {
+	It("counts pods carrying the polaris weight annotation", func() {
 		_, err := store.Create(ctx, &appmodeldeploy.Record{
 			AppID:           appID,
 			EnvName:         "stable",
@@ -189,8 +189,8 @@ var _ = Describe("Collector", func() {
 		result, err := instancestats.NewCollector(store).Collect(ctx, appID, config)
 
 		Expect(err).NotTo(HaveOccurred())
-		Expect(result.EnvStats["stable"].WeightOverridden).To(BeTrue())
-		Expect(result.EnvStats["test"].WeightOverridden).To(BeFalse())
+		Expect(result.EnvStats["stable"].WeightOverriddenInstanceCount).To(Equal(1))
+		Expect(result.EnvStats["test"].WeightOverriddenInstanceCount).To(BeZero())
 	})
 
 	It("uses the latest deploy record even when its status is not deployed", func() {

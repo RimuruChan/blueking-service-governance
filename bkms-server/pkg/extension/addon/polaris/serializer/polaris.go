@@ -406,8 +406,8 @@ type EnvInstanceStatsOutput struct {
 	IsolatedInstanceCount int32 `json:"isolatedInstanceCount"`
 	// 匹配到本环境 Pod 的实例总数
 	TotalInstanceCount int32 `json:"totalInstanceCount"`
-	// 本环境存在被单独设置权重的 Pod，实际权重可能与配置的单实例权重不一致
-	WeightOverridden bool `json:"weightOverridden"`
+	// 本环境被单独设置过权重的实例数，其实际权重可能与配置的单实例权重不一致
+	WeightOverriddenInstanceCount int32 `json:"weightOverriddenInstanceCount"`
 }
 
 // FromModel fills output fields from collected env instance stats.
@@ -423,7 +423,8 @@ func (o *GetEnvInstanceStatsOutput) FromModel(result *instancestats.Result) *Get
 				HealthyInstanceWeight: int32(s.HealthyInstanceWeight), //nolint:gosec // G115: weights fit in int32
 				IsolatedInstanceCount: int32(s.IsolatedInstanceCount), //nolint:gosec // G115: counts fit in int32
 				TotalInstanceCount:    int32(s.TotalInstanceCount),    //nolint:gosec // G115: counts fit in int32
-				WeightOverridden:      s.WeightOverridden,
+				//nolint:gosec // G115: counts fit in int32
+				WeightOverriddenInstanceCount: int32(s.WeightOverriddenInstanceCount),
 			}
 		}
 		obj.TotalHealthyInstanceCount = int32(result.TotalHealthyInstanceCount)   //nolint:gosec // G115: counts fit in int32

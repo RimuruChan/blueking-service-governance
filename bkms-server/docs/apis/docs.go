@@ -22073,9 +22073,9 @@ const docTemplate = `{
                     "description": "匹配到本环境 Pod 的实例总数",
                     "type": "integer"
                 },
-                "weightOverridden": {
-                    "description": "本环境存在被单独设置权重的 Pod，实际权重可能与配置的单实例权重不一致",
-                    "type": "boolean"
+                "weightOverriddenInstanceCount": {
+                    "description": "本环境被单独设置过权重的实例数，其实际权重可能与配置的单实例权重不一致",
+                    "type": "integer"
                 }
             }
         },

@@ -50,8 +50,8 @@ type Stats struct {
 	IsolatedInstanceCount int
 	// TotalInstanceCount 匹配到本环境的实例总数
 	TotalInstanceCount int
-	// WeightOverridden 本环境存在被单独设置权重的 Pod（注解 AnnotationKeyWeight）
-	WeightOverridden bool
+	// WeightOverriddenInstanceCount 本环境被单独设置过权重的实例数（Pod 注解 AnnotationKeyWeight）
+	WeightOverriddenInstanceCount int
 }
 
 // Result 一次 Collect 的汇总结果。
@@ -122,7 +122,7 @@ func (c *Collector) Collect(
 
 		// 用本环境 Pod IP 集合从全量北极星实例中筛出属于该环境的子集
 		stats := CountMatched(pods.ips, config.ServicePort, instances)
-		stats.WeightOverridden = pods.weightOverridden
+		stats.WeightOverriddenInstanceCount = pods.weightOverriddenCount
 		envStats[envName] = stats
 	}
 
@@ -194,11 +194,11 @@ func envNames(config *polaris.PolarisConfig) []string {
 type envPods struct {
 	// ips 用于与北极星实例做 IP 匹配
 	ips map[string]struct{}
-	// weightOverridden 是否存在被单独设置权重的 Pod
-	weightOverridden bool
+	// weightOverriddenCount 被单独设置过权重的 Pod 数
+	weightOverriddenCount int
 }
 
-// listEnvPods 根据主部署记录拉取该环境全部 Pod，提取 podIP 集合与权重覆盖标记。
+// listEnvPods 根据主部署记录拉取该环境全部 Pod，提取 podIP 集合与权重覆盖数量。
 func listEnvPods(ctx context.Context, record *appmodeldeploy.Record) (*envPods, error) {
 	client := k8sclient.NewWithGVR(cluster.NewConfig(record.ClusterID), gvr.Po)
 	labelSelector := labels.SelectorFromSet(record.LabelSelector).String()
@@ -217,7 +217,7 @@ func listEnvPods(ctx context.Context, record *appmodeldeploy.Record) (*envPods, 
 		return ip, ip != ""
 	})
 	// 平台侧覆盖单实例权重的唯一入口是给 Pod 打 AnnotationKeyWeight 注解
-	weightOverridden := lo.SomeBy(pods.Items, func(pod unstructured.Unstructured) bool {
+	weightOverriddenCount := lo.CountBy(pods.Items, func(pod unstructured.Unstructured) bool {
 		_, ok := pod.GetAnnotations()[polaris.AnnotationKeyWeight]
 		return ok
 	})
@@ -225,6 +225,6 @@ func listEnvPods(ctx context.Context, record *appmodeldeploy.Record) (*envPods, 
 		ips: lo.SliceToMap(ips, func(ip string) (string, struct{}) {
 			return ip, struct{}{}
 		}),
-		weightOverridden: weightOverridden,
+		weightOverriddenCount: weightOverriddenCount,
 	}, nil
 }

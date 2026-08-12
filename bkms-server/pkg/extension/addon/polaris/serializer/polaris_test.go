@@ -298,11 +298,11 @@ var _ = Describe("GetEnvInstanceStatsOutput", func() {
 		output := new(serializer.GetEnvInstanceStatsOutput).FromModel(&instancestats.Result{
 			EnvStats: map[string]instancestats.Stats{
 				"stable": {
-					HealthyInstanceCount:  3,
-					HealthyInstanceWeight: 300,
-					IsolatedInstanceCount: 1,
-					TotalInstanceCount:    4,
-					WeightOverridden:      true,
+					HealthyInstanceCount:          3,
+					HealthyInstanceWeight:         300,
+					IsolatedInstanceCount:         1,
+					TotalInstanceCount:            4,
+					WeightOverriddenInstanceCount: 2,
 				},
 			},
 			TotalHealthyInstanceCount:  7,
@@ -310,11 +310,11 @@ var _ = Describe("GetEnvInstanceStatsOutput", func() {
 		})
 
 		Expect(output.Data.EnvStats["stable"]).To(Equal(serializer.EnvInstanceStatsOutput{
-			HealthyInstanceCount:  3,
-			HealthyInstanceWeight: 300,
-			IsolatedInstanceCount: 1,
-			TotalInstanceCount:    4,
-			WeightOverridden:      true,
+			HealthyInstanceCount:          3,
+			HealthyInstanceWeight:         300,
+			IsolatedInstanceCount:         1,
+			TotalInstanceCount:            4,
+			WeightOverriddenInstanceCount: 2,
 		}))
 		Expect(output.Data.TotalHealthyInstanceCount).To(Equal(int32(7)))
 		Expect(output.Data.TotalHealthyInstanceWeight).To(Equal(int32(520)))
