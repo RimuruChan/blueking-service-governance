@@ -169,7 +169,7 @@ func CountMatched(
 }
 
 // summarizeHealthy 汇总北极星服务下全部健康实例的数量与权重（含非平台注册）。
-func summarizeHealthy(instances []*polarisInfra.Instance) (count int, weight int) {
+func summarizeHealthy(instances []*polarisInfra.Instance) (count, weight int) {
 	for _, inst := range instances {
 		if !isHealthyInstance(inst) {
 			continue

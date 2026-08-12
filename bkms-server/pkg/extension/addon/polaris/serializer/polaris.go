@@ -427,8 +427,10 @@ func (o *GetEnvInstanceStatsOutput) FromModel(result *instancestats.Result) *Get
 				WeightOverriddenInstanceCount: int32(s.WeightOverriddenInstanceCount),
 			}
 		}
-		obj.TotalHealthyInstanceCount = int32(result.TotalHealthyInstanceCount)   //nolint:gosec // G115: counts fit in int32
-		obj.TotalHealthyInstanceWeight = int32(result.TotalHealthyInstanceWeight) //nolint:gosec // G115: weights fit in int32
+		//nolint:gosec // G115: counts fit in int32
+		obj.TotalHealthyInstanceCount = int32(result.TotalHealthyInstanceCount)
+		//nolint:gosec // G115: weights fit in int32
+		obj.TotalHealthyInstanceWeight = int32(result.TotalHealthyInstanceWeight)
 	}
 	o.Data = obj
 	return o
