@@ -35,8 +35,6 @@ import (
 	deploystatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/status"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
 	workloadappmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
-	resourcessection "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/resources"
 )
 
 // defaultTrafficLaneName 默认（基线）泳道名称；空字符串表示基线泳道。
@@ -50,8 +48,6 @@ const maxConcurrentK8sRequests = 10
 // Service 组装应用部署总览。
 type Service struct {
 	envStore            envmodel.EnvironmentStore
-	appSpecStore        appspec.AppSpecStore
-	appModelStore       workloadappmodel.AppModelStore
 	gpaConfigStore      gpa.GPAConfigStore
 	gpaService          *gpa.GPAService
 	deployStatusService *deploystatus.DeployStatusService
@@ -61,7 +57,6 @@ type Service struct {
 func NewService(
 	envStore envmodel.EnvironmentStore,
 	appStore bkmsapp.ApplicationStore,
-	appSpecStore appspec.AppSpecStore,
 	appModelStore workloadappmodel.AppModelStore,
 	buildAutoDeployRecordStore autodeploy.RecordStore,
 	appModelDeployRecordStore appmodel.RecordStore,
@@ -72,8 +67,6 @@ func NewService(
 ) *Service {
 	return &Service{
 		envStore:       envStore,
-		appSpecStore:   appSpecStore,
-		appModelStore:  appModelStore,
 		gpaConfigStore: gpaConfigStore,
 		gpaService:     gpa.NewGPAService(appModelStore),
 		deployStatusService: deploystatus.NewDeployStatusService(
@@ -92,10 +85,6 @@ type envRowSources struct {
 	trackedEnvs []envmodel.Environment
 	// autoscalingByEnv envName -> GPA 配置摘要；无配置的环境不出现
 	autoscalingByEnv map[string]*AutoscalingInfo
-	// defaultResources app-spec 默认资源规格
-	defaultResources *appspec.ResourcesSpec
-	// envOverrideResources envName -> 该环境对默认资源规格的覆盖
-	envOverrideResources map[string]*appspec.ResourcesSpec
 	// statusesByEnv envName -> 最新部署状态；无部署记录的环境不出现
 	statusesByEnv map[string]*deploystatus.LatestDeployStatus
 	// deployByEnv envName -> 最新 AppModel 部署记录；无记录的环境不出现
@@ -124,17 +113,17 @@ func (s *Service) GetOverview(ctx context.Context, application *bkmsapp.Applicat
 
 	rows, recordsForInstances := assembleEnvRows(sources)
 
-	// 实例数与 GPA 状态互不依赖，并行回查集群；任一侧失败只降级对应字段。
+	// 实例数/资源规格 与 GPA 状态互不依赖，并行回查集群；任一侧失败只降级对应字段。
 	// 两侧只读 rows、各自产出 map，待 Wait 后再单线程合并，避免并发写同一批行。
 	// 两侧共用一个闸门，使在途 K8s 请求总数受 maxConcurrentK8sRequests 约束。
 	sem := semaphore.NewWeighted(maxConcurrentK8sRequests)
 	var (
-		instanceCounts      instanceCountsByEnv
+		clusterData         envClusterDataByEnv
 		autoscalingStatuses autoscalingStatusByEnv
 		wg                  sync.WaitGroup
 	)
 	wg.Go(func() {
-		instanceCounts = queryInstanceCounts(ctx, sem, recordsForInstances)
+		clusterData = queryEnvClusterData(ctx, sem, recordsForInstances)
 	})
 	wg.Go(func() {
 		autoscalingStatuses = s.queryAutoscalingStatuses(ctx, sem, sources.trackedEnvs, rows)
@@ -142,8 +131,9 @@ func (s *Service) GetOverview(ctx context.Context, application *bkmsapp.Applicat
 	wg.Wait()
 
 	for i := range rows {
-		if counts, ok := instanceCounts[rows[i].EnvName]; ok {
-			rows[i].Instances = counts
+		if data, ok := clusterData[rows[i].EnvName]; ok {
+			rows[i].Instances = data.Instances
+			rows[i].Resources = data.Resources
 		}
 		if status, ok := autoscalingStatuses[rows[i].EnvName]; ok && rows[i].Autoscaling != nil {
 			rows[i].Autoscaling.Status = status
@@ -155,19 +145,17 @@ func (s *Service) GetOverview(ctx context.Context, application *bkmsapp.Applicat
 
 // loadEnvRowSources 批量读取组装表格行所需的各数据源。
 //
-// 四组查询互不依赖，并发发起以省去逐个叠加的 DB 往返；任一失败即整体失败，
+// 三组查询互不依赖，并发发起以省去逐个叠加的 DB 往返；任一失败即整体失败，
 // 因为缺任何一组都无法给出完整的总览。
 func (s *Service) loadEnvRowSources(
 	ctx context.Context,
 	application *bkmsapp.Application,
 ) (*envRowSources, error) {
 	var (
-		trackedEnvs          []envmodel.Environment
-		autoscalingByEnv     map[string]*AutoscalingInfo
-		defaultResources     *appspec.ResourcesSpec
-		envOverrideResources map[string]*appspec.ResourcesSpec
-		statusesByEnv        map[string]*deploystatus.LatestDeployStatus
-		deployByEnv          map[string]*appmodel.Record
+		trackedEnvs      []envmodel.Environment
+		autoscalingByEnv map[string]*AutoscalingInfo
+		statusesByEnv    map[string]*deploystatus.LatestDeployStatus
+		deployByEnv      map[string]*appmodel.Record
 	)
 
 	g, gctx := errgroup.WithContext(ctx)
@@ -179,11 +167,6 @@ func (s *Service) loadEnvRowSources(
 	g.Go(func() error {
 		var err error
 		autoscalingByEnv, err = s.listAutoscalingConfigsByEnv(gctx, application.ID)
-		return err
-	})
-	g.Go(func() error {
-		var err error
-		defaultResources, envOverrideResources, err = s.listAppResourceSpecs(gctx, application.ID)
 		return err
 	})
 	g.Go(func() error {
@@ -202,12 +185,10 @@ func (s *Service) loadEnvRowSources(
 	}
 
 	return &envRowSources{
-		trackedEnvs:          trackedEnvs,
-		autoscalingByEnv:     autoscalingByEnv,
-		defaultResources:     defaultResources,
-		envOverrideResources: envOverrideResources,
-		statusesByEnv:        statusesByEnv,
-		deployByEnv:          deployByEnv,
+		trackedEnvs:      trackedEnvs,
+		autoscalingByEnv: autoscalingByEnv,
+		statusesByEnv:    statusesByEnv,
+		deployByEnv:      deployByEnv,
 	}, nil
 }
 
@@ -225,48 +206,9 @@ func (s *Service) listTrackedEnvs(
 	}), nil
 }
 
-// listAppResourceSpecs 一次拉取应用全部 AppSpec，拆出默认 resources 与各环境覆盖。
-// 若尚无 default 文档，则按 appspec.GetDefault 语义从 AppModel 懒初始化并落库。
-func (s *Service) listAppResourceSpecs(
-	ctx context.Context,
-	appID string,
-) (*appspec.ResourcesSpec, map[string]*appspec.ResourcesSpec, error) {
-	specs, err := s.appSpecStore.ListByApp(ctx, appID)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "list app specs")
-	}
-
-	var defaultResources *appspec.ResourcesSpec
-	defaultFound := false
-	overrides := make(map[string]*appspec.ResourcesSpec, len(specs))
-	for _, spec := range specs {
-		if spec == nil {
-			continue
-		}
-		if spec.EnvName == appspec.DefaultEnvName {
-			defaultFound = true
-			defaultResources = resourcessection.Clone(spec.Resources)
-			continue
-		}
-		if spec.Resources != nil {
-			overrides[spec.EnvName] = resourcessection.Clone(spec.Resources)
-		}
-	}
-
-	if !defaultFound {
-		defaultSpec, gErr := appspec.GetDefault(ctx, s.appSpecStore, s.appModelStore, appID)
-		if gErr != nil {
-			return nil, nil, errors.Wrap(gErr, "get default app spec")
-		}
-		defaultResources = resourcessection.Clone(defaultSpec.Resources)
-	}
-
-	return defaultResources, overrides, nil
-}
-
-// assembleEnvRows 在内存中组装表格行，并收集有 AppModel 部署记录的环境供后续查 K8s 实例。
+// assembleEnvRows 在内存中组装表格行，并收集有 AppModel 部署记录的环境供后续查 K8s。
 //
-// resources 取「默认 + 环境覆盖」合并后的生效值。
+// Resources / Instances 稍后从集群 GameDeployment 回填；此处保持零值。
 // 部署状态 / 部署记录 map 可能含非 tracked 环境，此处只按 trackedEnvs 取用。
 func assembleEnvRows(sources *envRowSources) ([]EnvRow, []deployRecordForEnv) {
 	rows := make([]EnvRow, 0, len(sources.trackedEnvs))
@@ -282,9 +224,6 @@ func assembleEnvRows(sources *envRowSources) ([]EnvRow, []deployRecordForEnv) {
 			EnvKind:        string(env.GetKind()),
 			DeployStatus:   deploystatus.StatusUnknown,
 			Autoscaling:    sources.autoscalingByEnv[env.Name],
-			Resources: toResourceSpec(
-				resourcessection.Merge(sources.defaultResources, sources.envOverrideResources[env.Name]),
-			),
 		}
 		if latest := sources.statusesByEnv[env.Name]; latest != nil {
 			row.DeployStatus = latest.Status
@@ -298,17 +237,4 @@ func assembleEnvRows(sources *envRowSources) ([]EnvRow, []deployRecordForEnv) {
 		rows = append(rows, row)
 	}
 	return rows, records
-}
-
-// toResourceSpec 将 AppSpec resources 转为总览的资源规格；nil 字段输出为空字符串。
-func toResourceSpec(spec *appspec.ResourcesSpec) ResourceSpec {
-	if spec == nil {
-		return ResourceSpec{}
-	}
-	return ResourceSpec{
-		CPULimits:      lo.FromPtr(spec.CPULimits),
-		CPURequests:    lo.FromPtr(spec.CPURequests),
-		MemoryLimits:   lo.FromPtr(spec.MemoryLimits),
-		MemoryRequests: lo.FromPtr(spec.MemoryRequests),
-	}
 }

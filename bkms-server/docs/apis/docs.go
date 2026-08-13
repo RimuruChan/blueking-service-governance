@@ -18247,7 +18247,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "alertDisplayName": {
-                    "description": "AlertDisplayName 是 BKMS 本地策略展示名，供前端直接展示。\n不再对外暴露监控原始 alertName，避免前端感知远端命名格式。",
+                    "description": "AlertDisplayName 是 BKMS 本地策略展示名，例如 ` + "`" + `CPU 使用率过高` + "`" + `；\n对应的监控原始名称格式为 ` + "`" + `CPU 使用率过高【demo-app】` + "`" + `。",
                     "type": "string"
                 },
                 "alertID": {
@@ -18683,7 +18683,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "resources": {
-                    "description": "资源规格（app-spec 生效值）",
+                    "description": "资源规格（集群 GameDeployment 主容器实际值）",
                     "allOf": [
                         {
                             "$ref": "#/definitions/serializer.DeployOverviewResourcesObj"

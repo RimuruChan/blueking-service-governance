@@ -102,7 +102,7 @@ type EnvRow struct {
 	LastDeployStartedAt *time.Time
 	// Autoscaling GPA 配置摘要；该环境无 GPA 配置时为 nil
 	Autoscaling *AutoscalingInfo
-	// Resources app-spec 合并默认值与环境覆盖后的生效资源规格
+	// Resources 集群 GameDeployment 主容器的实际资源规格；未部署或查询失败时为零值
 	Resources ResourceSpec
 	// Instances 实例数；集群查询失败或缺 workload 时为 nil
 	Instances *InstanceCounts

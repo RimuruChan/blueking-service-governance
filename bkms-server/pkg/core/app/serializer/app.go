@@ -456,7 +456,7 @@ func (o *DeployOverviewInstancesObj) FromModel(counts *overview.InstanceCounts) 
 	return o
 }
 
-// DeployOverviewResourcesObj is app-spec effective resource quantities (passthrough).
+// DeployOverviewResourcesObj is cluster GameDeployment main-container resource quantities (passthrough).
 type DeployOverviewResourcesObj struct {
 	// CPU limits（Kubernetes quantity 字符串），可选：未配置时不返回该字段
 	CPULimits string `json:"cpuLimits,omitempty"`
@@ -468,7 +468,7 @@ type DeployOverviewResourcesObj struct {
 	MemoryRequests string `json:"memoryRequests,omitempty"`
 }
 
-// FromModel fills output fields from effective resource quantities.
+// FromModel fills output fields from cluster resource quantities.
 func (o *DeployOverviewResourcesObj) FromModel(resources overview.ResourceSpec) *DeployOverviewResourcesObj {
 	*o = DeployOverviewResourcesObj{
 		CPULimits:      resources.CPULimits,
@@ -576,7 +576,7 @@ type AppDeployOverviewEnvObj struct {
 	Instances *DeployOverviewInstancesObj `json:"instances"`
 	// 自动扩缩容配置摘要，可选：无 GPA 配置时为 null
 	Autoscaling *DeployOverviewAutoscalingObj `json:"autoscaling"`
-	// 资源规格（app-spec 生效值）
+	// 资源规格（集群 GameDeployment 主容器实际值）
 	Resources DeployOverviewResourcesObj `json:"resources"`
 	// 最近一次部署开始时间，可选：无部署记录时不返回该字段
 	LastDeployStartedAt *time.Time `json:"lastDeployStartedAt,omitempty"`

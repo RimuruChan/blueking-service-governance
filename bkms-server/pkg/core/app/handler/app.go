@@ -622,7 +622,6 @@ func (h *Handler) GetAppDeployOverview(c *gin.Context) {
 	svc := overview.NewService(
 		h.registry.EnvStore,
 		h.registry.AppStore,
-		h.registry.AppSpecStore,
 		h.registry.AppModelStore,
 		h.registry.BuildAutoDeployRecordStore,
 		h.registry.AppModelDeployRecordStore,

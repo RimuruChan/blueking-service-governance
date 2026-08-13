@@ -105,7 +105,6 @@ var _ = Describe("overview.Service", func() {
 		svc = NewService(
 			envStore,
 			appStore,
-			appSpecStore,
 			appModelStore,
 			buildAutoDeployRecordStore,
 			appModelDeployRecordStore,
@@ -201,19 +200,10 @@ var _ = Describe("overview.Service", func() {
 			Expect(result.Envs[0].EnvKind).To(Equal(string(envmodel.EnvironmentKindFeature)))
 		})
 
-		It("fills resources from effective app-spec and gpa autoscaling summary", func() {
+		It("fills gpa autoscaling summary from config", func() {
 			trpcApp := newTrpcApp()
 			env := dbfactory.Env(ctx, envSvc, trpcApp.WorkspaceID)
 			Expect(envStore.AddApp(ctx, env.ID, trpcApp.ID)).To(Succeed())
-
-			Expect(appspec.SetDefault(ctx, appSpecStore, appModelStore, trpcApp.ID, &appspec.AppSpec{
-				Resources: &appspec.ResourcesSpec{
-					CPULimits:      lo.ToPtr("2"),
-					CPURequests:    lo.ToPtr("1"),
-					MemoryLimits:   lo.ToPtr("4Gi"),
-					MemoryRequests: lo.ToPtr("2Gi"),
-				},
-			})).To(Succeed())
 
 			cfg := &gpa.GPAConfig{
 				AppID:       trpcApp.ID,
@@ -245,10 +235,89 @@ var _ = Describe("overview.Service", func() {
 				Expect(result.Envs[0].Autoscaling.ComputeByLimits).To(BeFalse())
 				// 集群中 CR 不存在时 status 降级为 null，不阻断总览
 				Expect(result.Envs[0].Autoscaling.Status).To(BeNil())
-				Expect(result.Envs[0].Resources.CPULimits).To(Equal("2"))
-				Expect(result.Envs[0].Resources.CPURequests).To(Equal("1"))
-				Expect(result.Envs[0].Resources.MemoryLimits).To(Equal("4Gi"))
-				Expect(result.Envs[0].Resources.MemoryRequests).To(Equal("2Gi"))
+			})
+		})
+
+		It("fills resources from the cluster GameDeployment instead of app-spec", func() {
+			trpcApp := newTrpcApp()
+			env := dbfactory.Env(ctx, envSvc, trpcApp.WorkspaceID)
+			Expect(envStore.AddApp(ctx, env.ID, trpcApp.ID)).To(Succeed())
+
+			// AppSpec 与集群实际值刻意设成不同，回归「改了配置未重部署」时总览仍应展示集群值。
+			Expect(appspec.SetDefault(ctx, appSpecStore, appModelStore, trpcApp.ID, &appspec.AppSpec{
+				Resources: &appspec.ResourcesSpec{
+					CPULimits:      lo.ToPtr("2"),
+					CPURequests:    lo.ToPtr("1"),
+					MemoryLimits:   lo.ToPtr("4Gi"),
+					MemoryRequests: lo.ToPtr("2Gi"),
+				},
+			})).To(Succeed())
+
+			ns := "ns-prod"
+			gdName := trpcApp.Name
+			_, err := appModelDeployRecordStore.Create(ctx, &appmodeldeploy.Record{
+				WorkspaceID:   trpcApp.WorkspaceID,
+				AppID:         trpcApp.ID,
+				EnvName:       env.Name,
+				Status:        appmodeldeploy.StatusDeployed,
+				ClusterID:     "cluster-prod",
+				Namespace:     ns,
+				LabelSelector: map[string]string{"app.kubernetes.io/name": trpcApp.Name},
+				ResourceKeys: appmodeldeploy.ResourceKeys{
+					{Kind: k8skind.GameDeploy, Name: gdName},
+				},
+				ImageTag:  "v1",
+				StartedAt: time.Now().UTC(),
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			mockey.PatchConvey("cluster gamedeploy has different resources", GinkgoT(), func() {
+				mockey.Mock(cluster.NewConfig).To(func(id string) *cluster.Config {
+					return &cluster.Config{ClusterID: id}
+				}).Build()
+				mockey.Mock(k8sclient.NewPodClient).Return(&k8sclient.PodClient{}).Build()
+				mockey.Mock(k8sclient.NewWithGVR).Return(&k8sclient.Client{}).Build()
+				mockey.Mock((*k8sclient.Client).List).Return(&unstructured.UnstructuredList{}, nil).Build()
+				mockey.Mock((*k8sclient.Client).Get).To(func(
+					_ *k8sclient.Client, _ context.Context, gotNS, name string, _ metav1.GetOptions,
+				) (*unstructured.Unstructured, error) {
+					Expect(gotNS).To(Equal(ns))
+					Expect(name).To(Equal(gdName))
+					return &unstructured.Unstructured{Object: map[string]any{
+						"metadata": map[string]any{"namespace": ns, "name": gdName},
+						"spec": map[string]any{
+							"replicas": int64(2),
+							"template": map[string]any{
+								"spec": map[string]any{
+									"containers": []any{
+										map[string]any{
+											"name": "sidecar",
+											"resources": map[string]any{
+												"limits":   map[string]any{"cpu": "100m", "memory": "128Mi"},
+												"requests": map[string]any{"cpu": "50m", "memory": "64Mi"},
+											},
+										},
+										map[string]any{
+											"name": "main",
+											"resources": map[string]any{
+												"limits":   map[string]any{"cpu": "4", "memory": "8Gi"},
+												"requests": map[string]any{"cpu": "2", "memory": "4Gi"},
+											},
+										},
+									},
+								},
+							},
+						},
+					}}, nil
+				}).Build()
+
+				result, err := svc.GetOverview(ctx, trpcApp)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Envs).To(HaveLen(1))
+				Expect(result.Envs[0].Resources.CPULimits).To(Equal("4"))
+				Expect(result.Envs[0].Resources.CPURequests).To(Equal("2"))
+				Expect(result.Envs[0].Resources.MemoryLimits).To(Equal("8Gi"))
+				Expect(result.Envs[0].Resources.MemoryRequests).To(Equal("4Gi"))
 			})
 		})
 
@@ -411,22 +480,5 @@ var _ = Describe("overview.Service", func() {
 				Expect(result.Envs[0].DeployStatus).To(Equal(string(appmodeldeploy.StatusDeployed)))
 			})
 		})
-	})
-})
-
-var _ = Describe("toResourceSpec", func() {
-	It("returns an empty spec when the app has no resources section", func() {
-		Expect(toResourceSpec(nil)).To(Equal(ResourceSpec{}))
-	})
-
-	It("copies the set fields and leaves the unset ones empty", func() {
-		out := toResourceSpec(&appspec.ResourcesSpec{
-			CPULimits:      lo.ToPtr("2"),
-			MemoryRequests: lo.ToPtr("1Gi"),
-		})
-		Expect(out.CPULimits).To(Equal("2"))
-		Expect(out.MemoryRequests).To(Equal("1Gi"))
-		Expect(out.CPURequests).To(BeEmpty())
-		Expect(out.MemoryLimits).To(BeEmpty())
 	})
 })

@@ -21,8 +21,12 @@ package overview
 import (
 	"context"
 
+	tkex "github.com/Tencent/bk-bcs/bcs-scenarios/kourse/pkg/apis/tkex/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/samber/lo"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
@@ -32,15 +36,15 @@ import (
 var _ = Describe("instance helpers", func() {
 	Describe("extractGameDeployReplicas", func() {
 		It("returns replicas from spec", func() {
-			replicas, ok := extractGameDeployReplicas(map[string]any{
-				"spec": map[string]any{"replicas": int64(5)},
+			replicas, ok := extractGameDeployReplicas(&tkex.GameDeployment{
+				Spec: tkex.GameDeploymentSpec{Replicas: lo.ToPtr(int32(5))},
 			})
 			Expect(ok).To(BeTrue())
 			Expect(replicas).To(Equal(int32(5)))
 		})
 
 		It("returns not found when replicas missing", func() {
-			_, ok := extractGameDeployReplicas(map[string]any{"spec": map[string]any{}})
+			_, ok := extractGameDeployReplicas(&tkex.GameDeployment{})
 			Expect(ok).To(BeFalse())
 		})
 	})
@@ -91,6 +95,32 @@ var _ = Describe("instance helpers", func() {
 		})
 	})
 
+	Describe("instanceCounts", func() {
+		gd := &tkex.GameDeployment{Spec: tkex.GameDeploymentSpec{Replicas: lo.ToPtr(int32(3))}}
+		pods := []unstructured.Unstructured{
+			{Object: map[string]any{"status": map[string]any{
+				"phase":      "Running",
+				"conditions": []any{map[string]any{"type": "Ready", "status": "True"}},
+			}}},
+			{Object: map[string]any{"status": map[string]any{"phase": "Pending"}}},
+		}
+
+		It("returns nil when pod list failed", func() {
+			Expect(instanceCounts(gd, pods, false)).To(BeNil())
+		})
+
+		It("returns nil when replicas are missing", func() {
+			Expect(instanceCounts(&tkex.GameDeployment{}, pods, true)).To(BeNil())
+			Expect(instanceCounts(nil, pods, true)).To(BeNil())
+		})
+
+		It("fills expected from GD and running/abnormal from pods", func() {
+			Expect(instanceCounts(gd, pods, true)).To(Equal(&InstanceCounts{
+				Running: 1, Expected: 3, Abnormal: 1,
+			}))
+		})
+	})
+
 	Describe("extractGameDeployName", func() {
 		It("picks the GameDeployment out of the recorded resources", func() {
 			name := extractGameDeployName(&appmodel.Record{ResourceKeys: appmodel.ResourceKeys{
@@ -126,24 +156,24 @@ var _ = Describe("instance helpers", func() {
 	})
 
 	// 以下两个降级分支都在发起集群调用之前返回，因此 querier 无需持有真实客户端。
-	Describe("queryInstanceCountsForEnv", func() {
+	Describe("queryEnvClusterDataForEnv", func() {
 		newItem := func(record *appmodel.Record) deployRecordForEnv {
 			return deployRecordForEnv{EnvName: "prod", Record: record}
 		}
 
 		It("reports unavailable when the deploy record has no label selector", func() {
-			counts, err := queryInstanceCountsForEnv(context.Background(), &clusterQuerier{}, newItem(
+			data, err := queryEnvClusterDataForEnv(context.Background(), &clusterQuerier{}, newItem(
 				&appmodel.Record{
 					Namespace:    "ns-1",
 					ResourceKeys: appmodel.ResourceKeys{{Kind: k8skind.GameDeploy, Name: "app"}},
 				},
 			))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(counts).To(BeNil())
+			Expect(data).To(BeNil())
 		})
 
 		It("reports unavailable when the deploy record has no GameDeployment", func() {
-			counts, err := queryInstanceCountsForEnv(context.Background(), &clusterQuerier{}, newItem(
+			data, err := queryEnvClusterDataForEnv(context.Background(), &clusterQuerier{}, newItem(
 				&appmodel.Record{
 					Namespace:     "ns-1",
 					LabelSelector: map[string]string{"app.kubernetes.io/name": "app"},
@@ -151,7 +181,52 @@ var _ = Describe("instance helpers", func() {
 				},
 			))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(counts).To(BeNil())
+			Expect(data).To(BeNil())
+		})
+	})
+
+	Describe("extractMainContainerResources", func() {
+		qty := func(s string) resource.Quantity { return resource.MustParse(s) }
+		container := func(name, cpuReq, cpuLim, memReq, memLim string) corev1.Container {
+			return corev1.Container{
+				Name: name,
+				Resources: corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    qty(cpuReq),
+						corev1.ResourceMemory: qty(memReq),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    qty(cpuLim),
+						corev1.ResourceMemory: qty(memLim),
+					},
+				},
+			}
+		}
+
+		It("returns an empty spec when the game deployment has no containers", func() {
+			Expect(extractMainContainerResources(nil)).To(Equal(ResourceSpec{}))
+			Expect(extractMainContainerResources(&tkex.GameDeployment{})).To(Equal(ResourceSpec{}))
+		})
+
+		It("reads cpu and memory from the main container and ignores sidecars", func() {
+			out := extractMainContainerResources(&tkex.GameDeployment{
+				Spec: tkex.GameDeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								container("sidecar", "50m", "100m", "64Mi", "128Mi"),
+								container("main", "2", "4", "4Gi", "8Gi"),
+							},
+						},
+					},
+				},
+			})
+			Expect(out).To(Equal(ResourceSpec{
+				CPULimits:      "4",
+				CPURequests:    "2",
+				MemoryLimits:   "8Gi",
+				MemoryRequests: "4Gi",
+			}))
 		})
 	})
 })
