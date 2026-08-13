@@ -142,6 +142,28 @@ var _ = Describe("overview.Service", func() {
 		mockey.Mock(k8sclient.NewWithGVR).Return(&k8sclient.Client{}).Build()
 	}
 
+	overviewMainContainerGD := func(ns, name string) *unstructured.Unstructured {
+		return &unstructured.Unstructured{Object: map[string]any{
+			"metadata": map[string]any{"namespace": ns, "name": name},
+			"spec": map[string]any{
+				"replicas": int64(2),
+				"template": map[string]any{
+					"spec": map[string]any{
+						"containers": []any{
+							map[string]any{
+								"name": "main",
+								"resources": map[string]any{
+									"limits":   map[string]any{"cpu": "4", "memory": "8Gi"},
+									"requests": map[string]any{"cpu": "2", "memory": "4Gi"},
+								},
+							},
+						},
+					},
+				},
+			},
+		}}
+	}
+
 	Describe("GetOverview", func() {
 		It("rejects non AppModel application types", func() {
 			_, err := svc.GetOverview(ctx, &bkmsapp.Application{ID: "h1", Type: bkmsapp.AppTypeHelm})
@@ -318,6 +340,96 @@ var _ = Describe("overview.Service", func() {
 				Expect(result.Envs[0].Resources.CPURequests).To(Equal("2"))
 				Expect(result.Envs[0].Resources.MemoryLimits).To(Equal("8Gi"))
 				Expect(result.Envs[0].Resources.MemoryRequests).To(Equal("4Gi"))
+			})
+		})
+
+		It("keeps resources when pod list fails", func() {
+			trpcApp := newTrpcApp()
+			env := dbfactory.Env(ctx, envSvc, trpcApp.WorkspaceID)
+			Expect(envStore.AddApp(ctx, env.ID, trpcApp.ID)).To(Succeed())
+
+			ns := "ns-prod"
+			gdName := trpcApp.Name
+			_, err := appModelDeployRecordStore.Create(ctx, &appmodeldeploy.Record{
+				WorkspaceID:   trpcApp.WorkspaceID,
+				AppID:         trpcApp.ID,
+				EnvName:       env.Name,
+				Status:        appmodeldeploy.StatusDeployed,
+				ClusterID:     "cluster-prod",
+				Namespace:     ns,
+				LabelSelector: map[string]string{"app.kubernetes.io/name": trpcApp.Name},
+				ResourceKeys: appmodeldeploy.ResourceKeys{
+					{Kind: k8skind.GameDeploy, Name: gdName},
+				},
+				ImageTag:  "v1",
+				StartedAt: time.Now().UTC(),
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			mockey.PatchConvey("pod list fails and gamedeploy get succeeds", GinkgoT(), func() {
+				mockey.Mock(cluster.NewConfig).To(func(id string) *cluster.Config {
+					return &cluster.Config{ClusterID: id}
+				}).Build()
+				mockey.Mock(k8sclient.NewPodClient).Return(&k8sclient.PodClient{}).Build()
+				mockey.Mock(k8sclient.NewWithGVR).Return(&k8sclient.Client{}).Build()
+				mockey.Mock((*k8sclient.Client).List).Return(
+					nil, errors.New("list pods failed"),
+				).Build()
+				mockey.Mock((*k8sclient.Client).Get).Return(overviewMainContainerGD(ns, gdName), nil).Build()
+
+				result, err := svc.GetOverview(ctx, trpcApp)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Envs).To(HaveLen(1))
+				Expect(result.Envs[0].Instances).To(BeNil())
+				Expect(result.Envs[0].Resources.CPULimits).To(Equal("4"))
+				Expect(result.Envs[0].Resources.CPURequests).To(Equal("2"))
+				Expect(result.Envs[0].Resources.MemoryLimits).To(Equal("8Gi"))
+				Expect(result.Envs[0].Resources.MemoryRequests).To(Equal("4Gi"))
+			})
+		})
+
+		It("keeps resources when deploy record has no label selector", func() {
+			trpcApp := newTrpcApp()
+			env := dbfactory.Env(ctx, envSvc, trpcApp.WorkspaceID)
+			Expect(envStore.AddApp(ctx, env.ID, trpcApp.ID)).To(Succeed())
+
+			ns := "ns-prod"
+			gdName := trpcApp.Name
+			_, err := appModelDeployRecordStore.Create(ctx, &appmodeldeploy.Record{
+				WorkspaceID: trpcApp.WorkspaceID,
+				AppID:       trpcApp.ID,
+				EnvName:     env.Name,
+				Status:      appmodeldeploy.StatusDeployed,
+				ClusterID:   "cluster-prod",
+				Namespace:   ns,
+				ResourceKeys: appmodeldeploy.ResourceKeys{
+					{Kind: k8skind.GameDeploy, Name: gdName},
+				},
+				ImageTag:  "v1",
+				StartedAt: time.Now().UTC(),
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			mockey.PatchConvey("no selector fails pod list without calling k8s", GinkgoT(), func() {
+				mockey.Mock(cluster.NewConfig).To(func(id string) *cluster.Config {
+					return &cluster.Config{ClusterID: id}
+				}).Build()
+				mockey.Mock(k8sclient.NewPodClient).Return(&k8sclient.PodClient{}).Build()
+				mockey.Mock(k8sclient.NewWithGVR).Return(&k8sclient.Client{}).Build()
+				mockey.Mock((*k8sclient.Client).List).To(func(
+					*k8sclient.Client, context.Context, string, metav1.ListOptions,
+				) (*unstructured.UnstructuredList, error) {
+					Fail("pod list must not run without label selector")
+					return nil, nil
+				}).Build()
+				mockey.Mock((*k8sclient.Client).Get).Return(overviewMainContainerGD(ns, gdName), nil).Build()
+
+				result, err := svc.GetOverview(ctx, trpcApp)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.Envs).To(HaveLen(1))
+				Expect(result.Envs[0].Instances).To(BeNil())
+				Expect(result.Envs[0].Resources.CPULimits).To(Equal("4"))
+				Expect(result.Envs[0].Resources.MemoryLimits).To(Equal("8Gi"))
 			})
 		})
 

@@ -68,18 +68,20 @@ type deployRecordsByCluster map[string][]deployRecordForEnv
 // clusterQuerier 单集群内查询实例数所需的客户端与共享并发闸门。
 // 客户端按集群创建一次，供该集群下各环境复用。
 type clusterQuerier struct {
-	pods *k8sclient.PodClient
-	gd   *k8sclient.Client
-	sem  *semaphore.Weighted
+	clusterID string
+	pods      *k8sclient.PodClient
+	gd        *k8sclient.Client
+	sem       *semaphore.Weighted
 }
 
 // newClusterQuerier 创建单集群查询器；集群配置只解析一次，Pod 与 GameDeployment 客户端共用。
 func newClusterQuerier(clusterID string, sem *semaphore.Weighted) *clusterQuerier {
 	clusterCfg := cluster.NewConfig(clusterID)
 	return &clusterQuerier{
-		pods: k8sclient.NewPodClient(clusterCfg),
-		gd:   k8sclient.NewWithGVR(clusterCfg, gvr.GameDeploy),
-		sem:  sem,
+		clusterID: clusterID,
+		pods:      k8sclient.NewPodClient(clusterCfg),
+		gd:        k8sclient.NewWithGVR(clusterCfg, gvr.GameDeploy),
+		sem:       sem,
 	}
 }
 
@@ -178,7 +180,7 @@ func queryEnvClusterDataForCluster(
 				return
 			}
 			if data == nil {
-				// 缺 GD / labelSelector 等不可用场景，按设计降级，不记错误日志
+				// 缺 GD 等不可用场景，按设计降级，不记错误日志
 				return
 			}
 			mu.Lock()
@@ -202,15 +204,6 @@ func queryEnvClusterDataForEnv(
 	if gdName == "" {
 		return nil, nil
 	}
-	// 空 selector 会被 K8s 视为匹配全部，而标准环境的 namespace 由多个应用共用，
-	// 那样统计到的是整个 namespace 的实例。宁可降级为「不可用」，也不给出错误数字。
-	if len(item.Record.LabelSelector) == 0 {
-		log.WarnAttrs(ctx, "deploy overview skips instances, deploy record has no label selector",
-			slog.String("env_name", item.EnvName),
-			slog.String("namespace", item.Record.Namespace),
-		)
-		return nil, nil
-	}
 
 	var (
 		pods    []unstructured.Unstructured
@@ -229,18 +222,19 @@ func queryEnvClusterDataForEnv(
 	})
 	wg.Wait()
 
-	if gdErr != nil {
-		return nil, gdErr
-	}
 	if podsErr != nil {
 		log.ErrorAttrs(ctx, "query deploy overview instances failed",
+			slog.String("cluster_id", querier.clusterID),
 			slog.String("env_name", item.EnvName),
 			slog.String("namespace", item.Record.Namespace),
 			slog.Any("error", podsErr),
 		)
 	}
+	if gdErr != nil {
+		return nil, gdErr
+	}
 	return &envClusterData{
-		Resources: extractMainContainerResources(gd),
+		Resources: extractMainContainerResources(ctx, gd),
 		Instances: instanceCounts(gd, pods, podsErr == nil),
 	}, nil
 }
@@ -287,6 +281,9 @@ func extractGameDeployName(rec *appmodel.Record) string {
 // 泳道的 workload 另有名字，不会被算进来；滚动更新期间新旧两代 Pod 并存，Running 可能暂时超过
 // Expected，这是真实状态。
 //
+// 空 selector 会被 K8s 视为匹配全部，而标准环境的 namespace 由多个应用共用，
+// 那样统计到的是整个 namespace 的实例，因此直接返回错误，由调用方把实例数降级为不可用。
+//
 // ResourceVersion="0" 表示读 apiserver 的 watch cache，不走 etcd。Pod 列表是本接口最大的一笔
 // 查询，而总览只展示实例数，容忍数据略旧；需要强一致读的地方不要复用本函数。
 func listPods(
@@ -294,6 +291,9 @@ func listPods(
 	querier *clusterQuerier,
 	item deployRecordForEnv,
 ) ([]unstructured.Unstructured, error) {
+	if len(item.Record.LabelSelector) == 0 {
+		return nil, errors.New("deploy record has no label selector")
+	}
 	if err := querier.sem.Acquire(ctx, 1); err != nil {
 		return nil, errors.Wrap(err, "acquire k8s request slot")
 	}
@@ -345,7 +345,7 @@ func extractGameDeployReplicas(gd *tkex.GameDeployment) (int32, bool) {
 
 // extractMainContainerResources 读取 GameDeployment 主容器的 CPU/内存 requests 与 limits。
 // 找不到名为 main 的容器或字段缺失时，对应字段为空字符串。
-func extractMainContainerResources(gd *tkex.GameDeployment) ResourceSpec {
+func extractMainContainerResources(ctx context.Context, gd *tkex.GameDeployment) ResourceSpec {
 	if gd == nil {
 		return ResourceSpec{}
 	}
@@ -353,6 +353,12 @@ func extractMainContainerResources(gd *tkex.GameDeployment) ResourceSpec {
 		return c.Name == defaults.WorkloadMainContainerName
 	})
 	if !found {
+		if len(gd.Spec.Template.Spec.Containers) > 0 {
+			log.WarnAttrs(ctx, "deploy overview skips resources, game deployment has no main container",
+				slog.String("namespace", gd.Namespace),
+				slog.String("name", gd.Name),
+			)
+		}
 		return ResourceSpec{}
 	}
 	return ResourceSpec{
@@ -363,6 +369,7 @@ func extractMainContainerResources(gd *tkex.GameDeployment) ResourceSpec {
 	}
 }
 
+// resourceQuantityString 资源量不存在时返回空串，存在则透传 Quantity.String()。
 func resourceQuantityString(list corev1.ResourceList, name corev1.ResourceName) string {
 	q, ok := list[name]
 	if !ok {

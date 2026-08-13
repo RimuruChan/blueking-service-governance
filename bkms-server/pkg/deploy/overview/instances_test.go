@@ -155,31 +155,26 @@ var _ = Describe("instance helpers", func() {
 		})
 	})
 
-	// 以下两个降级分支都在发起集群调用之前返回，因此 querier 无需持有真实客户端。
-	Describe("queryEnvClusterDataForEnv", func() {
-		newItem := func(record *appmodel.Record) deployRecordForEnv {
-			return deployRecordForEnv{EnvName: "prod", Record: record}
-		}
-
-		It("reports unavailable when the deploy record has no label selector", func() {
-			data, err := queryEnvClusterDataForEnv(context.Background(), &clusterQuerier{}, newItem(
-				&appmodel.Record{
-					Namespace:    "ns-1",
-					ResourceKeys: appmodel.ResourceKeys{{Kind: k8skind.GameDeploy, Name: "app"}},
-				},
-			))
-			Expect(err).NotTo(HaveOccurred())
-			Expect(data).To(BeNil())
+	Describe("listPods", func() {
+		It("returns an error when the deploy record has no label selector", func() {
+			_, err := listPods(context.Background(), &clusterQuerier{}, deployRecordForEnv{
+				Record: &appmodel.Record{Namespace: "ns-1"},
+			})
+			Expect(err).To(MatchError("deploy record has no label selector"))
 		})
+	})
 
+	// 缺 GameDeployment 在发起集群调用之前返回，因此 querier 无需持有真实客户端。
+	Describe("queryEnvClusterDataForEnv", func() {
 		It("reports unavailable when the deploy record has no GameDeployment", func() {
-			data, err := queryEnvClusterDataForEnv(context.Background(), &clusterQuerier{}, newItem(
-				&appmodel.Record{
+			data, err := queryEnvClusterDataForEnv(context.Background(), &clusterQuerier{}, deployRecordForEnv{
+				EnvName: "prod",
+				Record: &appmodel.Record{
 					Namespace:     "ns-1",
 					LabelSelector: map[string]string{"app.kubernetes.io/name": "app"},
 					ResourceKeys:  appmodel.ResourceKeys{{Kind: k8skind.SVC, Name: "app"}},
 				},
-			))
+			})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(data).To(BeNil())
 		})
@@ -204,12 +199,14 @@ var _ = Describe("instance helpers", func() {
 		}
 
 		It("returns an empty spec when the game deployment has no containers", func() {
-			Expect(extractMainContainerResources(nil)).To(Equal(ResourceSpec{}))
-			Expect(extractMainContainerResources(&tkex.GameDeployment{})).To(Equal(ResourceSpec{}))
+			Expect(extractMainContainerResources(context.Background(), nil)).To(Equal(ResourceSpec{}))
+			Expect(extractMainContainerResources(
+				context.Background(), &tkex.GameDeployment{},
+			)).To(Equal(ResourceSpec{}))
 		})
 
 		It("reads cpu and memory from the main container and ignores sidecars", func() {
-			out := extractMainContainerResources(&tkex.GameDeployment{
+			out := extractMainContainerResources(context.Background(), &tkex.GameDeployment{
 				Spec: tkex.GameDeploymentSpec{
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -227,6 +224,21 @@ var _ = Describe("instance helpers", func() {
 				MemoryLimits:   "8Gi",
 				MemoryRequests: "4Gi",
 			}))
+		})
+
+		It("returns an empty spec when only sidecar containers exist", func() {
+			out := extractMainContainerResources(context.Background(), &tkex.GameDeployment{
+				Spec: tkex.GameDeploymentSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								container("sidecar", "50m", "100m", "64Mi", "128Mi"),
+							},
+						},
+					},
+				},
+			})
+			Expect(out).To(Equal(ResourceSpec{}))
 		})
 	})
 })
