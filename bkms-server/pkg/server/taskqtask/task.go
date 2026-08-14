@@ -36,6 +36,7 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/buildpoll"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/depsvcredis"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/example"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/polarisapply"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/workspace"
 )
 
@@ -45,19 +46,31 @@ import (
 // 投递进程只需构造 task, 无需调用。各任务子包无法自行从 store registry 取依赖
 // (会与 registry 形成导入环), 因此统一在本聚合包完成注入。
 func Setup(mux *asynq.ServeMux) error {
+	r := storereg.G()
+
 	// 构建状态轮询
 	mux.Handle(buildpoll.Task.Name(), buildpoll.Task.Handler())
 	// AppModel 部署状态轮询
 	mux.Handle(appmodeldeploypoll.Task.Name(), appmodeldeploypoll.Task.Handler())
 	// Redis 生命周期 tasks
-	if err := depsvcredis.Init(storereg.G().DepSvcInstStore); err != nil {
+	if err := depsvcredis.Init(r.DepSvcInstStore); err != nil {
 		return errors.Wrap(err, "init depsvcredis")
 	}
 	mux.Handle(workspace.Initialization.Name(), workspace.Initialization.Handler())
 	mux.Handle(depsvcredis.CreateTask.Name(), depsvcredis.CreateTask.Handler())
 	mux.Handle(depsvcredis.DisableTask.Name(), depsvcredis.DisableTask.Handler())
 	mux.Handle(depsvcredis.DestroyTask.Name(), depsvcredis.DestroyTask.Handler())
-	// 示例任务
+
+	// Polaris 动态下发 tasks
+	polarisapply.Init(
+		r.AppStore,
+		r.PolarisConfigStore,
+		r.EnvStore,
+		r.AppModelStore,
+		r.ScopedEnvVarStore,
+		r.DepSvcInstStore,
+	)
+	mux.Handle(polarisapply.DynamicApplyTask.Name(), polarisapply.DynamicApplyTask.Handler())
 	mux.Handle(example.ExampleTask.Name(), example.ExampleTask.Handler())
 	return nil
 }

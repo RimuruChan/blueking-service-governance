@@ -37,34 +37,28 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
 	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
-	polarisenvvars "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/envvars"
-	depenvvars "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/envvars"
 	depsvcmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
 	k8sclient "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/client"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/discovery"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars"
 )
 
 var _ = Describe("Polaris CR applier", func() {
 	var (
-		ctx               context.Context
-		diApp             *fxtest.App
-		appStore          bkmsapp.ApplicationStore
-		envStore          bkmsenv.EnvironmentStore
-		envService        *env.EnvService
-		store             polaris.PolarisConfigStore
-		appModelStore     appmodel.AppModelStore
-		scopedEnvVarStore envvars.ScopedEnvVarStore
-		appDepsVarReader  *depenvvars.Reader
-		polarisVarReader  *polarisenvvars.Reader
-		depSvcStore       depsvcmodel.ServiceStore
-		depSvcInstStore   depsvcmodel.ServiceInstanceStore
-		envStateManager   *polaris.PolarisEnvStateManager
-		service           *polaris.PolarisConfigService
-		app               *bkmsapp.Application
-		environment       *bkmsenv.Environment
+		ctx             context.Context
+		diApp           *fxtest.App
+		appStore        bkmsapp.ApplicationStore
+		envStore        bkmsenv.EnvironmentStore
+		envService      *env.EnvService
+		store           polaris.PolarisConfigStore
+		appModelStore   appmodel.AppModelStore
+		depSvcStore     depsvcmodel.ServiceStore
+		depSvcInstStore depsvcmodel.ServiceInstanceStore
+		envStateManager *polaris.PolarisEnvStateManager
+		service         *polaris.PolarisConfigService
+		app             *bkmsapp.Application
+		environment     *bkmsenv.Environment
 	)
 
 	BeforeEach(func() {
@@ -74,20 +68,14 @@ var _ = Describe("Polaris CR applier", func() {
 			bkmsapp.FxModule,
 			env.FxModule,
 			appmodel.FxModule,
-			envvars.FxModule,
 			depsvcmodel.FxModule,
-			depenvvars.FxModule,
 			polaris.FxModule,
-			polarisenvvars.FxModule,
 			fx.Populate(
 				&appStore,
 				&envStore,
 				&envService,
 				&store,
 				&appModelStore,
-				&scopedEnvVarStore,
-				&appDepsVarReader,
-				&polarisVarReader,
 				&depSvcStore,
 				&depSvcInstStore,
 				&envStateManager,
@@ -95,14 +83,12 @@ var _ = Describe("Polaris CR applier", func() {
 		)
 		diApp.RequireStart()
 
-		reader := envvars.NewUnifiedEnvVarsReader(scopedEnvVarStore, appDepsVarReader, polarisVarReader)
 		service = polaris.NewPolarisConfigService(
 			store,
 			polaris.NewPolarisPlatformManager(depSvcStore, depSvcInstStore, store),
 			envStateManager,
 			envStore,
-			appModelStore,
-			reader,
+			nil,
 		)
 		app = dbfactory.Application(ctx, appStore)
 		environment = dbfactory.Env(ctx, envService, app.WorkspaceID)

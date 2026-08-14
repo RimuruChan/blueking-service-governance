@@ -34,7 +34,7 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
 	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/polarisapply"
 )
 
 // Handler handles Gin polaris-config API requests.
@@ -57,12 +57,7 @@ func (h *Handler) polarisConfigService() *polaris.PolarisConfigService {
 		),
 		polaris.NewPolarisEnvStateManager(h.registry.PolarisConfigStore),
 		h.registry.EnvStore,
-		h.registry.AppModelStore,
-		envvars.NewUnifiedEnvVarsReader(
-			h.registry.ScopedEnvVarStore,
-			h.registry.AppDepsVarReader,
-			h.registry.PolarisVarReader,
-		),
+		polarisapply.Enqueue,
 	)
 }
 

@@ -26,19 +26,19 @@ import (
 	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
-	envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
 )
 
-// PolarisConfigService 负责配置管理、北极星平台服务生命周期和动态下发编排。
+// DynamicApplyEnqueuer 为单个可动态下发环境投递 asynq 任务。
+type DynamicApplyEnqueuer func(ctx context.Context, appID, configName, envName string) error
+
+// PolarisConfigService 负责配置管理和北极星平台服务生命周期。
 type PolarisConfigService struct {
-	polarisConfigStore PolarisConfigStore
-	platformManager    *PolarisPlatformManager
-	envStateManager    *PolarisEnvStateManager
-	applier            *polarisCRApplier
-	envStore           bkmsenv.EnvironmentStore
-	appModelStore      appmodel.AppModelStore
-	envVarsReader      envVarsReader
+	polarisConfigStore  PolarisConfigStore
+	platformManager     *PolarisPlatformManager
+	envStateManager     *PolarisEnvStateManager
+	applier             *CRApplier
+	envStore            bkmsenv.EnvironmentStore
+	enqueueDynamicApply DynamicApplyEnqueuer
 }
 
 // NewPolarisConfigService 创建北极星配置服务。
@@ -47,17 +47,15 @@ func NewPolarisConfigService(
 	platformManager *PolarisPlatformManager,
 	envStateManager *PolarisEnvStateManager,
 	envStore bkmsenv.EnvironmentStore,
-	appModelStore appmodel.AppModelStore,
-	envVarsReader envVarsReader,
+	enqueue DynamicApplyEnqueuer,
 ) *PolarisConfigService {
 	return &PolarisConfigService{
-		polarisConfigStore: store,
-		platformManager:    platformManager,
-		envStateManager:    envStateManager,
-		applier:            newPolarisCRApplier(),
-		envStore:           envStore,
-		appModelStore:      appModelStore,
-		envVarsReader:      envVarsReader,
+		polarisConfigStore:  store,
+		platformManager:     platformManager,
+		envStateManager:     envStateManager,
+		applier:             NewCRApplier(),
+		envStore:            envStore,
+		enqueueDynamicApply: enqueue,
 	}
 }
 
@@ -120,7 +118,7 @@ func (s *PolarisConfigService) Update(
 	if err != nil {
 		return newConfig, errors.Wrap(err, "prepare dynamic polaris apply")
 	}
-	s.triggerDynamicApply(ctx, app, newConfig, envNames)
+	s.triggerDynamicApply(ctx, newConfig, envNames)
 	return newConfig, nil
 }
 
@@ -144,73 +142,24 @@ func (s *PolarisConfigService) Delete(
 	return nil
 }
 
-type envVarsReader interface {
-	ListVars(
-		ctx context.Context,
-		environment bkmsenv.Environment,
-		app *bkmsapp.Application,
-		appModel *appmodel.AppModel,
-	) (envvartypes.EnvVariableList, error)
-}
-
-// triggerDynamicApply 异步下发允许直接生效的 PolarisConfig CR。
+// triggerDynamicApply 为每个可下发环境投递一条 asynq 任务。
+// 某个环境投递失败会写入该环境 LastError，不阻止其余环境入队。
 func (s *PolarisConfigService) triggerDynamicApply(
 	ctx context.Context,
-	app *bkmsapp.Application,
 	config *PolarisConfig,
 	envNames []string,
 ) {
-	if len(envNames) == 0 {
-		return
-	}
-	// TODO: asynq 引入后，切换为异步任务队列。
-	go s.applyToEnvs(context.WithoutCancel(ctx), app, config, envNames)
-}
-
-// applyToEnvs 准备各环境的构建上下文，触发资源下发并记录结果。
-func (s *PolarisConfigService) applyToEnvs(
-	ctx context.Context,
-	app *bkmsapp.Application,
-	config *PolarisConfig,
-	envNames []string,
-) {
-	appModel, err := s.appModelStore.GetAppModel(ctx, app.ID)
-	if err != nil {
-		applyErr := errors.Wrap(err, "get app model for polaris CR apply")
-		for _, envName := range envNames {
-			s.recordDynamicApplyResult(ctx, app.ID, config.Name, envName, applyErr)
-		}
-		log.Errorf(ctx, "get app model for polaris CR apply failed, app=%s: %v", app.ID, applyErr)
-		return
-	}
-
 	for _, envName := range envNames {
-		applyErr := s.applyToEnv(ctx, app, appModel, config, envName)
-		s.recordDynamicApplyResult(ctx, app.ID, config.Name, envName, applyErr)
-		if applyErr != nil {
-			log.Errorf(ctx, "apply polaris CR failed, app=%s config=%s env=%s: %v",
-				app.ID, config.Name, envName, applyErr)
+		if err := s.enqueueDynamicApply(ctx, config.AppID, config.Name, envName); err != nil {
+			enqueueErr := errors.Wrapf(err, "enqueue polaris dynamic apply for env %s", envName)
+			if recErr := s.envStateManager.RecordDynamicApplyResult(
+				ctx, config.AppID, config.Name, envName, enqueueErr,
+			); recErr != nil {
+				log.Errorf(ctx, "record polaris enqueue failure failed, app=%s config=%s env=%s: %v",
+					config.AppID, config.Name, envName, recErr)
+			}
 		}
 	}
-}
-
-// applyToEnv 读取单个环境的构建输入并调用资源下发器。
-func (s *PolarisConfigService) applyToEnv(
-	ctx context.Context,
-	app *bkmsapp.Application,
-	appModel *appmodel.AppModel,
-	config *PolarisConfig,
-	envName string,
-) error {
-	env, err := s.envStore.GetByName(ctx, app.WorkspaceID, app.ID, envName)
-	if err != nil {
-		return errors.Wrapf(err, "get env %s", envName)
-	}
-	envVars, err := s.envVarsReader.ListVars(ctx, *env, app, appModel)
-	if err != nil {
-		return errors.Wrapf(err, "build env vars for %s", envName)
-	}
-	return s.applier.apply(ctx, app, env, config, envVars.ToMap())
 }
 
 func (s *PolarisConfigService) patchEnvWeight(
@@ -224,20 +173,7 @@ func (s *PolarisConfigService) patchEnvWeight(
 	if err != nil {
 		return errors.Wrapf(err, "get env %s", envName)
 	}
-	return s.applier.patchWeight(ctx, app, env, config, weight)
-}
-
-func (s *PolarisConfigService) recordDynamicApplyResult(
-	ctx context.Context,
-	appID, configName, envName string,
-	applyErr error,
-) {
-	if err := s.envStateManager.RecordDynamicApplyResult(
-		ctx, appID, configName, envName, applyErr,
-	); err != nil {
-		log.Errorf(ctx, "record polaris CR apply result failed, app=%s config=%s env=%s: %v",
-			appID, configName, envName, err)
-	}
+	return s.applier.PatchWeight(ctx, app, env, config, weight)
 }
 
 // UpdateEnvWeight 更新指定环境的北极星实例权重；已部署环境会先同步 Patch 集群资源，成功后再持久化。

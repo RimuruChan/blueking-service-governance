@@ -35,16 +35,16 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/discovery"
 )
 
-// polarisCRApplier 负责构建并向单个目标环境下发 PolarisConfig CR。
-// 目前仅用于 patch 后的动态下发，其他情况通过正常部署流程下发及删除
-type polarisCRApplier struct{}
+// CRApplier 负责构建并向单个目标环境下发或更新 PolarisConfig CR。
+type CRApplier struct{}
 
-func newPolarisCRApplier() *polarisCRApplier {
-	return &polarisCRApplier{}
+// NewCRApplier 创建 PolarisConfig CR 下发器。
+func NewCRApplier() *CRApplier {
+	return &CRApplier{}
 }
 
-// apply 向指定环境下发 CR，仅返回资源构建或集群操作错误。
-func (a *polarisCRApplier) apply(
+// Apply 向指定环境下发 CR，仅返回资源构建或集群操作错误。
+func (a *CRApplier) Apply(
 	ctx context.Context,
 	app *bkmsapp.Application,
 	env *bkmsenv.Environment,
@@ -62,7 +62,7 @@ func (a *polarisCRApplier) apply(
 }
 
 // buildCRManifest 复用 workload 构建逻辑并提取 PolarisConfig CR。
-func (a *polarisCRApplier) buildCRManifest(
+func (a *CRApplier) buildCRManifest(
 	app *bkmsapp.Application,
 	env *bkmsenv.Environment,
 	config *PolarisConfig,
@@ -84,7 +84,7 @@ func (a *polarisCRApplier) buildCRManifest(
 	)
 }
 
-func (a *polarisCRApplier) upsertCR(
+func (a *CRApplier) upsertCR(
 	ctx context.Context,
 	env *bkmsenv.Environment,
 	manifest map[string]any,
@@ -112,8 +112,8 @@ func buildWeightPatch(serviceName string, weight int32) ([]byte, error) {
 	})
 }
 
-// patchWeight 仅更新现有 PolarisConfig CR 的服务权重，不修改其他配置字段。
-func (a *polarisCRApplier) patchWeight(
+// PatchWeight 仅更新现有 PolarisConfig CR 的服务权重，不修改其他配置字段。
+func (a *CRApplier) PatchWeight(
 	ctx context.Context,
 	app *bkmsapp.Application,
 	env *bkmsenv.Environment,
@@ -143,7 +143,7 @@ func (a *polarisCRApplier) patchWeight(
 	return nil
 }
 
-func (a *polarisCRApplier) newK8sClient(clusterID string) (*k8sclient.Client, error) {
+func (a *CRApplier) newK8sClient(clusterID string) (*k8sclient.Client, error) {
 	clusterCfg := cluster.NewConfig(clusterID)
 	resGVR, err := discovery.GetGroupVersionResource(clusterCfg, polarisConfigCRKind, polarisConfigCRAPIVersion)
 	if err != nil {

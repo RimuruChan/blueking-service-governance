@@ -141,7 +141,7 @@ func (*PolarisEnvStateManager) reconcileEnvWeightsForScope(
 func (m *PolarisEnvStateManager) selectEnvNamesForDynamicApply(config *PolarisConfig) []string {
 	envNames := make([]string, 0, len(config.ScopeEnvNames))
 	for _, envName := range config.ScopeEnvNames {
-		if !m.isEnvReadyForDynamicApply(config, envName) {
+		if !m.IsEnvReadyForDynamicApply(config, envName) {
 			continue
 		}
 		envNames = append(envNames, envName)
@@ -149,10 +149,10 @@ func (m *PolarisEnvStateManager) selectEnvNamesForDynamicApply(config *PolarisCo
 	return envNames
 }
 
-// isEnvReadyForDynamicApply 判断指定环境是否允许动态下发。
+// IsEnvReadyForDynamicApply 判断指定环境是否允许动态下发。
 // 动态下发 PolarisConfig CR，仅当三个关键字段的快照与当前配置的一致时，可以更新非关键字段。
 // 这三个字段会影响到环境变量的生成和端口等服务配置，若不一致则必须重新部署实例。
-func (*PolarisEnvStateManager) isEnvReadyForDynamicApply(config *PolarisConfig, envName string) bool {
+func (*PolarisEnvStateManager) IsEnvReadyForDynamicApply(config *PolarisConfig, envName string) bool {
 	state := config.GetEnvState(envName)
 	desiredFields := NewRedeployRequiredFields(config)
 	return state.IsDeployed() && *state.AppliedFields == *desiredFields
