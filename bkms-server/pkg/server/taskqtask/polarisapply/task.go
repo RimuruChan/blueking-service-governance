@@ -127,6 +127,10 @@ func handle(ctx context.Context, args Args) error {
 				args.AppID,
 				args.ConfigName,
 			)
+		case errors.Is(err, appmodel.ErrAppModelNotFound):
+			return errors.Wrap(taskq.ErrStopRetry, "app model not found")
+		case errors.Is(err, bkmsenv.ErrEnvNotFound):
+			return errors.Wrapf(taskq.ErrStopRetry, "env %s not found", args.EnvName)
 		case errors.Is(err, polaris.ErrDynamicApplyNotReady):
 			return errors.Wrap(taskq.ErrStopRetry, err.Error())
 		default:
@@ -155,7 +159,7 @@ func recordResult(ctx context.Context, args Args, configUpdatedAt time.Time, app
 	if envStateManager == nil {
 		return
 	}
-	if err := envStateManager.RecordDynamicApplyResultIfUpdatedAt(
+	if err := envStateManager.RecordDynamicApplyResult(
 		ctx,
 		args.AppID,
 		args.ConfigName,

@@ -32,8 +32,7 @@ import (
 // PolarisEnvStateManager 管理 PolarisConfig 的环境部署快照、权重生命周期和动态下发结果。
 //
 // 配置更新后调用 PrepareDynamicApply，清理无效记录并返回允许动态下发的环境；
-// 动态下发完成后调用 RecordDynamicApplyResult，记录下发结果；
-// 队列任务可调用 RecordDynamicApplyResultIfUpdatedAt，避免旧任务覆盖新配置状态；
+// 动态下发完成后调用 RecordDynamicApplyResult，按配置版本记录下发结果，避免旧任务覆盖新配置状态；
 // 应用部署后调用 ReconcileAfterDeploy，记录本次部署生效的关键字段并清理离域权重；
 // 应用卸载后调用 ReconcileAfterUninstall，移除对应环境的记录与离域权重（条件见函数说明）。
 type PolarisEnvStateManager struct {
@@ -160,31 +159,9 @@ func (*PolarisEnvStateManager) IsEnvReadyForDynamicApply(config *PolarisConfig, 
 	return state.IsDeployed() && *state.AppliedFields == *desiredFields
 }
 
-// RecordDynamicApplyResult 记录一次动态下发结果；成功时清空 LastError。
-func (m *PolarisEnvStateManager) RecordDynamicApplyResult(
-	ctx context.Context,
-	appID, configName, envName string,
-	applyErr error,
-) error {
-	lastError := ""
-	if applyErr != nil {
-		lastError = applyErr.Error()
-	}
-	if err := m.store.UpsertEnvState(
-		ctx,
-		appID,
-		configName,
-		envName,
-		PolarisEnvStateUpdate{LastError: &lastError},
-	); err != nil {
-		return errors.Wrapf(err, "record dynamic apply result for env %s", envName)
-	}
-	return nil
-}
-
-// RecordDynamicApplyResultIfUpdatedAt 仅在配置顶层 UpdatedAt 仍为 expectedUpdatedAt 时记录结果。
+// RecordDynamicApplyResult 仅在配置顶层 UpdatedAt 仍为 expectedUpdatedAt 时记录结果。
 // 配置版本已变化时视为旧任务，跳过写入且不返回错误。
-func (m *PolarisEnvStateManager) RecordDynamicApplyResultIfUpdatedAt(
+func (m *PolarisEnvStateManager) RecordDynamicApplyResult(
 	ctx context.Context,
 	appID, configName, envName string,
 	expectedUpdatedAt time.Time,
@@ -202,7 +179,7 @@ func (m *PolarisEnvStateManager) RecordDynamicApplyResultIfUpdatedAt(
 		expectedUpdatedAt,
 		PolarisEnvStateUpdate{LastError: &lastError},
 	); err != nil {
-		return errors.Wrapf(err, "record conditional dynamic apply result for env %s", envName)
+		return errors.Wrapf(err, "record dynamic apply result for env %s", envName)
 	}
 	return nil
 }

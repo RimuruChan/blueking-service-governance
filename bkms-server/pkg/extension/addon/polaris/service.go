@@ -118,7 +118,8 @@ func (s *PolarisConfigService) Update(
 	if err != nil {
 		return newConfig, errors.Wrap(err, "prepare dynamic polaris apply")
 	}
-	s.triggerDynamicApply(ctx, newConfig, envNames)
+	// 请求结束后仍需保证任务投递，避免客户端断开导致配置更新成功但任务丢失。
+	s.triggerDynamicApply(context.WithoutCancel(ctx), newConfig, envNames)
 	return newConfig, nil
 }
 
@@ -153,7 +154,7 @@ func (s *PolarisConfigService) triggerDynamicApply(
 		if err := s.enqueueDynamicApply(ctx, config.AppID, config.Name, envName); err != nil {
 			enqueueErr := errors.Wrapf(err, "enqueue polaris dynamic apply for env %s", envName)
 			if recErr := s.envStateManager.RecordDynamicApplyResult(
-				ctx, config.AppID, config.Name, envName, enqueueErr,
+				ctx, config.AppID, config.Name, envName, config.UpdatedAt, enqueueErr,
 			); recErr != nil {
 				log.Errorf(ctx, "record polaris enqueue failure failed, app=%s config=%s env=%s: %v",
 					config.AppID, config.Name, envName, recErr)

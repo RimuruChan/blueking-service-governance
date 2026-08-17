@@ -266,6 +266,32 @@ var _ = Describe("Polaris dynamic apply task", func() {
 			Expect(stderrors.Is(err, asynq.SkipRetry)).To(BeTrue())
 		})
 
+		It("should stop retry when the app model no longer exists", func() {
+			config := createDeployedConfig("cfg-missing-model", []string{environment.Name})
+			err := runHandler(Args{
+				AppID: app.ID, ConfigName: config.Name, EnvName: environment.Name,
+			})
+			Expect(stderrors.Is(err, asynq.SkipRetry)).To(BeTrue())
+		})
+
+		It("should stop retry when the environment no longer exists", func() {
+			const missingEnvName = "missing-env"
+			config := newTestConfig(
+				app.ID,
+				"cfg-missing-env",
+				[]string{missingEnvName},
+				map[string]polaris.PolarisEnvState{missingEnvName: envState(redeployFields("k1", "t1", 8080))},
+			)
+			Expect(store.Create(ctx, config)).To(Succeed())
+			Expect(appModelStore.CreateAppModel(ctx, &appmodel.AppModel{AppID: app.ID})).To(Succeed())
+			DeferCleanup(func() { _ = appModelStore.DeleteAppModel(ctx, app.ID) })
+
+			err := runHandler(Args{
+				AppID: app.ID, ConfigName: config.Name, EnvName: missingEnvName,
+			})
+			Expect(stderrors.Is(err, asynq.SkipRetry)).To(BeTrue())
+		})
+
 		It("should record lastError with retry progress when apply fails", func() {
 			config := createDeployedConfig("cfg-retry-progress", []string{environment.Name})
 			Expect(appModelStore.CreateAppModel(ctx, &appmodel.AppModel{AppID: app.ID})).To(Succeed())
@@ -296,7 +322,7 @@ var _ = Describe("Polaris dynamic apply task", func() {
 			Expect(appModelStore.CreateAppModel(ctx, &appmodel.AppModel{AppID: app.ID})).To(Succeed())
 			DeferCleanup(func() { _ = appModelStore.DeleteAppModel(ctx, app.ID) })
 			Expect(envStateManager.RecordDynamicApplyResult(
-				ctx, app.ID, config.Name, environment.Name, errors.New("previous apply error"),
+				ctx, app.ID, config.Name, environment.Name, config.UpdatedAt, errors.New("previous apply error"),
 			)).To(Succeed())
 
 			mockey.PatchConvey("apply succeeds on retry", GinkgoT(), func() {
@@ -333,7 +359,7 @@ var _ = Describe("Polaris dynamic apply task", func() {
 					})).To(Succeed())
 					latest, err := store.Get(ctx, app.ID, config.Name)
 					Expect(err).NotTo(HaveOccurred())
-					Expect(envStateManager.RecordDynamicApplyResultIfUpdatedAt(
+					Expect(envStateManager.RecordDynamicApplyResult(
 						ctx,
 						app.ID,
 						config.Name,

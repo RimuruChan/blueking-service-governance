@@ -247,14 +247,14 @@ var _ = Describe("PolarisEnvStateManager", func() {
 			)
 
 			Expect(manager.RecordDynamicApplyResult(
-				ctx, app.ID, config.Name, environment.Name, errors.New("apply failed"),
+				ctx, app.ID, config.Name, environment.Name, config.UpdatedAt, errors.New("apply failed"),
 			)).To(Succeed())
 			stored, err := store.Get(ctx, app.ID, config.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(stored.GetEnvState(environment.Name).LastError).To(Equal("apply failed"))
 
 			Expect(manager.RecordDynamicApplyResult(
-				ctx, app.ID, config.Name, environment.Name, nil,
+				ctx, app.ID, config.Name, environment.Name, config.UpdatedAt, nil,
 			)).To(Succeed())
 			stored, err = store.Get(ctx, app.ID, config.Name)
 			Expect(err).NotTo(HaveOccurred())
@@ -280,7 +280,7 @@ var _ = Describe("PolarisEnvStateManager", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(latest.UpdatedAt).NotTo(Equal(expectedUpdatedAt))
 
-			Expect(manager.RecordDynamicApplyResultIfUpdatedAt(
+			Expect(manager.RecordDynamicApplyResult(
 				ctx,
 				app.ID,
 				config.Name,
@@ -292,7 +292,7 @@ var _ = Describe("PolarisEnvStateManager", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(stored.GetEnvState(environment.Name).LastError).To(Equal("latest task error"))
 
-			Expect(manager.RecordDynamicApplyResultIfUpdatedAt(
+			Expect(manager.RecordDynamicApplyResult(
 				ctx,
 				app.ID,
 				config.Name,
@@ -304,7 +304,7 @@ var _ = Describe("PolarisEnvStateManager", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(stored.GetEnvState(environment.Name).LastError).To(Equal("latest task error"))
 
-			Expect(manager.RecordDynamicApplyResultIfUpdatedAt(
+			Expect(manager.RecordDynamicApplyResult(
 				ctx,
 				app.ID,
 				config.Name,
