@@ -128,8 +128,10 @@ func handle(ctx context.Context, args Args) error {
 				args.ConfigName,
 			)
 		case errors.Is(err, appmodel.ErrAppModelNotFound):
+			recordResult(ctx, args, configUpdatedAt, err)
 			return errors.Wrap(taskq.ErrStopRetry, "app model not found")
 		case errors.Is(err, bkmsenv.ErrEnvNotFound):
+			recordResult(ctx, args, configUpdatedAt, err)
 			return errors.Wrapf(taskq.ErrStopRetry, "env %s not found", args.EnvName)
 		case errors.Is(err, polaris.ErrDynamicApplyNotReady):
 			return errors.Wrap(taskq.ErrStopRetry, err.Error())

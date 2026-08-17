@@ -272,6 +272,9 @@ var _ = Describe("Polaris dynamic apply task", func() {
 				AppID: app.ID, ConfigName: config.Name, EnvName: environment.Name,
 			})
 			Expect(stderrors.Is(err, asynq.SkipRetry)).To(BeTrue())
+			stored, getErr := store.Get(ctx, app.ID, config.Name)
+			Expect(getErr).NotTo(HaveOccurred())
+			Expect(stored.GetEnvState(environment.Name).LastError).To(ContainSubstring("get app model"))
 		})
 
 		It("should stop retry when the environment no longer exists", func() {
