@@ -331,11 +331,13 @@ type AppInfoOutputObj struct {
 	DisplayName string `json:"displayName"`
 	// 创建人
 	Creator string `json:"creator"`
+	// 创建时间
+	CreatedAt time.Time `json:"createdAt"`
 	// 应用使用的编程语言
 	Language string `json:"language"`
 	// 应用部署的环境列表
 	DeployedEnvs []*AppDeployedEnvOutputObj `json:"deployedEnvs"`
-	// 应用最近操作时间
+	// 应用最近操作时间（当前调用者视角）
 	LastOperatedAt *time.Time `json:"lastOperatedAt,omitempty"`
 }
 
@@ -343,6 +345,7 @@ type AppInfoOutputObj struct {
 func (o *AppInfoOutputObj) FromModel(
 	app *bkmsapp.Application,
 	deployedEnvs []deploystatus.AppDeployStatus,
+	lastOperatedAt time.Time,
 ) *AppInfoOutputObj {
 	language := ""
 	if app.TrpcSpec != nil {
@@ -354,10 +357,14 @@ func (o *AppInfoOutputObj) FromModel(
 	o.Type = app.Type
 	o.DisplayName = app.DisplayName
 	o.Creator = app.Creator
+	o.CreatedAt = app.CreatedAt
 	o.Language = language
 	o.DeployedEnvs = make([]*AppDeployedEnvOutputObj, 0, len(deployedEnvs))
 	for i := range deployedEnvs {
 		o.DeployedEnvs = append(o.DeployedEnvs, new(AppDeployedEnvOutputObj).FromModel(deployedEnvs[i]))
+	}
+	if !lastOperatedAt.IsZero() {
+		o.LastOperatedAt = &lastOperatedAt
 	}
 	return o
 }

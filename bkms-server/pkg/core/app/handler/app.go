@@ -359,6 +359,20 @@ func (h *Handler) ListApps(c *gin.Context) {
 	filteredApps := lo.Filter(apps, func(app *bkmsapp.Application, _ int) bool {
 		return hasPermApps.Has(app.ID)
 	})
+	if len(filteredApps) == 0 {
+		ginutils.OK(c, serializer.ListAppsOutput{Data: []*serializer.AppInfoOutputObj{}})
+		return
+	}
+
+	username := auth.MustGetUser(ctx).ID
+	filteredAppIDs := lo.Map(filteredApps, func(app *bkmsapp.Application, _ int) string { return app.ID })
+	latestOpTimes, err := h.registry.OperationRecordStore.GetLatestOperationTimesByAppsForUser(
+		ctx, uriInput.WorkspaceID, filteredAppIDs, username,
+	)
+	if err != nil {
+		log.Warnf(ctx, "get latest operation times by apps for user: %s: %v", username, err)
+		latestOpTimes = nil
+	}
 
 	// 查询应用在各环境下的部署状态
 	deployStatusService := deploystatus.NewDeployStatusService(
@@ -376,7 +390,9 @@ func (h *Handler) ListApps(c *gin.Context) {
 
 	output := make([]*serializer.AppInfoOutputObj, 0, len(filteredApps))
 	for _, app := range filteredApps {
-		output = append(output, new(serializer.AppInfoOutputObj).FromModel(app, deployStatusMap[app.ID]))
+		output = append(output, new(serializer.AppInfoOutputObj).FromModel(
+			app, deployStatusMap[app.ID], latestOpTimes[app.ID],
+		))
 	}
 
 	ginutils.OK(c, serializer.ListAppsOutput{Data: output})

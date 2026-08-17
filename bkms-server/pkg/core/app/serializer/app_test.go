@@ -20,6 +20,7 @@ package serializer_test
 
 import (
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin/binding"
 	. "github.com/onsi/ginkgo/v2"
@@ -56,6 +57,20 @@ var _ = Describe("App deploy status serializers", func() {
 			DeployStatus:    "success",
 			ImageTag:        "v1.2.3",
 		}))
+	})
+
+	It("includes application timestamps in list output", func() {
+		createdAt := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
+		lastOperatedAt := createdAt.Add(time.Hour)
+		output := new(serializer.AppInfoOutputObj).FromModel(&bkmsapp.Application{
+			ID:          "app-id",
+			WorkspaceID: "workspace-id",
+			Name:        "app-name",
+			CreatedAt:   createdAt,
+		}, nil, lastOperatedAt)
+
+		Expect(output.CreatedAt).To(Equal(createdAt))
+		Expect(output.LastOperatedAt).To(HaveValue(Equal(lastOperatedAt)))
 	})
 
 	DescribeTable(

@@ -17962,6 +17962,10 @@ const docTemplate = `{
         "github_com_TencentBlueKing_blueking-service-governance_bkms-server_pkg_core_app_serializer.AppInfoOutputObj": {
             "type": "object",
             "properties": {
+                "createdAt": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
                 "creator": {
                     "description": "创建人",
                     "type": "string"
@@ -17986,7 +17990,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "lastOperatedAt": {
-                    "description": "应用最近操作时间",
+                    "description": "应用最近操作时间（当前调用者视角）",
                     "type": "string"
                 },
                 "name": {
