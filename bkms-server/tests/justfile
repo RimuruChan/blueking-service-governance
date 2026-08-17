@@ -14,7 +14,7 @@ help:
     @echo "  just e2e-logs          Show bruno e2e logs"
     @echo "  just e2e-logs-tail [N] Show last N lines of bruno e2e logs (default 100)"
     @echo "  just e2e-logs-failures Show failed bruno e2e requests with assertion reasons"
-    @echo "  just dump-logs [N]     Dump tail logs of bkms-server/worker/migration/chartmuseum/rabbitmq (default 200)"
+    @echo "  just dump-logs [N]     Dump tail logs of bkms-server/worker/db-migrate/migration/chartmuseum/rabbitmq (default 200)"
 
 COMPOSE := "docker-compose -p bkms-apitest"
 PODMAN_COMPOSE := "podman compose -p bkms-apitest"
@@ -35,7 +35,7 @@ PODMAN_COMPOSE := "podman compose -p bkms-apitest"
 #   BKMS_SERVER_IMAGE           bkms-server image under test (default bkms-server:latest)
 #   BKMS_LOCAL_BINARY           absolute path to a locally built bkms-server binary;
 #                               only used by `just up-locbin`, mounted read-only
-#                               into bkms-server, bkms-worker, and migration
+#                               into bkms-server, bkms-worker, db-migrate, and migration
 #                               to avoid rebuilding the image during local loops
 #   BKMS_APITEST_WORKLOAD_IMAGE required when RUN_HELM_DEPLOY_API_TESTS,
 #                               RUN_TRPC_DEPLOY_API_TESTS or
@@ -57,7 +57,7 @@ up:
 # Set BKMS_LOCAL_BINARY to the host path of the executable binary. By default,
 # this uses ../build/bkms-server, which is produced by `make build-dev` from the
 # bkms-server project root. The compose patch mounts it read-only into
-# bkms-server, bkms-worker, and migration so all backend services run the same
+# bkms-server, bkms-worker, db-migrate, and migration so all backend services run the same
 # local code without rebuilding the image.
 up-locbin:
     @just _up locbin "{{COMPOSE}}" "-f docker-compose.yaml" ""
@@ -259,7 +259,7 @@ e2e-logs-failures:
 dump-logs lines="200":
     #!/usr/bin/env bash
     set -u
-    for svc in bkms-server bkms-worker migration chartmuseum chartmuseum-init rabbitmq; do
+    for svc in bkms-server bkms-worker db-migrate migration chartmuseum chartmuseum-init rabbitmq; do
         echo "=========================================="
         echo "=== docker-compose logs ${svc} (tail {{lines}}) ==="
         echo "=========================================="

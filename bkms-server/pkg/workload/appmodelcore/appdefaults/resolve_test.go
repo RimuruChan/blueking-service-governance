@@ -44,6 +44,7 @@ var _ = Describe("Application default resolution", func() {
 	})
 
 	AfterEach(func() {
+		// Clear documents without Drop so migration-managed unique indexes survive.
 		Expect(testutil.CleanupCollection(appdefaults.CollectionName)).To(Succeed())
 		Expect(envStore.DeleteAll(ctx)).To(Succeed())
 		Expect(workspaceStore.Delete(ctx, workspace.ID)).To(Succeed())

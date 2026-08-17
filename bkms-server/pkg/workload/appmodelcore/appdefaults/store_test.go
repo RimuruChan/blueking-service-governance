@@ -30,6 +30,7 @@ var _ = Describe("Application default rule store", func() {
 	})
 
 	AfterEach(func() {
+		// Clear documents without Drop so migration-managed unique indexes survive.
 		Expect(testutil.CleanupCollection(appdefaults.CollectionName)).To(Succeed())
 		diApp.RequireStop()
 	})

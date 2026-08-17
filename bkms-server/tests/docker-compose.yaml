@@ -110,8 +110,30 @@ services:
       - bkms-apitest-net
 
   ################################################
+  # Schema 迁移：应用 db/migrations（内嵌于二进制）
+  # 在业务数据加载与 webserver 启动前执行一次
+  ################################################
+  db-migrate:
+    image: ${BKMS_SERVER_IMAGE:-bkms-server:latest}
+    command:
+      - bkms-server
+      - migrate
+      - up
+      - --srvCfg
+      - /app/etc/config.yaml
+    volumes:
+      - ./configs/config.yaml:/app/etc/config.yaml:ro
+    depends_on:
+      mongo:
+        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
+    networks:
+      - bkms-apitest-net
+
+  ################################################
   # 数据迁移服务：加载内置组件定义
-  # 在 bkms-server 启动前执行一次
+  # 在 schema 迁移完成后、bkms-server 启动前执行一次
   ################################################
   migration:
     image: ${BKMS_SERVER_IMAGE:-bkms-server:latest}
@@ -127,6 +149,8 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+      db-migrate:
+        condition: service_completed_successfully
     networks:
       - bkms-apitest-net
 

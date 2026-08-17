@@ -63,7 +63,7 @@ Helm / Trpc / TAF 部署生命周期测试都需要拉取工作负载镜像。�
 
 基于 docker-compose 实现的 E2E 测试，可以在安装了 docker 的环境中一键运行所有 API 测试，无需手动启动任何服务。
 
-E2E 栈完全自包含：bkms-server / worker、migration、bruno runner、mongo / redis / rabbitmq、chartmuseum 全部跑在独立的 compose project `bkms-apitest` 与独立网络 `bkms-apitest-net` 中，bkms-server API 宿主端口为 `32402`，与单元测试依赖栈（`tests/utdeps/`、`tests/utdeps_db/`）完全隔离。
+E2E 栈完全自包含：bkms-server / worker、db-migrate、migration、bruno runner、mongo / redis / rabbitmq、chartmuseum 全部跑在独立的 compose project `bkms-apitest` 与独立网络 `bkms-apitest-net` 中，bkms-server API 宿主端口为 `32402`，与单元测试依赖栈（`tests/utdeps/`、`tests/utdeps_db/`）完全隔离。
 
 #### 前置条件
 
@@ -115,7 +115,7 @@ just down
 
 `just up-locbin` 会额外叠加 `compose-replace-binary.yaml`，将 `BKMS_LOCAL_BINARY` 指向的宿主机二进制只读挂载到容器内的 `/usr/bin/bkms-server`。
 
-这个 patch 会同时作用于 `bkms-server`、`bkms-worker` 和 `migration`，确保 webserver、worker、内置组件迁移逻辑都运行同一份本地代码。
+这个 patch 会同时作用于 `bkms-server`、`bkms-worker`、`db-migrate` 和 `migration`，确保 webserver、worker、schema 迁移与内置组件加载都运行同一份本地代码。
 
 该模式仍会使用 `BKMS_SERVER_IMAGE` 提供基础运行环境与静态资源；如果改动涉及镜像内的依赖、配置文件、assets 或其他非二进制内容，仍需重新构建镜像。
 
