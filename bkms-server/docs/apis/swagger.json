@@ -14151,7 +14151,7 @@
                 }
             }
         },
-        "/workspaces/{workspaceID}/app-spec/{appType}/dev-mode": {
+        "/workspaces/{workspaceID}/app-spec/dev-mode": {
             "get": {
                 "security": [
                     {
@@ -14174,13 +14174,6 @@
                         "type": "string",
                         "description": "工作空间 ID",
                         "name": "workspaceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "应用类型（trpc/taf）",
-                        "name": "appType",
                         "in": "path",
                         "required": true
                     }
@@ -14235,13 +14228,6 @@
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "应用类型（trpc/taf）",
-                        "name": "appType",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
                         "description": "开发模式默认配置规则",
                         "name": "body",
                         "in": "body",
@@ -14273,7 +14259,7 @@
                 }
             }
         },
-        "/workspaces/{workspaceID}/app-spec/{appType}/dev-mode/{ruleID}": {
+        "/workspaces/{workspaceID}/app-spec/dev-mode/{ruleID}": {
             "put": {
                 "security": [
                     {
@@ -14299,13 +14285,6 @@
                         "type": "string",
                         "description": "工作空间 ID",
                         "name": "workspaceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "应用类型（trpc/taf）",
-                        "name": "appType",
                         "in": "path",
                         "required": true
                     },
@@ -14374,13 +14353,6 @@
                     },
                     {
                         "type": "string",
-                        "description": "应用类型（trpc/taf）",
-                        "name": "appType",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
                         "description": "规则 ID",
                         "name": "ruleID",
                         "in": "path",
@@ -14409,7 +14381,7 @@
                 }
             }
         },
-        "/workspaces/{workspaceID}/app-spec/{appType}/resources": {
+        "/workspaces/{workspaceID}/app-spec/resources": {
             "get": {
                 "security": [
                     {
@@ -14432,13 +14404,6 @@
                         "type": "string",
                         "description": "工作空间 ID",
                         "name": "workspaceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "应用类型（trpc/taf）",
-                        "name": "appType",
                         "in": "path",
                         "required": true
                     }
@@ -14493,13 +14458,6 @@
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "应用类型（trpc/taf）",
-                        "name": "appType",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
                         "description": "资源规格默认配置规则",
                         "name": "body",
                         "in": "body",
@@ -14531,7 +14489,7 @@
                 }
             }
         },
-        "/workspaces/{workspaceID}/app-spec/{appType}/resources/{ruleID}": {
+        "/workspaces/{workspaceID}/app-spec/resources/{ruleID}": {
             "put": {
                 "security": [
                     {
@@ -14557,13 +14515,6 @@
                         "type": "string",
                         "description": "工作空间 ID",
                         "name": "workspaceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "应用类型（trpc/taf）",
-                        "name": "appType",
                         "in": "path",
                         "required": true
                     },
@@ -14627,13 +14578,6 @@
                         "type": "string",
                         "description": "工作空间 ID",
                         "name": "workspaceID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "应用类型（trpc/taf）",
-                        "name": "appType",
                         "in": "path",
                         "required": true
                     },
@@ -22640,16 +22584,12 @@
         "serializer.DevModeRuleInput": {
             "type": "object",
             "required": [
-                "envTypes",
+                "envType",
                 "spec"
             ],
             "properties": {
-                "envTypes": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                        "type": "string"
-                    }
+                "envType": {
+                    "type": "string"
                 },
                 "spec": {
                     "$ref": "#/definitions/serializer.DevModeSpecInput"
@@ -22670,11 +22610,8 @@
                 "createdAt": {
                     "type": "string"
                 },
-                "envTypes": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                "envType": {
+                    "type": "string"
                 },
                 "id": {
                     "type": "string"
@@ -28051,16 +27988,12 @@
         "serializer.ResourcesRuleInput": {
             "type": "object",
             "required": [
-                "envTypes",
+                "envType",
                 "spec"
             ],
             "properties": {
-                "envTypes": {
-                    "type": "array",
-                    "minItems": 1,
-                    "items": {
-                        "type": "string"
-                    }
+                "envType": {
+                    "type": "string"
                 },
                 "spec": {
                     "$ref": "#/definitions/serializer.ResourcesSpecInput"
@@ -28081,11 +28014,8 @@
                 "createdAt": {
                     "type": "string"
                 },
-                "envTypes": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
+                "envType": {
+                    "type": "string"
                 },
                 "id": {
                     "type": "string"

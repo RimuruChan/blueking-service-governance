@@ -25,9 +25,9 @@ func Resolve(
 	ctx context.Context,
 	ruleStore RuleStore,
 	envStore envmodel.EnvironmentStore,
-	workspaceID, appType, appID string,
+	workspaceID, appID string,
 ) (*ResolvedAppSpec, error) {
-	rules, err := ruleStore.ListByAppType(ctx, workspaceID, appType)
+	rules, err := ruleStore.List(ctx, workspaceID)
 	if err != nil {
 		return nil, fmt.Errorf("list workspace application defaults: %w", err)
 	}

@@ -16,11 +16,10 @@ import (
 //	@Security	BkUserInfo
 //	@Security	BkUserCredential
 //	@Param		workspaceID	path		string	true	"工作空间 ID"
-//	@Param		appType		path		string	true	"应用类型（trpc/taf）"
 //	@Success	200			{object}	serializer.ListResourcesRulesOutput
 //	@Failure	400			{object}	bkerrs.GinErrorOutput
 //	@Failure	404			{object}	bkerrs.GinErrorOutput
-//	@Router		/workspaces/{workspaceID}/app-spec/{appType}/resources [get]
+//	@Router		/workspaces/{workspaceID}/app-spec/resources [get]
 func (h *Handler) ListResourcesRules(c *gin.Context) {
 	listRules(h, c, appspec.AppSpecSectionResources, (*serializer.ResourcesRuleOutputObj).FromModel)
 }
@@ -34,13 +33,12 @@ func (h *Handler) ListResourcesRules(c *gin.Context) {
 //	@Produce	json
 //	@Security	BkUserInfo
 //	@Security	BkUserCredential
-//	@Param		workspaceID	path		string	true	"工作空间 ID"
-//	@Param		appType		path		string	true	"应用类型（trpc/taf）"
+//	@Param		workspaceID	path		string							true	"工作空间 ID"
 //	@Param		body		body		serializer.ResourcesRuleInput	true	"资源规格默认配置规则"
 //	@Success	200			{object}	serializer.ResourcesRuleOutput
 //	@Failure	400			{object}	bkerrs.GinErrorOutput
 //	@Failure	404			{object}	bkerrs.GinErrorOutput
-//	@Router		/workspaces/{workspaceID}/app-spec/{appType}/resources [post]
+//	@Router		/workspaces/{workspaceID}/app-spec/resources [post]
 func (h *Handler) CreateResourcesRule(c *gin.Context) {
 	createRule(
 		h,
@@ -60,14 +58,13 @@ func (h *Handler) CreateResourcesRule(c *gin.Context) {
 //	@Produce	json
 //	@Security	BkUserInfo
 //	@Security	BkUserCredential
-//	@Param		workspaceID	path		string	true	"工作空间 ID"
-//	@Param		appType		path		string	true	"应用类型（trpc/taf）"
-//	@Param		ruleID		path		string	true	"规则 ID"
+//	@Param		workspaceID	path		string							true	"工作空间 ID"
+//	@Param		ruleID		path		string							true	"规则 ID"
 //	@Param		body		body		serializer.ResourcesRuleInput	true	"资源规格默认配置规则"
 //	@Success	200			{object}	serializer.ResourcesRuleOutput
 //	@Failure	400			{object}	bkerrs.GinErrorOutput
 //	@Failure	404			{object}	bkerrs.GinErrorOutput
-//	@Router		/workspaces/{workspaceID}/app-spec/{appType}/resources/{ruleID} [put]
+//	@Router		/workspaces/{workspaceID}/app-spec/resources/{ruleID} [put]
 func (h *Handler) UpdateResourcesRule(c *gin.Context) {
 	updateRule(
 		h,
@@ -87,12 +84,11 @@ func (h *Handler) UpdateResourcesRule(c *gin.Context) {
 //	@Security	BkUserInfo
 //	@Security	BkUserCredential
 //	@Param		workspaceID	path		string	true	"工作空间 ID"
-//	@Param		appType		path		string	true	"应用类型（trpc/taf）"
 //	@Param		ruleID		path		string	true	"规则 ID"
 //	@Success	200			{object}	serializer.EmptyOutput
 //	@Failure	400			{object}	bkerrs.GinErrorOutput
 //	@Failure	404			{object}	bkerrs.GinErrorOutput
-//	@Router		/workspaces/{workspaceID}/app-spec/{appType}/resources/{ruleID} [delete]
+//	@Router		/workspaces/{workspaceID}/app-spec/resources/{ruleID} [delete]
 func (h *Handler) DeleteResourcesRule(c *gin.Context) {
 	deleteRule(h, c, appspec.AppSpecSectionResources)
 }

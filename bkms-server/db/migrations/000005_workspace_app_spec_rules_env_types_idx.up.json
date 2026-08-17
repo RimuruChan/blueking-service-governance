@@ -5,11 +5,10 @@
       {
         "key": {
           "workspaceID": 1,
-          "appType": 1,
           "configType": 1,
           "envTypes": 1
         },
-        "name": "workspaceID_1_appType_1_configType_1_envTypes_1",
+        "name": "workspaceID_1_configType_1_envTypes_1",
         "unique": true
       }
     ]

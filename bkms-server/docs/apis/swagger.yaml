@@ -3475,15 +3475,12 @@ definitions:
     type: object
   serializer.DevModeRuleInput:
     properties:
-      envTypes:
-        items:
-          type: string
-        minItems: 1
-        type: array
+      envType:
+        type: string
       spec:
         $ref: '#/definitions/serializer.DevModeSpecInput'
     required:
-    - envTypes
+    - envType
     - spec
     type: object
   serializer.DevModeRuleOutput:
@@ -3495,10 +3492,8 @@ definitions:
     properties:
       createdAt:
         type: string
-      envTypes:
-        items:
-          type: string
-        type: array
+      envType:
+        type: string
       id:
         type: string
       spec:
@@ -7146,15 +7141,12 @@ definitions:
     type: object
   serializer.ResourcesRuleInput:
     properties:
-      envTypes:
-        items:
-          type: string
-        minItems: 1
-        type: array
+      envType:
+        type: string
       spec:
         $ref: '#/definitions/serializer.ResourcesSpecInput'
     required:
-    - envTypes
+    - envType
     - spec
     type: object
   serializer.ResourcesRuleOutput:
@@ -7166,10 +7158,8 @@ definitions:
     properties:
       createdAt:
         type: string
-      envTypes:
-        items:
-          type: string
-        type: array
+      envType:
+        type: string
       id:
         type: string
       spec:
@@ -17694,18 +17684,13 @@ paths:
       summary: 获取指定工作空间的详细信息，包括基本信息、镜像仓库、蓝鲸关联系统信息等
       tags:
       - workspace
-  /workspaces/{workspaceID}/app-spec/{appType}/dev-mode:
+  /workspaces/{workspaceID}/app-spec/dev-mode:
     get:
       operationId: ListWorkspaceAppSpecDevModeRules
       parameters:
       - description: 工作空间 ID
         in: path
         name: workspaceID
-        required: true
-        type: string
-      - description: 应用类型（trpc/taf）
-        in: path
-        name: appType
         required: true
         type: string
       produces:
@@ -17739,11 +17724,6 @@ paths:
         name: workspaceID
         required: true
         type: string
-      - description: 应用类型（trpc/taf）
-        in: path
-        name: appType
-        required: true
-        type: string
       - description: 开发模式默认配置规则
         in: body
         name: body
@@ -17771,18 +17751,13 @@ paths:
       summary: 新增工作空间开发模式默认配置规则
       tags:
       - app-spec
-  /workspaces/{workspaceID}/app-spec/{appType}/dev-mode/{ruleID}:
+  /workspaces/{workspaceID}/app-spec/dev-mode/{ruleID}:
     delete:
       operationId: DeleteWorkspaceAppSpecDevModeRule
       parameters:
       - description: 工作空间 ID
         in: path
         name: workspaceID
-        required: true
-        type: string
-      - description: 应用类型（trpc/taf）
-        in: path
-        name: appType
         required: true
         type: string
       - description: 规则 ID
@@ -17821,11 +17796,6 @@ paths:
         name: workspaceID
         required: true
         type: string
-      - description: 应用类型（trpc/taf）
-        in: path
-        name: appType
-        required: true
-        type: string
       - description: 规则 ID
         in: path
         name: ruleID
@@ -17858,18 +17828,13 @@ paths:
       summary: 编辑工作空间开发模式默认配置规则
       tags:
       - app-spec
-  /workspaces/{workspaceID}/app-spec/{appType}/resources:
+  /workspaces/{workspaceID}/app-spec/resources:
     get:
       operationId: ListWorkspaceAppSpecResourcesRules
       parameters:
       - description: 工作空间 ID
         in: path
         name: workspaceID
-        required: true
-        type: string
-      - description: 应用类型（trpc/taf）
-        in: path
-        name: appType
         required: true
         type: string
       produces:
@@ -17903,11 +17868,6 @@ paths:
         name: workspaceID
         required: true
         type: string
-      - description: 应用类型（trpc/taf）
-        in: path
-        name: appType
-        required: true
-        type: string
       - description: 资源规格默认配置规则
         in: body
         name: body
@@ -17935,18 +17895,13 @@ paths:
       summary: 新增工作空间资源规格默认配置规则
       tags:
       - app-spec
-  /workspaces/{workspaceID}/app-spec/{appType}/resources/{ruleID}:
+  /workspaces/{workspaceID}/app-spec/resources/{ruleID}:
     delete:
       operationId: DeleteWorkspaceAppSpecResourcesRule
       parameters:
       - description: 工作空间 ID
         in: path
         name: workspaceID
-        required: true
-        type: string
-      - description: 应用类型（trpc/taf）
-        in: path
-        name: appType
         required: true
         type: string
       - description: 规则 ID
@@ -17983,11 +17938,6 @@ paths:
       - description: 工作空间 ID
         in: path
         name: workspaceID
-        required: true
-        type: string
-      - description: 应用类型（trpc/taf）
-        in: path
-        name: appType
         required: true
         type: string
       - description: 规则 ID

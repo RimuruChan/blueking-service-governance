@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/samber/lo"
 
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appdefaults"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
 )
@@ -18,7 +17,6 @@ var _ = Describe("Application default rule model", func() {
 		func(configType appdefaults.ConfigType, spec *appspec.AppSpec) {
 			rule := &appdefaults.Rule{
 				WorkspaceID: "workspace-supported-sections",
-				AppType:     bkmsapp.AppTypeTRPC,
 				ConfigType:  configType,
 				EnvTypes:    []string{"production"},
 				Spec:        spec,
@@ -40,7 +38,6 @@ var _ = Describe("Application default rule model", func() {
 	It("rejects unsupported sections", func() {
 		rule := &appdefaults.Rule{
 			WorkspaceID: "workspace-unsupported-section",
-			AppType:     bkmsapp.AppTypeTRPC,
 			ConfigType:  appspec.AppSpecSectionLabels,
 			EnvTypes:    []string{"production"},
 			Spec: &appspec.AppSpec{
@@ -56,7 +53,6 @@ var _ = Describe("Application default rule model", func() {
 	It("rejects a mismatched or additional section", func() {
 		rule := &appdefaults.Rule{
 			WorkspaceID: "workspace-section-mismatch",
-			AppType:     bkmsapp.AppTypeTRPC,
 			ConfigType:  appspec.AppSpecSectionResources,
 			EnvTypes:    []string{"production"},
 			Spec: &appspec.AppSpec{
@@ -75,7 +71,6 @@ var _ = Describe("Application default rule model", func() {
 		resources.CPURequests = nil
 		rule := &appdefaults.Rule{
 			WorkspaceID: "workspace-incomplete-resources",
-			AppType:     bkmsapp.AppTypeTRPC,
 			ConfigType:  appspec.AppSpecSectionResources,
 			EnvTypes:    []string{"production"},
 			Spec:        &appspec.AppSpec{Resources: resources},
@@ -89,7 +84,6 @@ var _ = Describe("Application default rule model", func() {
 	It("requires an explicit dev-mode value", func() {
 		rule := &appdefaults.Rule{
 			WorkspaceID: "workspace-incomplete-dev-mode",
-			AppType:     bkmsapp.AppTypeTRPC,
 			ConfigType:  appspec.AppSpecSectionDevMode,
 			EnvTypes:    []string{"production"},
 			Spec:        &appspec.AppSpec{DevMode: &appspec.DevModeSpec{}},
@@ -103,7 +97,6 @@ var _ = Describe("Application default rule model", func() {
 	It("requires environment types and empty AppSpec identity", func() {
 		rule := &appdefaults.Rule{
 			WorkspaceID: "workspace-invalid-identity",
-			AppType:     bkmsapp.AppTypeTRPC,
 			ConfigType:  appspec.AppSpecSectionResources,
 			Spec: &appspec.AppSpec{
 				Resources: resourcesSpec(1, "1", "2", "2Gi", "4Gi"),
@@ -128,7 +121,6 @@ var _ = Describe("Application default rule model", func() {
 	It("accepts multiple environment types and deduplicates in first-seen order", func() {
 		rule := &appdefaults.Rule{
 			WorkspaceID: "workspace-multiple-env-types",
-			AppType:     bkmsapp.AppTypeTRPC,
 			ConfigType:  appspec.AppSpecSectionResources,
 			EnvTypes:    []string{"production", "production", "staging"},
 			Spec:        &appspec.AppSpec{Resources: resourcesSpec(1, "1", "2", "2Gi", "4Gi")},
@@ -140,7 +132,6 @@ var _ = Describe("Application default rule model", func() {
 	It("rejects an invalid environment type in the list", func() {
 		rule := &appdefaults.Rule{
 			WorkspaceID: "workspace-invalid-env-type",
-			AppType:     bkmsapp.AppTypeTRPC,
 			ConfigType:  appspec.AppSpecSectionResources,
 			EnvTypes:    []string{"production", "prod"},
 			Spec:        &appspec.AppSpec{Resources: resourcesSpec(1, "1", "2", "2Gi", "4Gi")},

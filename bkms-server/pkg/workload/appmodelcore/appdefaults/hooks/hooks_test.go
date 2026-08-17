@@ -10,7 +10,6 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	bkmsworkspace "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appdefaults"
 	appdefaultshooks "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appdefaults/hooks"
@@ -53,7 +52,6 @@ var _ = Describe("Application default lifecycle hooks", func() {
 		enabled := true
 		Expect(ruleStore.Create(ctx, &appdefaults.Rule{
 			WorkspaceID: workspaceID,
-			AppType:     bkmsapp.AppTypeTRPC,
 			ConfigType:  appspec.AppSpecSectionDevMode,
 			EnvTypes:    []string{"production"},
 			Spec: &appspec.AppSpec{

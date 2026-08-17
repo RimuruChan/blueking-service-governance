@@ -32,11 +32,10 @@ type RuleDefinition struct {
 }
 
 // Rule stores one complete AppSpec section for one or more workspace
-// environment types, scoped to a single AppModel application type.
+// environment types.
 type Rule struct {
 	ID          bson.ObjectID `bson:"_id,omitempty"`
 	WorkspaceID string        `bson:"workspaceID"`
-	AppType     string        `bson:"appType"`
 	ConfigType  ConfigType    `bson:"configType"`
 	EnvTypes    []string      `bson:"envTypes"`
 

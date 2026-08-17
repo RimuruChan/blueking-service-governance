@@ -8,16 +8,14 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appdefaults"
 )
 
-// WorkspaceAppTypeURIInput binds a workspace + app-type scoped path.
-type WorkspaceAppTypeURIInput struct {
+// WorkspaceURIInput binds a workspace-scoped path.
+type WorkspaceURIInput struct {
 	WorkspaceID string `uri:"workspaceID" binding:"required,uri_slug"`
-	AppType     string `uri:"appType" binding:"required"`
 }
 
 // RuleURIInput binds a workspace rule path.
 type RuleURIInput struct {
 	WorkspaceID string `uri:"workspaceID" binding:"required,uri_slug"`
-	AppType     string `uri:"appType" binding:"required"`
 	RuleID      string `uri:"ruleID" binding:"required,mongodb"`
 }
 

@@ -86,7 +86,6 @@ var _ = Describe("tRPC application service", func() {
 	It("initializes AppModel and AppSpecs from platform defaults and workspace rules", func() {
 		err := ruleStore.Create(ctx, &appdefaults.Rule{
 			WorkspaceID: workspace.ID,
-			AppType:     bkmsapp.AppTypeTRPC,
 			ConfigType:  appspec.AppSpecSectionResources,
 			EnvTypes:    []string{environment.Type},
 			Spec: &appspec.AppSpec{
@@ -102,7 +101,6 @@ var _ = Describe("tRPC application service", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = ruleStore.Create(ctx, &appdefaults.Rule{
 			WorkspaceID: workspace.ID,
-			AppType:     bkmsapp.AppTypeTRPC,
 			ConfigType:  appspec.AppSpecSectionDevMode,
 			EnvTypes:    []string{environment.Type},
 			Spec: &appspec.AppSpec{

@@ -20,14 +20,14 @@ type Handler interface {
 // Register registers workspace application-default routes.
 func Register(rg *gin.RouterGroup, h Handler) {
 	// Resources rules
-	rg.GET("/workspaces/:workspaceID/app-spec/:appType/resources", h.ListResourcesRules)
-	rg.POST("/workspaces/:workspaceID/app-spec/:appType/resources", h.CreateResourcesRule)
-	rg.PUT("/workspaces/:workspaceID/app-spec/:appType/resources/:ruleID", h.UpdateResourcesRule)
-	rg.DELETE("/workspaces/:workspaceID/app-spec/:appType/resources/:ruleID", h.DeleteResourcesRule)
+	rg.GET("/workspaces/:workspaceID/app-spec/resources", h.ListResourcesRules)
+	rg.POST("/workspaces/:workspaceID/app-spec/resources", h.CreateResourcesRule)
+	rg.PUT("/workspaces/:workspaceID/app-spec/resources/:ruleID", h.UpdateResourcesRule)
+	rg.DELETE("/workspaces/:workspaceID/app-spec/resources/:ruleID", h.DeleteResourcesRule)
 
 	// Dev mode rules
-	rg.GET("/workspaces/:workspaceID/app-spec/:appType/dev-mode", h.ListDevModeRules)
-	rg.POST("/workspaces/:workspaceID/app-spec/:appType/dev-mode", h.CreateDevModeRule)
-	rg.PUT("/workspaces/:workspaceID/app-spec/:appType/dev-mode/:ruleID", h.UpdateDevModeRule)
-	rg.DELETE("/workspaces/:workspaceID/app-spec/:appType/dev-mode/:ruleID", h.DeleteDevModeRule)
+	rg.GET("/workspaces/:workspaceID/app-spec/dev-mode", h.ListDevModeRules)
+	rg.POST("/workspaces/:workspaceID/app-spec/dev-mode", h.CreateDevModeRule)
+	rg.PUT("/workspaces/:workspaceID/app-spec/dev-mode/:ruleID", h.UpdateDevModeRule)
+	rg.DELETE("/workspaces/:workspaceID/app-spec/dev-mode/:ruleID", h.DeleteDevModeRule)
 }

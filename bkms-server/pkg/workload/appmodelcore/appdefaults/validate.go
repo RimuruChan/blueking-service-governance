@@ -4,17 +4,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
 )
 
-// ValidateRule requires a supported AppModel app type, at least one valid
-// environment type, and exactly one complete, supported AppSpec section.
+// ValidateRule requires at least one valid environment type and exactly one
+// complete, supported AppSpec section.
 func ValidateRule(rule *Rule) error {
-	if !bkmsapp.IsAppModelType(rule.AppType) {
-		return errors.Wrapf(ErrInvalidRule, "unsupported app type %q", rule.AppType)
-	}
 	if rule.ConfigType != appspec.AppSpecSectionResources && rule.ConfigType != appspec.AppSpecSectionDevMode {
 		return errors.Wrapf(ErrInvalidRule, "unsupported config type %q", rule.ConfigType)
 	}
