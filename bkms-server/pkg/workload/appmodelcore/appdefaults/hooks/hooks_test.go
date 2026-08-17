@@ -52,7 +52,7 @@ var _ = Describe("Application default lifecycle hooks", func() {
 		Expect(ruleStore.Create(ctx, &appdefaults.Rule{
 			WorkspaceID: workspaceID,
 			ConfigType:  appspec.AppSpecSectionDevMode,
-			EnvType:     "production",
+			EnvTypes:    []string{"production"},
 			Spec: &appspec.AppSpec{
 				DevMode: &appspec.DevModeSpec{Enabled: &enabled},
 			},

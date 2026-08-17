@@ -18,7 +18,7 @@ var _ = Describe("Application default rule model", func() {
 			rule := &appdefaults.Rule{
 				WorkspaceID: "workspace-supported-sections",
 				ConfigType:  configType,
-				EnvType:     "production",
+				EnvTypes:    []string{"production"},
 				Spec:        spec,
 			}
 			Expect(appdefaults.ValidateRule(rule)).To(Succeed())
@@ -39,7 +39,7 @@ var _ = Describe("Application default rule model", func() {
 		rule := &appdefaults.Rule{
 			WorkspaceID: "workspace-unsupported-section",
 			ConfigType:  appspec.AppSpecSectionLabels,
-			EnvType:     "production",
+			EnvTypes:    []string{"production"},
 			Spec: &appspec.AppSpec{
 				Labels: &appspec.LabelsSpec{Labels: map[string]string{"team": "platform"}},
 			},
@@ -54,7 +54,7 @@ var _ = Describe("Application default rule model", func() {
 		rule := &appdefaults.Rule{
 			WorkspaceID: "workspace-section-mismatch",
 			ConfigType:  appspec.AppSpecSectionResources,
-			EnvType:     "production",
+			EnvTypes:    []string{"production"},
 			Spec: &appspec.AppSpec{
 				Resources: resourcesSpec(1, "1", "2", "2Gi", "4Gi"),
 				DevMode:   &appspec.DevModeSpec{Enabled: lo.ToPtr(true)},
@@ -72,7 +72,7 @@ var _ = Describe("Application default rule model", func() {
 		rule := &appdefaults.Rule{
 			WorkspaceID: "workspace-incomplete-resources",
 			ConfigType:  appspec.AppSpecSectionResources,
-			EnvType:     "production",
+			EnvTypes:    []string{"production"},
 			Spec:        &appspec.AppSpec{Resources: resources},
 		}
 		Expect(errors.Is(
@@ -85,7 +85,7 @@ var _ = Describe("Application default rule model", func() {
 		rule := &appdefaults.Rule{
 			WorkspaceID: "workspace-incomplete-dev-mode",
 			ConfigType:  appspec.AppSpecSectionDevMode,
-			EnvType:     "production",
+			EnvTypes:    []string{"production"},
 			Spec:        &appspec.AppSpec{DevMode: &appspec.DevModeSpec{}},
 		}
 		Expect(errors.Is(
@@ -94,7 +94,7 @@ var _ = Describe("Application default rule model", func() {
 		)).To(BeTrue())
 	})
 
-	It("requires an environment type and empty AppSpec identity", func() {
+	It("requires environment types and empty AppSpec identity", func() {
 		rule := &appdefaults.Rule{
 			WorkspaceID: "workspace-invalid-identity",
 			ConfigType:  appspec.AppSpecSectionResources,
@@ -107,10 +107,34 @@ var _ = Describe("Application default rule model", func() {
 			appdefaults.ErrInvalidRule,
 		)).To(BeTrue())
 
-		rule.EnvType = "production"
+		rule.EnvTypes = []string{"production"}
 		rule.Spec = &appspec.AppSpec{
 			AppID:     "application",
 			Resources: resourcesSpec(1, "1", "2", "2Gi", "4Gi"),
+		}
+		Expect(errors.Is(
+			appdefaults.ValidateRule(rule),
+			appdefaults.ErrInvalidRule,
+		)).To(BeTrue())
+	})
+
+	It("accepts multiple environment types and deduplicates in first-seen order", func() {
+		rule := &appdefaults.Rule{
+			WorkspaceID: "workspace-multiple-env-types",
+			ConfigType:  appspec.AppSpecSectionResources,
+			EnvTypes:    []string{"production", "production", "staging"},
+			Spec:        &appspec.AppSpec{Resources: resourcesSpec(1, "1", "2", "2Gi", "4Gi")},
+		}
+		Expect(appdefaults.ValidateRule(rule)).To(Succeed())
+		Expect(rule.EnvTypes).To(Equal([]string{"production", "staging"}))
+	})
+
+	It("rejects an invalid environment type in the list", func() {
+		rule := &appdefaults.Rule{
+			WorkspaceID: "workspace-invalid-env-type",
+			ConfigType:  appspec.AppSpecSectionResources,
+			EnvTypes:    []string{"production", "prod"},
+			Spec:        &appspec.AppSpec{Resources: resourcesSpec(1, "1", "2", "2Gi", "4Gi")},
 		}
 		Expect(errors.Is(
 			appdefaults.ValidateRule(rule),

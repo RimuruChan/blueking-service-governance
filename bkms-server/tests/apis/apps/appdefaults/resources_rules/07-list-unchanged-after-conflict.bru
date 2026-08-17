@@ -1,0 +1,51 @@
+meta {
+  name: list-resources-rules-unchanged-after-scope-conflict
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{serviceURL}}/workspaces/{{appDefaultsWorkspaceID}}/app-spec/resources
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body: isJson
+}
+
+tests {
+  test("should keep both rules unchanged after a rejected scope-conflict update", () => {
+    expect(res.body.data).to.have.lengthOf(2);
+
+    const byID = Object.fromEntries(res.body.data.map((rule) => [rule.id, rule]));
+    const first = byID[bru.getVar("resourcesRuleID")];
+    const second = byID[bru.getVar("resourcesRuleID2")];
+
+    expect(first).to.exist;
+    expect(first.envTypes).to.deep.equal(["staging"]);
+    expect(first.spec).to.deep.equal({
+      replicas: 5,
+      cpuRequests: "4",
+      cpuLimits: "8",
+      memoryRequests: "8Gi",
+      memoryLimits: "16Gi"
+    });
+
+    expect(second).to.exist;
+    expect(second.envTypes).to.deep.equal(["test"]);
+    expect(second.spec).to.deep.equal({
+      replicas: 2,
+      cpuRequests: "1",
+      cpuLimits: "2",
+      memoryRequests: "2Gi",
+      memoryLimits: "4Gi"
+    });
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 10000
+}

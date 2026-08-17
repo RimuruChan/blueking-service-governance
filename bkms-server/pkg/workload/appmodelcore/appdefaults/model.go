@@ -14,8 +14,8 @@ import (
 var (
 	// ErrRuleNotFound is returned when a workspace default rule does not exist.
 	ErrRuleNotFound = errors.New("application default rule not found")
-	// ErrRuleConflict is returned when the section already has a rule for the
-	// environment type.
+	// ErrRuleConflict is returned when the section already has a rule that
+	// occupies one of the requested environment types.
 	ErrRuleConflict = errors.New("application default rule already exists for this environment type")
 	// ErrInvalidRule is returned when a rule is incomplete or invalid.
 	ErrInvalidRule = errors.New("invalid application default rule")
@@ -27,16 +27,17 @@ type ConfigType = appspec.AppSpecSectionID
 // RuleDefinition contains the complete configurable content used to create or
 // replace a rule.
 type RuleDefinition struct {
-	EnvType string
-	Spec    *appspec.AppSpec
+	EnvTypes []string
+	Spec     *appspec.AppSpec
 }
 
-// Rule stores one complete AppSpec section for a workspace environment type.
+// Rule stores one complete AppSpec section for one or more workspace
+// environment types.
 type Rule struct {
 	ID          bson.ObjectID `bson:"_id,omitempty"`
 	WorkspaceID string        `bson:"workspaceID"`
 	ConfigType  ConfigType    `bson:"configType"`
-	EnvType     string        `bson:"envType"`
+	EnvTypes    []string      `bson:"envTypes"`
 
 	// Spec contains exactly the section identified by ConfigType. Identity
 	// fields stay empty because a rule is a workspace template, not an app spec.

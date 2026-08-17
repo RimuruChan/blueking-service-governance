@@ -1,31 +1,38 @@
 package appdefaults
 
 import (
-	"fmt"
+	"github.com/pkg/errors"
+	"github.com/samber/lo"
 
 	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
 )
 
-// ValidateRule requires a valid environment type and exactly one complete,
-// supported AppSpec section.
+// ValidateRule requires at least one valid environment type and exactly one
+// complete, supported AppSpec section.
 func ValidateRule(rule *Rule) error {
 	if rule.ConfigType != appspec.AppSpecSectionResources && rule.ConfigType != appspec.AppSpecSectionDevMode {
-		return fmt.Errorf("%w: unsupported config type %q", ErrInvalidRule, rule.ConfigType)
+		return errors.Wrapf(ErrInvalidRule, "unsupported config type %q", rule.ConfigType)
 	}
-	if !bkmsenv.IsValidEnvType(rule.EnvType) {
-		return fmt.Errorf("%w: envType must be a valid environment type", ErrInvalidRule)
+	rule.EnvTypes = lo.Uniq(rule.EnvTypes)
+	if len(rule.EnvTypes) == 0 {
+		return errors.Wrapf(ErrInvalidRule, "envTypes must contain at least one environment type")
+	}
+	for _, envType := range rule.EnvTypes {
+		if !bkmsenv.IsValidEnvType(envType) {
+			return errors.Wrapf(ErrInvalidRule, "envTypes must contain only valid environment types")
+		}
 	}
 	if rule.Spec == nil {
-		return fmt.Errorf("%w: spec is required", ErrInvalidRule)
+		return errors.Wrapf(ErrInvalidRule, "spec is required")
 	}
 	if rule.Spec.AppID != "" || rule.Spec.EnvName != "" {
-		return fmt.Errorf("%w: spec identity must be empty in a workspace rule", ErrInvalidRule)
+		return errors.Wrapf(ErrInvalidRule, "spec identity must be empty in a workspace rule")
 	}
 
 	sections := configuredSections(rule.Spec)
 	if len(sections) != 1 || sections[0] != rule.ConfigType {
-		return fmt.Errorf("%w: spec must contain only the %s section", ErrInvalidRule, rule.ConfigType)
+		return errors.Wrapf(ErrInvalidRule, "spec must contain only the %s section", rule.ConfigType)
 	}
 
 	if err := validateSpecCompleteness(rule.ConfigType, rule.Spec); err != nil {
@@ -37,7 +44,7 @@ func ValidateRule(rule *Rule) error {
 	validationSpec := appspec.Clone(rule.Spec)
 	validationSpec.AppID = "rule-validation"
 	if err := appspec.Validate(validationSpec); err != nil {
-		return fmt.Errorf("%w: invalid %s configuration: %v", ErrInvalidRule, rule.ConfigType, err)
+		return errors.Wrapf(ErrInvalidRule, "invalid %s configuration: %v", rule.ConfigType, err)
 	}
 	return nil
 }
@@ -49,11 +56,11 @@ func validateSpecCompleteness(configType ConfigType, spec *appspec.AppSpec) erro
 		if r.Replicas == nil || r.CPURequests == nil ||
 			r.CPULimits == nil || r.MemoryRequests == nil ||
 			r.MemoryLimits == nil {
-			return fmt.Errorf("%w: resources rule must contain all fields", ErrInvalidRule)
+			return errors.Wrapf(ErrInvalidRule, "resources rule must contain all fields")
 		}
 	case appspec.AppSpecSectionDevMode:
 		if spec.DevMode.Enabled == nil {
-			return fmt.Errorf("%w: devMode rule must contain enabled", ErrInvalidRule)
+			return errors.Wrapf(ErrInvalidRule, "devMode rule must contain enabled")
 		}
 	}
 	return nil

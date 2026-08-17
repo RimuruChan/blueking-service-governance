@@ -91,7 +91,7 @@ func createRule[Input, Output any](
 	created := &appdefaults.Rule{
 		WorkspaceID: workspace.ID,
 		ConfigType:  configType,
-		EnvType:     definition.EnvType,
+		EnvTypes:    definition.EnvTypes,
 		Spec:        definition.Spec,
 	}
 	if err = appdefaults.ValidateRule(created); err != nil {
@@ -141,7 +141,7 @@ func updateRule[Input, Output any](
 	}
 	definition := toModel(*input)
 	updated := *before
-	updated.EnvType = definition.EnvType
+	updated.EnvTypes = definition.EnvTypes
 	updated.Spec = definition.Spec
 	if err = appdefaults.ValidateRule(&updated); err != nil {
 		bkerrs.AbortWithErr(c, apiError(err, "update "+configType.String()+" application default rule"))

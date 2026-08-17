@@ -7,7 +7,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
-	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 // CollectionName is the MongoDB collection storing workspace application defaults.
@@ -33,21 +32,9 @@ type RuleStoreMongo struct {
 }
 
 // NewRuleStoreMongo creates a MongoDB-backed rule store.
+// Indexes are managed by db/migrations, see 000005.
 func NewRuleStoreMongo(client *mongo.Client, dbName string) (*RuleStoreMongo, error) {
-	collection := client.Database(dbName).Collection(CollectionName)
-	// A workspace section has at most one rule for each environment type.
-	_, err := collection.Indexes().CreateOne(context.Background(), mongo.IndexModel{
-		Keys: bson.D{
-			{Key: "workspaceID", Value: 1},
-			{Key: "configType", Value: 1},
-			{Key: "envType", Value: 1},
-		},
-		Options: options.Index().SetUnique(true),
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &RuleStoreMongo{collection: collection}, nil
+	return &RuleStoreMongo{collection: client.Database(dbName).Collection(CollectionName)}, nil
 }
 
 // List lists all rules in a workspace.
@@ -118,7 +105,7 @@ func (s *RuleStoreMongo) Create(ctx context.Context, rule *Rule) error {
 	return nil
 }
 
-// Update replaces the editable environment type and configuration of a rule.
+// Update replaces the editable environment types and configuration of a rule.
 func (s *RuleStoreMongo) Update(
 	ctx context.Context,
 	workspaceID string,

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/samber/lo"
+
 	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
 )
@@ -41,7 +43,7 @@ func Resolve(
 	for _, env := range environments {
 		spec := &appspec.AppSpec{AppID: appID, EnvName: env.Name}
 		for _, rule := range rules {
-			if rule.EnvType == env.Type {
+			if lo.Contains(rule.EnvTypes, env.Type) {
 				rule.applyTo(spec)
 			}
 		}

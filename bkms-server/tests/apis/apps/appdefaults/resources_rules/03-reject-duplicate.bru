@@ -12,7 +12,7 @@ post {
 
 body:json {
   {
-    "envType": "production",
+    "envTypes": ["development", "test"],
     "spec": {
       "replicas": 1,
       "cpuRequests": "500m",
@@ -29,7 +29,7 @@ assert {
 }
 
 tests {
-  test("should reject a second resources rule for the same environment type", () => {
+  test("should reject a second resources rule whose envTypes partially overlap an existing rule", () => {
     expect(res.status).to.equal(400);
   });
 }

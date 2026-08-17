@@ -1,0 +1,16 @@
+[
+  {
+    "createIndexes": "workspace_app_spec_rules",
+    "indexes": [
+      {
+        "key": {
+          "workspaceID": 1,
+          "configType": 1,
+          "envTypes": 1
+        },
+        "name": "workspaceID_1_configType_1_envTypes_1",
+        "unique": true
+      }
+    ]
+  }
+]

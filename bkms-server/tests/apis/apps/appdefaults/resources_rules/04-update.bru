@@ -12,7 +12,7 @@ put {
 
 body:json {
   {
-    "envType": "staging",
+    "envTypes": ["staging"],
     "spec": {
       "replicas": 5,
       "cpuRequests": "4",
@@ -32,7 +32,7 @@ tests {
   test("should replace the rule and allow changing its environment type", () => {
     const rule = res.body.data;
     expect(rule.id).to.equal(bru.getVar("resourcesRuleID"));
-    expect(rule.envType).to.equal("staging");
+    expect(rule.envTypes).to.deep.equal(["staging"]);
     expect(rule.spec).to.deep.equal({
       replicas: 5,
       cpuRequests: "4",

@@ -9,6 +9,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
 	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
 	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
@@ -43,7 +44,7 @@ var _ = Describe("Application default resolution", func() {
 	})
 
 	AfterEach(func() {
-		Expect(ruleStore.Drop(ctx)).To(Succeed())
+		Expect(testutil.CleanupCollection(appdefaults.CollectionName)).To(Succeed())
 		Expect(envStore.DeleteAll(ctx)).To(Succeed())
 		Expect(workspaceStore.Delete(ctx, workspace.ID)).To(Succeed())
 		bkmsworkspace.ResetLifecycleHooksForTest()
@@ -111,24 +112,53 @@ var _ = Describe("Application default resolution", func() {
 		Expect(*specs[productionA.Name].DevMode.Enabled).To(BeTrue())
 		Expect(*specs[productionB.Name].DevMode.Enabled).To(BeTrue())
 	})
+
+	It("applies one rule to every environment type it lists", func() {
+		production := dbfactory.EnvWithOpts(ctx, envService, &dbfactory.EnvOpts{
+			WorkspaceID: workspace.ID,
+			Type:        "production",
+		})
+		staging := dbfactory.EnvWithOpts(ctx, envService, &dbfactory.EnvOpts{
+			WorkspaceID: workspace.ID,
+			Type:        "staging",
+		})
+		_ = dbfactory.EnvWithOpts(ctx, envService, &dbfactory.EnvOpts{
+			WorkspaceID: workspace.ID,
+			Type:        "development",
+		})
+		Expect(ruleStore.Create(ctx, resourcesRule(workspace.ID, "production", "staging"))).To(Succeed())
+
+		resolved, err := appdefaults.Resolve(ctx, ruleStore, envStore, workspace.ID, "app-multi-env-types")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resolved.Environments).To(HaveLen(2))
+
+		specs := make(map[string]*appspec.AppSpec, len(resolved.Environments))
+		for _, spec := range resolved.Environments {
+			specs[spec.EnvName] = spec
+		}
+		Expect(specs).To(HaveKey(production.Name))
+		Expect(specs).To(HaveKey(staging.Name))
+		Expect(*specs[production.Name].Resources.Replicas).To(Equal(int32(2)))
+		Expect(*specs[staging.Name].Resources.Replicas).To(Equal(int32(2)))
+	})
 })
 
-func resourcesRule(workspaceID, envType string) *appdefaults.Rule {
+func resourcesRule(workspaceID string, envTypes ...string) *appdefaults.Rule {
 	return &appdefaults.Rule{
 		WorkspaceID: workspaceID,
 		ConfigType:  appspec.AppSpecSectionResources,
-		EnvType:     envType,
+		EnvTypes:    envTypes,
 		Spec: &appspec.AppSpec{
 			Resources: resourcesSpec(2, "500m", "1", "1Gi", "2Gi"),
 		},
 	}
 }
 
-func devModeRule(workspaceID, envType string, enabled bool) *appdefaults.Rule {
+func devModeRule(workspaceID string, envType string, enabled bool) *appdefaults.Rule {
 	return &appdefaults.Rule{
 		WorkspaceID: workspaceID,
 		ConfigType:  appspec.AppSpecSectionDevMode,
-		EnvType:     envType,
+		EnvTypes:    []string{envType},
 		Spec: &appspec.AppSpec{
 			DevMode: &appspec.DevModeSpec{Enabled: lo.ToPtr(enabled)},
 		},

@@ -19,15 +19,15 @@ func (input *DevModeSpecInput) toModel() *appspec.DevModeSpec {
 
 // DevModeRuleInput is the create and replace body for a dev-mode rule.
 type DevModeRuleInput struct {
-	EnvType string            `json:"envType" binding:"required"`
-	Spec    *DevModeSpecInput `json:"spec" binding:"required"`
+	EnvTypes []string          `json:"envTypes" binding:"required,min=1,dive,required"`
+	Spec     *DevModeSpecInput `json:"spec" binding:"required"`
 }
 
 // ToModel converts the input to a dev-mode rule definition.
 func (input DevModeRuleInput) ToModel() appdefaults.RuleDefinition {
 	return appdefaults.RuleDefinition{
-		EnvType: input.EnvType,
-		Spec:    &appspec.AppSpec{DevMode: input.Spec.toModel()},
+		EnvTypes: input.EnvTypes,
+		Spec:     &appspec.AppSpec{DevMode: input.Spec.toModel()},
 	}
 }
 

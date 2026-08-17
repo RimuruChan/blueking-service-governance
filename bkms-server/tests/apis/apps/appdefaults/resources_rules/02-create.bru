@@ -12,7 +12,7 @@ post {
 
 body:json {
   {
-    "envType": "production",
+    "envTypes": ["production", "development"],
     "spec": {
       "replicas": 3,
       "cpuRequests": "2",
@@ -29,10 +29,10 @@ assert {
 }
 
 tests {
-  test("should create a complete production resources rule", () => {
+  test("should create a resources rule bound to multiple environment types", () => {
     const rule = res.body.data;
     expect(rule.id).to.be.a("string").and.not.be.empty;
-    expect(rule.envType).to.equal("production");
+    expect(rule.envTypes).to.deep.equal(["production", "development"]);
     expect(rule.spec).to.deep.equal({
       replicas: 3,
       cpuRequests: "2",

@@ -79,19 +79,19 @@ Workspace 可以按环境类型配置 AppSpec 初始值。创建 tRPC 或 TAF �
 
 一条规则表示：某个 Workspace 中，某种环境类型的某个 AppSpec 配置块应该用什么初始值。代码中将配置块称为 section。
 
-规则由以下内容唯一确定：
+规则由以下内容约束占用关系：
 
 ```text
-Workspace + AppSpec section + 环境类型
+同一 Workspace + 同一 AppSpec section 下，任一环境类型最多被一条规则包含
 ```
 
-例如：
+一条规则可以绑定多种环境类型，这些类型共用同一份 section 配置。例如：
 
 ```text
-demo-workspace + resources + production
+demo-workspace + resources + [production, staging]
 ```
 
-表示在 `demo-workspace` 中创建应用时，所有 `production` 标准环境都使用这条资源规格初始化配置。
+表示在 `demo-workspace` 中创建应用时，所有 `production` 和 `staging` 标准环境都使用这条资源规格初始化配置。
 
 规则只支持环境类型，不支持“所有环境”规则和“特定环境”规则。平台默认 AppSpec 也不属于规则。
 
@@ -112,17 +112,18 @@ demo-workspace + resources + production
 
 ## 示例
 
-假设 Workspace 中有三个标准环境：
+假设 Workspace 中有四个标准环境：
 
 | 环境名称 | 环境类型 |
 |----------|----------|
 | `dev` | `development` |
 | `test` | `test` |
+| `stag` | `staging` |
 | `prod` | `production` |
 
 Workspace 配置了两类规则：
 
-- `production` 的资源规格规则。
+- `production` 与 `staging` 共用的资源规格规则。
 - `test` 的开发模式规则。
 
 创建一个新的 tRPC 或 TAF 应用后，会得到：
@@ -132,9 +133,10 @@ Workspace 配置了两类规则：
 | 默认 AppSpec | 平台资源规格、平台更新策略 |
 | `dev` 环境 AppSpec | 不创建，因为没有规则命中 |
 | `test` 环境 AppSpec | 开发模式 |
+| `stag` 环境 AppSpec | 资源规格 |
 | `prod` 环境 AppSpec | 资源规格 |
 
-`prod` 环境的资源规格来自 Workspace 规则；默认 AppSpec 中的平台资源规格仍然保持不变。两者是不同的 AppSpec 记录。
+`prod` 和 `stag` 的资源规格来自同一条 Workspace 规则；默认 AppSpec 中的平台资源规格仍然保持不变。两者是不同的 AppSpec 记录。
 
 ## API
 
@@ -167,7 +169,7 @@ DELETE /workspaces/:workspaceID/app-spec/:section/:ruleID
 
 ```json
 {
-  "envType": "production",
+  "envTypes": ["production", "staging"],
   "spec": {
     "replicas": 3,
     "cpuRequests": "2",
@@ -178,9 +180,9 @@ DELETE /workspaces/:workspaceID/app-spec/:section/:ruleID
 }
 ```
 
-`PUT` 可以同时修改环境类型和 section 配置。section 由 URL 决定，不能通过请求体修改。
+`PUT` 用请求中的完整 `envTypes` 和 section 配置整体替换原规则。section 由 URL 决定，不能通过请求体修改。
 
-同一 Workspace、同一 section、同一环境类型只能有一条规则。新增或更新后发生重复时返回 `400`。
+同一 Workspace、同一 section 下，任一环境类型只能出现在一条规则中。新增或更新后发生占用冲突时返回 `400`。请求中的 `envTypes` 会按首次出现顺序去重；空数组或不支持的类型返回 `400`。
 
 ### 删除
 
@@ -196,7 +198,7 @@ DELETE /workspaces/:workspaceID/app-spec/:section/:ruleID
 
 新增和编辑时会检查：
 
-- `envType` 必须是支持的标准环境类型。
+- `envTypes` 必须包含至少一个支持的标准环境类型。
 - `spec` 必须存在。
 - 请求中的 `spec` 只能包含当前接口对应的 section。
 - 需要完整提交的字段不能缺失。
@@ -215,14 +217,14 @@ type Rule struct {
     ID          bson.ObjectID
     WorkspaceID string
     ConfigType  appspec.AppSpecSectionID
-    EnvType     string
+    EnvTypes    []string
     Spec        *appspec.AppSpec
     CreatedAt   time.Time
     UpdatedAt   time.Time
 }
 ```
 
-MongoDB 使用唯一索引 `(workspaceID, configType, envType)` 防止同一规则位置被重复占用。
+MongoDB 使用唯一索引 `(workspaceID, configType, envTypes)`（见 `db/migrations/000005_workspace_app_spec_rules_env_types_idx`）。`envTypes` 是数组，索引按元素展开，因此同一 section 下两个规则不能占用相同环境类型。
 
 删除 Workspace 时，会同时删除该 Workspace 的全部规则。删除单个环境时不需要清理规则，因为规则引用的是环境类型，不引用具体环境。
 
@@ -234,7 +236,7 @@ MongoDB 使用唯一索引 `(workspaceID, configType, envType)` 防止同一规�
 | `model.go` | Rule 数据结构和 section 写入逻辑 |
 | `validate.go` | 规则内容校验 |
 | `resolve.go` | 创建应用时解析默认 AppSpec |
-| `store.go` | MongoDB 读写和唯一索引 |
+| `store.go` | MongoDB 读写；唯一索引由 `db/migrations/000005_*` 管理 |
 | `router.go` | API 路由 |
 | `handler/` | 各 section 的规则校验、数据库操作和审计 |
 | `serializer/` | 各 section 的请求和响应结构 |

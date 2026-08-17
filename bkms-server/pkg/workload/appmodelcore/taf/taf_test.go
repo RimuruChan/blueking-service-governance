@@ -87,7 +87,7 @@ var _ = Describe("TAF application service", func() {
 		err := ruleStore.Create(ctx, &appdefaults.Rule{
 			WorkspaceID: workspace.ID,
 			ConfigType:  appspec.AppSpecSectionResources,
-			EnvType:     environment.Type,
+			EnvTypes:    []string{environment.Type},
 			Spec: &appspec.AppSpec{
 				Resources: &appspec.ResourcesSpec{
 					Replicas:       lo.ToPtr(int32(2)),
@@ -102,7 +102,7 @@ var _ = Describe("TAF application service", func() {
 		err = ruleStore.Create(ctx, &appdefaults.Rule{
 			WorkspaceID: workspace.ID,
 			ConfigType:  appspec.AppSpecSectionDevMode,
-			EnvType:     environment.Type,
+			EnvTypes:    []string{environment.Type},
 			Spec: &appspec.AppSpec{
 				DevMode: &appspec.DevModeSpec{Enabled: lo.ToPtr(true)},
 			},

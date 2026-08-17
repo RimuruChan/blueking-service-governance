@@ -1,11 +1,11 @@
 meta {
-  name: delete-resources-rule
+  name: delete-second-resources-rule
   type: http
   seq: 2
 }
 
 delete {
-  url: {{serviceURL}}/workspaces/{{appDefaultsWorkspaceID}}/app-spec/resources/{{resourcesRuleID}}
+  url: {{serviceURL}}/workspaces/{{appDefaultsWorkspaceID}}/app-spec/resources/{{resourcesRuleID2}}
   body: none
   auth: inherit
 }

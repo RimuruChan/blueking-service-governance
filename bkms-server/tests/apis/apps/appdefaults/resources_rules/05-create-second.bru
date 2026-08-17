@@ -1,0 +1,52 @@
+meta {
+  name: create-second-resources-rule
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{serviceURL}}/workspaces/{{appDefaultsWorkspaceID}}/app-spec/resources
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "envTypes": ["test"],
+    "spec": {
+      "replicas": 2,
+      "cpuRequests": "1",
+      "cpuLimits": "2",
+      "memoryRequests": "2Gi",
+      "memoryLimits": "4Gi"
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body: isJson
+}
+
+tests {
+  test("should allow a second resources rule when envTypes do not overlap", () => {
+    const rule = res.body.data;
+    expect(rule.id).to.be.a("string").and.not.be.empty;
+    expect(rule.id).to.not.equal(bru.getVar("resourcesRuleID"));
+    expect(rule.envTypes).to.deep.equal(["test"]);
+    expect(rule.spec).to.deep.equal({
+      replicas: 2,
+      cpuRequests: "1",
+      cpuLimits: "2",
+      memoryRequests: "2Gi",
+      memoryLimits: "4Gi"
+    });
+
+    bru.setVar("resourcesRuleID2", rule.id);
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 10000
+}

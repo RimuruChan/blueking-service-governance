@@ -27,12 +27,12 @@ var _ = Describe("Rule serializers", func() {
 		func(factory conversionFactory) {
 			definition, expectedSpec := factory()
 
-			Expect(definition.EnvType).To(Equal("production"))
+			Expect(definition.EnvTypes).To(Equal([]string{"production"}))
 			Expect(definition.Spec).To(Equal(expectedSpec))
 		},
 		Entry("resources", conversionFactory(func() (appdefaults.RuleDefinition, *appspec.AppSpec) {
 			input := serializer.ResourcesRuleInput{
-				EnvType: "production",
+				EnvTypes: []string{"production"},
 				Spec: &serializer.ResourcesSpecInput{
 					Replicas:       pointerTo(int32(0)),
 					CPURequests:    pointerTo("1500m"),
@@ -55,8 +55,8 @@ var _ = Describe("Rule serializers", func() {
 			*appspec.AppSpec,
 		) {
 			input := serializer.DevModeRuleInput{
-				EnvType: "production",
-				Spec:    &serializer.DevModeSpecInput{Enabled: pointerTo(false)},
+				EnvTypes: []string{"production"},
+				Spec:     &serializer.DevModeSpecInput{Enabled: pointerTo(false)},
 			}
 			expected := &appspec.AppSpec{DevMode: &appspec.DevModeSpec{Enabled: pointerTo(false)}}
 			return input.ToModel(), expected
@@ -69,7 +69,7 @@ var _ = Describe("Rule serializers", func() {
 			rule := appdefaults.Rule{
 				ID:          bson.NewObjectID(),
 				WorkspaceID: "workspace-1",
-				EnvType:     "production",
+				EnvTypes:    []string{"production"},
 				Spec: &appspec.AppSpec{
 					Resources: &appspec.ResourcesSpec{
 						Replicas:       pointerTo(int32(1)),
@@ -91,7 +91,7 @@ var _ = Describe("Rule serializers", func() {
 			Expect(json.Unmarshal(encoded, &payload)).To(Succeed())
 			Expect(payload).To(HaveLen(5))
 			Expect(payload).To(HaveKeyWithValue("id", rule.ID.Hex()))
-			Expect(payload).To(HaveKeyWithValue("envType", "production"))
+			Expect(payload).To(HaveKeyWithValue("envTypes", []any{"production"}))
 			Expect(payload).To(HaveKey("createdAt"))
 			Expect(payload).To(HaveKey("updatedAt"))
 			Expect(payload).To(HaveKeyWithValue("spec", expectedSpec))

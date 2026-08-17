@@ -22,7 +22,7 @@ type RuleURIInput struct {
 // RuleOutputFields contains fields shared by every section rule response.
 type RuleOutputFields struct {
 	ID        string    `json:"id"`
-	EnvType   string    `json:"envType"`
+	EnvTypes  []string  `json:"envTypes"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
@@ -30,7 +30,7 @@ type RuleOutputFields struct {
 func (output *RuleOutputFields) fromModel(rule appdefaults.Rule) {
 	*output = RuleOutputFields{
 		ID:        rule.ID.Hex(),
-		EnvType:   rule.EnvType,
+		EnvTypes:  rule.EnvTypes,
 		CreatedAt: rule.CreatedAt,
 		UpdatedAt: rule.UpdatedAt,
 	}

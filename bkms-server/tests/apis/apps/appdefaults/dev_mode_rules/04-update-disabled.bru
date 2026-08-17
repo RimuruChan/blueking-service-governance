@@ -12,7 +12,7 @@ put {
 
 body:json {
   {
-    "envType": "staging",
+    "envTypes": ["staging"],
     "spec": {
       "enabled": false
     }
@@ -28,7 +28,7 @@ tests {
   test("should preserve an explicit false value", () => {
     const rule = res.body.data;
     expect(rule.id).to.equal(bru.getVar("devModeRuleID"));
-    expect(rule.envType).to.equal("staging");
+    expect(rule.envTypes).to.deep.equal(["staging"]);
     expect(rule.spec).to.deep.equal({enabled: false});
   });
 }

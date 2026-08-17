@@ -12,7 +12,7 @@ post {
 
 body:json {
   {
-    "envType": "staging",
+    "envTypes": ["staging"],
     "spec": {
       "enabled": true
     }
@@ -29,7 +29,7 @@ tests {
     const rule = res.body.data;
     expect(rule.id).to.be.a("string").and.not.be.empty;
     expect(rule.id).to.not.equal(bru.getVar("resourcesRuleID"));
-    expect(rule.envType).to.equal("staging");
+    expect(rule.envTypes).to.deep.equal(["staging"]);
     expect(rule.spec).to.deep.equal({enabled: true});
 
     bru.setVar("devModeRuleID", rule.id);

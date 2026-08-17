@@ -1,0 +1,40 @@
+meta {
+  name: reject-update-resources-rule-scope-conflict
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{serviceURL}}/workspaces/{{appDefaultsWorkspaceID}}/app-spec/resources/{{resourcesRuleID}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "envTypes": ["test"],
+    "spec": {
+      "replicas": 7,
+      "cpuRequests": "8",
+      "cpuLimits": "16",
+      "memoryRequests": "16Gi",
+      "memoryLimits": "32Gi"
+    }
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body: isJson
+}
+
+tests {
+  test("should reject updating a rule to envTypes already occupied by another rule", () => {
+    expect(res.status).to.equal(400);
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 10000
+}

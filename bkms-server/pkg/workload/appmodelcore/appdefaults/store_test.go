@@ -9,6 +9,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appdefaults"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
 )
@@ -29,7 +30,7 @@ var _ = Describe("Application default rule store", func() {
 	})
 
 	AfterEach(func() {
-		Expect(store.Drop(ctx)).To(Succeed())
+		Expect(testutil.CleanupCollection(appdefaults.CollectionName)).To(Succeed())
 		diApp.RequireStop()
 	})
 
@@ -56,7 +57,7 @@ var _ = Describe("Application default rule store", func() {
 		stored, err := store.Get(ctx, "workspace-a", appspec.AppSpecSectionResources, resources.ID)
 		Expect(err).NotTo(HaveOccurred())
 		updated := *stored
-		updated.EnvType = "test"
+		updated.EnvTypes = []string{"test"}
 		updated.Spec = &appspec.AppSpec{
 			Resources: resourcesSpec(3, "1", "2", "2Gi", "4Gi"),
 		}
@@ -64,7 +65,7 @@ var _ = Describe("Application default rule store", func() {
 
 		stored, err = store.Get(ctx, "workspace-a", appspec.AppSpecSectionResources, resources.ID)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(stored.EnvType).To(Equal("test"))
+		Expect(stored.EnvTypes).To(Equal([]string{"test"}))
 		Expect(*stored.Spec.Resources.Replicas).To(Equal(int32(3)))
 
 		_, err = store.Get(ctx, "workspace-b", appspec.AppSpecSectionResources, resources.ID)
@@ -83,5 +84,14 @@ var _ = Describe("Application default rule store", func() {
 		Expect(store.Create(ctx, resourcesRule("workspace-conflict", "production"))).To(Succeed())
 		err := store.Create(ctx, resourcesRule("workspace-conflict", "production"))
 		Expect(errors.Is(err, appdefaults.ErrRuleConflict)).To(BeTrue())
+	})
+
+	It("rejects overlapping environment types in the same section", func() {
+		Expect(store.Create(ctx, resourcesRule("workspace-overlap", "production", "staging"))).To(Succeed())
+		err := store.Create(ctx, resourcesRule("workspace-overlap", "staging", "test"))
+		Expect(errors.Is(err, appdefaults.ErrRuleConflict)).To(BeTrue())
+
+		Expect(store.Create(ctx, resourcesRule("workspace-overlap", "test"))).To(Succeed())
+		Expect(store.Create(ctx, devModeRule("workspace-overlap", "production", true))).To(Succeed())
 	})
 })

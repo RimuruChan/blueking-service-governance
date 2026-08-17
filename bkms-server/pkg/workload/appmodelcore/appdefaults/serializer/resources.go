@@ -30,15 +30,15 @@ func (input *ResourcesSpecInput) toModel() *appspec.ResourcesSpec {
 
 // ResourcesRuleInput is the create and replace body for a resources rule.
 type ResourcesRuleInput struct {
-	EnvType string              `json:"envType" binding:"required"`
-	Spec    *ResourcesSpecInput `json:"spec" binding:"required"`
+	EnvTypes []string            `json:"envTypes" binding:"required,min=1,dive,required"`
+	Spec     *ResourcesSpecInput `json:"spec" binding:"required"`
 }
 
 // ToModel converts the input to a resources rule definition.
 func (input ResourcesRuleInput) ToModel() appdefaults.RuleDefinition {
 	return appdefaults.RuleDefinition{
-		EnvType: input.EnvType,
-		Spec:    &appspec.AppSpec{Resources: input.Spec.toModel()},
+		EnvTypes: input.EnvTypes,
+		Spec:     &appspec.AppSpec{Resources: input.Spec.toModel()},
 	}
 }
 
