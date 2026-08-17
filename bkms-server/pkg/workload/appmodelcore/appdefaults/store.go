@@ -15,11 +15,12 @@ const CollectionName = "workspace_app_spec_rules"
 // RuleStore persists workspace application default rules.
 type RuleStore interface {
 	List(ctx context.Context, workspaceID string) ([]Rule, error)
-	ListByConfigType(ctx context.Context, workspaceID string, configType ConfigType) ([]Rule, error)
-	Get(ctx context.Context, workspaceID string, configType ConfigType, id bson.ObjectID) (*Rule, error)
+	ListByAppType(ctx context.Context, workspaceID, appType string) ([]Rule, error)
+	ListByConfigType(ctx context.Context, workspaceID, appType string, configType ConfigType) ([]Rule, error)
+	Get(ctx context.Context, workspaceID, appType string, configType ConfigType, id bson.ObjectID) (*Rule, error)
 	Create(ctx context.Context, rule *Rule) error
-	Update(ctx context.Context, workspaceID string, configType ConfigType, rule *Rule) error
-	Delete(ctx context.Context, workspaceID string, configType ConfigType, id bson.ObjectID) (*Rule, error)
+	Update(ctx context.Context, workspaceID, appType string, configType ConfigType, rule *Rule) error
+	Delete(ctx context.Context, workspaceID, appType string, configType ConfigType, id bson.ObjectID) (*Rule, error)
 	DeleteByWorkspace(ctx context.Context, workspaceID string) error
 	Drop(ctx context.Context) error
 }
@@ -42,14 +43,23 @@ func (s *RuleStoreMongo) List(ctx context.Context, workspaceID string) ([]Rule, 
 	return s.list(ctx, bson.M{"workspaceID": workspaceID})
 }
 
-// ListByConfigType lists one section's rules in a workspace.
+// ListByAppType lists all rules for one application type in a workspace.
+func (s *RuleStoreMongo) ListByAppType(ctx context.Context, workspaceID, appType string) ([]Rule, error) {
+	return s.list(ctx, bson.M{
+		"workspaceID": workspaceID,
+		"appType":     appType,
+	})
+}
+
+// ListByConfigType lists one section's rules for one application type in a workspace.
 func (s *RuleStoreMongo) ListByConfigType(
 	ctx context.Context,
-	workspaceID string,
+	workspaceID, appType string,
 	configType ConfigType,
 ) ([]Rule, error) {
 	return s.list(ctx, bson.M{
 		"workspaceID": workspaceID,
+		"appType":     appType,
 		"configType":  configType,
 	})
 }
@@ -68,10 +78,10 @@ func (s *RuleStoreMongo) list(ctx context.Context, filter bson.M) ([]Rule, error
 	return rules, nil
 }
 
-// Get gets one rule by workspace, config type, and ID.
+// Get gets one rule by workspace, app type, config type, and ID.
 func (s *RuleStoreMongo) Get(
 	ctx context.Context,
-	workspaceID string,
+	workspaceID, appType string,
 	configType ConfigType,
 	id bson.ObjectID,
 ) (*Rule, error) {
@@ -79,6 +89,7 @@ func (s *RuleStoreMongo) Get(
 	err := s.collection.FindOne(ctx, bson.M{
 		"_id":         id,
 		"workspaceID": workspaceID,
+		"appType":     appType,
 		"configType":  configType,
 	}).Decode(rule)
 	if err != nil {
@@ -108,7 +119,7 @@ func (s *RuleStoreMongo) Create(ctx context.Context, rule *Rule) error {
 // Update replaces the editable environment types and configuration of a rule.
 func (s *RuleStoreMongo) Update(
 	ctx context.Context,
-	workspaceID string,
+	workspaceID, appType string,
 	configType ConfigType,
 	rule *Rule,
 ) error {
@@ -118,6 +129,7 @@ func (s *RuleStoreMongo) Update(
 	result, err := s.collection.ReplaceOne(ctx, bson.M{
 		"_id":         rule.ID,
 		"workspaceID": workspaceID,
+		"appType":     appType,
 		"configType":  configType,
 	}, rule)
 	if err != nil {
@@ -132,10 +144,10 @@ func (s *RuleStoreMongo) Update(
 	return nil
 }
 
-// Delete deletes and returns one rule by workspace, config type, and ID.
+// Delete deletes and returns one rule by workspace, app type, config type, and ID.
 func (s *RuleStoreMongo) Delete(
 	ctx context.Context,
-	workspaceID string,
+	workspaceID, appType string,
 	configType ConfigType,
 	id bson.ObjectID,
 ) (*Rule, error) {
@@ -143,6 +155,7 @@ func (s *RuleStoreMongo) Delete(
 	err := s.collection.FindOneAndDelete(ctx, bson.M{
 		"_id":         id,
 		"workspaceID": workspaceID,
+		"appType":     appType,
 		"configType":  configType,
 	}).Decode(rule)
 	if err != nil {

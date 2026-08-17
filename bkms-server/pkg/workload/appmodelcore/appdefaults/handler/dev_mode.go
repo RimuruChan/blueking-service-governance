@@ -16,10 +16,11 @@ import (
 //	@Security	BkUserInfo
 //	@Security	BkUserCredential
 //	@Param		workspaceID	path		string	true	"工作空间 ID"
+//	@Param		appType		path		string	true	"应用类型（trpc/taf）"
 //	@Success	200			{object}	serializer.ListDevModeRulesOutput
 //	@Failure	400			{object}	bkerrs.GinErrorOutput
 //	@Failure	404			{object}	bkerrs.GinErrorOutput
-//	@Router		/workspaces/{workspaceID}/app-spec/dev-mode [get]
+//	@Router		/workspaces/{workspaceID}/app-spec/{appType}/dev-mode [get]
 func (h *Handler) ListDevModeRules(c *gin.Context) {
 	listRules(h, c, appspec.AppSpecSectionDevMode, (*serializer.DevModeRuleOutputObj).FromModel)
 }
@@ -33,12 +34,13 @@ func (h *Handler) ListDevModeRules(c *gin.Context) {
 //	@Produce	json
 //	@Security	BkUserInfo
 //	@Security	BkUserCredential
-//	@Param		workspaceID	path		string						true	"工作空间 ID"
+//	@Param		workspaceID	path		string	true	"工作空间 ID"
+//	@Param		appType		path		string	true	"应用类型（trpc/taf）"
 //	@Param		body		body		serializer.DevModeRuleInput	true	"开发模式默认配置规则"
 //	@Success	200			{object}	serializer.DevModeRuleOutput
 //	@Failure	400			{object}	bkerrs.GinErrorOutput
 //	@Failure	404			{object}	bkerrs.GinErrorOutput
-//	@Router		/workspaces/{workspaceID}/app-spec/dev-mode [post]
+//	@Router		/workspaces/{workspaceID}/app-spec/{appType}/dev-mode [post]
 func (h *Handler) CreateDevModeRule(c *gin.Context) {
 	createRule(
 		h,
@@ -58,13 +60,14 @@ func (h *Handler) CreateDevModeRule(c *gin.Context) {
 //	@Produce	json
 //	@Security	BkUserInfo
 //	@Security	BkUserCredential
-//	@Param		workspaceID	path		string						true	"工作空间 ID"
-//	@Param		ruleID		path		string						true	"规则 ID"
+//	@Param		workspaceID	path		string	true	"工作空间 ID"
+//	@Param		appType		path		string	true	"应用类型（trpc/taf）"
+//	@Param		ruleID		path		string	true	"规则 ID"
 //	@Param		body		body		serializer.DevModeRuleInput	true	"开发模式默认配置规则"
 //	@Success	200			{object}	serializer.DevModeRuleOutput
 //	@Failure	400			{object}	bkerrs.GinErrorOutput
 //	@Failure	404			{object}	bkerrs.GinErrorOutput
-//	@Router		/workspaces/{workspaceID}/app-spec/dev-mode/{ruleID} [put]
+//	@Router		/workspaces/{workspaceID}/app-spec/{appType}/dev-mode/{ruleID} [put]
 func (h *Handler) UpdateDevModeRule(c *gin.Context) {
 	updateRule(
 		h,
@@ -84,11 +87,12 @@ func (h *Handler) UpdateDevModeRule(c *gin.Context) {
 //	@Security	BkUserInfo
 //	@Security	BkUserCredential
 //	@Param		workspaceID	path		string	true	"工作空间 ID"
+//	@Param		appType		path		string	true	"应用类型（trpc/taf）"
 //	@Param		ruleID		path		string	true	"规则 ID"
 //	@Success	200			{object}	serializer.EmptyOutput
 //	@Failure	400			{object}	bkerrs.GinErrorOutput
 //	@Failure	404			{object}	bkerrs.GinErrorOutput
-//	@Router		/workspaces/{workspaceID}/app-spec/dev-mode/{ruleID} [delete]
+//	@Router		/workspaces/{workspaceID}/app-spec/{appType}/dev-mode/{ruleID} [delete]
 func (h *Handler) DeleteDevModeRule(c *gin.Context) {
 	deleteRule(h, c, appspec.AppSpecSectionDevMode)
 }

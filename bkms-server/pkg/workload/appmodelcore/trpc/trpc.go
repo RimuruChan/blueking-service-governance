@@ -105,6 +105,7 @@ func (s *Service) Create(ctx context.Context, app *bkmsapp.Application, params *
 		s.appDefaultRuleStore,
 		s.envStore,
 		app.WorkspaceID,
+		bkmsapp.AppTypeTRPC,
 		app.ID,
 	)
 	if err != nil {

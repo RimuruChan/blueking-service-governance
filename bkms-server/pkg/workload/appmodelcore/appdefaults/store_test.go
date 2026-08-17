@@ -10,6 +10,7 @@ import (
 	"go.uber.org/fx/fxtest"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil"
+	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appdefaults"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
 )
@@ -49,35 +50,36 @@ var _ = Describe("Application default rule store", func() {
 		resourcesRules, err := store.ListByConfigType(
 			ctx,
 			"workspace-a",
+			bkmsapp.AppTypeTRPC,
 			appspec.AppSpecSectionResources,
 		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resourcesRules).To(HaveLen(1))
 		Expect(resourcesRules[0].ID).To(Equal(resources.ID))
 
-		stored, err := store.Get(ctx, "workspace-a", appspec.AppSpecSectionResources, resources.ID)
+		stored, err := store.Get(ctx, "workspace-a", bkmsapp.AppTypeTRPC, appspec.AppSpecSectionResources, resources.ID)
 		Expect(err).NotTo(HaveOccurred())
 		updated := *stored
 		updated.EnvTypes = []string{"test"}
 		updated.Spec = &appspec.AppSpec{
 			Resources: resourcesSpec(3, "1", "2", "2Gi", "4Gi"),
 		}
-		Expect(store.Update(ctx, "workspace-a", appspec.AppSpecSectionResources, &updated)).To(Succeed())
+		Expect(store.Update(ctx, "workspace-a", bkmsapp.AppTypeTRPC, appspec.AppSpecSectionResources, &updated)).To(Succeed())
 
-		stored, err = store.Get(ctx, "workspace-a", appspec.AppSpecSectionResources, resources.ID)
+		stored, err = store.Get(ctx, "workspace-a", bkmsapp.AppTypeTRPC, appspec.AppSpecSectionResources, resources.ID)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(stored.EnvTypes).To(Equal([]string{"test"}))
 		Expect(*stored.Spec.Resources.Replicas).To(Equal(int32(3)))
 
-		_, err = store.Get(ctx, "workspace-b", appspec.AppSpecSectionResources, resources.ID)
+		_, err = store.Get(ctx, "workspace-b", bkmsapp.AppTypeTRPC, appspec.AppSpecSectionResources, resources.ID)
 		Expect(errors.Is(err, appdefaults.ErrRuleNotFound)).To(BeTrue())
-		_, err = store.Get(ctx, "workspace-a", appspec.AppSpecSectionDevMode, resources.ID)
+		_, err = store.Get(ctx, "workspace-a", bkmsapp.AppTypeTRPC, appspec.AppSpecSectionDevMode, resources.ID)
 		Expect(errors.Is(err, appdefaults.ErrRuleNotFound)).To(BeTrue())
 
-		deleted, err := store.Delete(ctx, "workspace-a", appspec.AppSpecSectionResources, resources.ID)
+		deleted, err := store.Delete(ctx, "workspace-a", bkmsapp.AppTypeTRPC, appspec.AppSpecSectionResources, resources.ID)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(deleted.ID).To(Equal(resources.ID))
-		_, err = store.Get(ctx, "workspace-a", appspec.AppSpecSectionResources, resources.ID)
+		_, err = store.Get(ctx, "workspace-a", bkmsapp.AppTypeTRPC, appspec.AppSpecSectionResources, resources.ID)
 		Expect(errors.Is(err, appdefaults.ErrRuleNotFound)).To(BeTrue())
 	})
 
@@ -94,5 +96,13 @@ var _ = Describe("Application default rule store", func() {
 
 		Expect(store.Create(ctx, resourcesRule("workspace-overlap", "test"))).To(Succeed())
 		Expect(store.Create(ctx, devModeRule("workspace-overlap", "production", true))).To(Succeed())
+	})
+
+	It("allows the same envTypes for different app types", func() {
+		trpcRule := resourcesRule("workspace-app-type", "production")
+		tafRule := resourcesRule("workspace-app-type", "production")
+		tafRule.AppType = bkmsapp.AppTypeTAF
+		Expect(store.Create(ctx, trpcRule)).To(Succeed())
+		Expect(store.Create(ctx, tafRule)).To(Succeed())
 	})
 })

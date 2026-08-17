@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
@@ -41,9 +42,13 @@ func listRules[Output any](
 	configType appdefaults.ConfigType,
 	fromModel func(*Output, appdefaults.Rule) *Output,
 ) {
-	var uri serializer.WorkspaceURIInput
+	var uri serializer.WorkspaceAppTypeURIInput
 	if err := ginutils.BindURI(c, &uri); err != nil {
 		bkerrs.AbortWithErr(c, err)
+		return
+	}
+	if !bkmsapp.IsAppModelType(uri.AppType) {
+		bkerrs.AbortWithErr(c, bkerrs.New(bkerrs.ErrCodeInvalidArgument, "unsupported app type "+uri.AppType))
 		return
 	}
 
@@ -54,7 +59,7 @@ func listRules[Output any](
 		return
 	}
 
-	rules, err := h.registry.AppDefaultRuleStore.ListByConfigType(ctx, workspace.ID, configType)
+	rules, err := h.registry.AppDefaultRuleStore.ListByConfigType(ctx, workspace.ID, uri.AppType, configType)
 	if err != nil {
 		bkerrs.AbortWithErr(c, apiError(err, "list "+configType.String()+" application default rules"))
 		return
@@ -74,9 +79,13 @@ func createRule[Input, Output any](
 	fromModel func(*Output, appdefaults.Rule) *Output,
 ) {
 	input := new(Input)
-	var uri serializer.WorkspaceURIInput
+	var uri serializer.WorkspaceAppTypeURIInput
 	if err := ginutils.BindURIJSON(c, &uri, input); err != nil {
 		bkerrs.AbortWithErr(c, err)
+		return
+	}
+	if !bkmsapp.IsAppModelType(uri.AppType) {
+		bkerrs.AbortWithErr(c, bkerrs.New(bkerrs.ErrCodeInvalidArgument, "unsupported app type "+uri.AppType))
 		return
 	}
 
@@ -90,6 +99,7 @@ func createRule[Input, Output any](
 	definition := toModel(*input)
 	created := &appdefaults.Rule{
 		WorkspaceID: workspace.ID,
+		AppType:     uri.AppType,
 		ConfigType:  configType,
 		EnvTypes:    definition.EnvTypes,
 		Spec:        definition.Spec,
@@ -119,6 +129,10 @@ func updateRule[Input, Output any](
 		bkerrs.AbortWithErr(c, err)
 		return
 	}
+	if !bkmsapp.IsAppModelType(uri.AppType) {
+		bkerrs.AbortWithErr(c, bkerrs.New(bkerrs.ErrCodeInvalidArgument, "unsupported app type "+uri.AppType))
+		return
+	}
 
 	ctx := c.Request.Context()
 	workspace, err := perm.ValidateWorkspaceByID(ctx, h.registry, uri.WorkspaceID, perm.TypeEdit)
@@ -132,9 +146,9 @@ func updateRule[Input, Output any](
 		return
 	}
 
-	// Workspace and config type stay fixed by the route; updating another
-	// section with the same rule ID therefore resolves as not found.
-	before, err := h.registry.AppDefaultRuleStore.Get(ctx, workspace.ID, configType, ruleID)
+	// Workspace, app type, and config type stay fixed by the route; updating
+	// another section or app type with the same rule ID resolves as not found.
+	before, err := h.registry.AppDefaultRuleStore.Get(ctx, workspace.ID, uri.AppType, configType, ruleID)
 	if err != nil {
 		bkerrs.AbortWithErr(c, apiError(err, "update "+configType.String()+" application default rule"))
 		return
@@ -147,7 +161,7 @@ func updateRule[Input, Output any](
 		bkerrs.AbortWithErr(c, apiError(err, "update "+configType.String()+" application default rule"))
 		return
 	}
-	if err = h.registry.AppDefaultRuleStore.Update(ctx, workspace.ID, configType, &updated); err != nil {
+	if err = h.registry.AppDefaultRuleStore.Update(ctx, workspace.ID, uri.AppType, configType, &updated); err != nil {
 		bkerrs.AbortWithErr(c, apiError(err, "update "+configType.String()+" application default rule"))
 		return
 	}
@@ -165,6 +179,10 @@ func deleteRule(
 		bkerrs.AbortWithErr(c, err)
 		return
 	}
+	if !bkmsapp.IsAppModelType(uri.AppType) {
+		bkerrs.AbortWithErr(c, bkerrs.New(bkerrs.ErrCodeInvalidArgument, "unsupported app type "+uri.AppType))
+		return
+	}
 
 	ctx := c.Request.Context()
 	workspace, err := perm.ValidateWorkspaceByID(ctx, h.registry, uri.WorkspaceID, perm.TypeEdit)
@@ -178,7 +196,7 @@ func deleteRule(
 		return
 	}
 
-	deleted, err := h.registry.AppDefaultRuleStore.Delete(ctx, workspace.ID, configType, ruleID)
+	deleted, err := h.registry.AppDefaultRuleStore.Delete(ctx, workspace.ID, uri.AppType, configType, ruleID)
 	if err != nil {
 		bkerrs.AbortWithErr(c, apiError(err, "delete "+configType.String()+" application default rule"))
 		return

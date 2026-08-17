@@ -28,7 +28,7 @@ Workspace 可以按环境类型配置 AppSpec 初始值。创建 tRPC 或 TAF �
 
 系统按下面的顺序准备初始配置：
 
-1. 读取当前 Workspace 的全部环境类型规则和标准环境。
+1. 读取当前 Workspace 中该应用类型（tRPC 或 TAF）的全部环境类型规则和标准环境。
 2. 开始计算时先生成默认 AppSpec，其中固定包含平台资源规格和更新策略。
 3. 再按标准环境的类型匹配规则，为有规则命中的环境生成环境 AppSpec。
 4. 将默认 AppSpec 应用到 AppModel，并保存默认 AppSpec 和环境 AppSpec。
@@ -82,16 +82,16 @@ Workspace 可以按环境类型配置 AppSpec 初始值。创建 tRPC 或 TAF �
 规则由以下内容约束占用关系：
 
 ```text
-同一 Workspace + 同一 AppSpec section 下，任一环境类型最多被一条规则包含
+同一 Workspace + 同一应用类型（trpc/taf）+ 同一 AppSpec section 下，任一环境类型最多被一条规则包含
 ```
 
 一条规则可以绑定多种环境类型，这些类型共用同一份 section 配置。例如：
 
 ```text
-demo-workspace + resources + [production, staging]
+demo-workspace + trpc + resources + [production, staging]
 ```
 
-表示在 `demo-workspace` 中创建应用时，所有 `production` 和 `staging` 标准环境都使用这条资源规格初始化配置。
+表示在 `demo-workspace` 中创建 **tRPC** 应用时，所有 `production` 和 `staging` 标准环境都使用这条资源规格初始化配置。TAF 应用不受该规则影响，需单独配置。
 
 规则只支持环境类型，不支持“所有环境”规则和“特定环境”规则。平台默认 AppSpec 也不属于规则。
 
@@ -102,7 +102,7 @@ demo-workspace + resources + [production, staging]
 | `resources` | `resources` | 实例数、CPU 和内存规格 |
 | `devMode` | `dev-mode` | 开发模式 |
 
-第一期只开放 `resources` 和 `devMode` 的规则接口。
+第一期只开放 `resources` 和 `devMode` 的规则接口。路径中的 `:appType` 只允许 `trpc` 或 `taf`。
 
 ### 规则的完整性
 
@@ -143,13 +143,13 @@ Workspace 配置了两类规则：
 第一期的 `resources` 和 `dev-mode` 各自保留独立的增删改查接口：
 
 ```text
-GET    /workspaces/:workspaceID/app-spec/:section
-POST   /workspaces/:workspaceID/app-spec/:section
-PUT    /workspaces/:workspaceID/app-spec/:section/:ruleID
-DELETE /workspaces/:workspaceID/app-spec/:section/:ruleID
+GET    /workspaces/:workspaceID/app-spec/:appType/:section
+POST   /workspaces/:workspaceID/app-spec/:appType/:section
+PUT    /workspaces/:workspaceID/app-spec/:appType/:section/:ruleID
+DELETE /workspaces/:workspaceID/app-spec/:appType/:section/:ruleID
 ```
 
-`:section` 使用上表中的 API 路径。
+`:appType` 为 `trpc` 或 `taf`；`:section` 使用上表中的 API 路径。
 
 ### 查询
 
@@ -180,13 +180,13 @@ DELETE /workspaces/:workspaceID/app-spec/:section/:ruleID
 }
 ```
 
-`PUT` 用请求中的完整 `envTypes` 和 section 配置整体替换原规则。section 由 URL 决定，不能通过请求体修改。
+`PUT` 用请求中的完整 `envTypes` 和 section 配置整体替换原规则。section 与应用类型由 URL 决定，不能通过请求体修改。
 
-同一 Workspace、同一 section 下，任一环境类型只能出现在一条规则中。新增或更新后发生占用冲突时返回 `400`。请求中的 `envTypes` 会按首次出现顺序去重；空数组或不支持的类型返回 `400`。
+同一 Workspace、同一应用类型、同一 section 下，任一环境类型只能出现在一条规则中。新增或更新后发生占用冲突时返回 `400`。请求中的 `envTypes` 会按首次出现顺序去重；空数组或不支持的类型返回 `400`。
 
 ### 删除
 
-删除接口根据 URL 中的 Workspace、section 和规则 ID 查找规则。规则不存在，或者规则不属于该 Workspace 和 section 时返回 `404`。
+删除接口根据 URL 中的 Workspace、应用类型、section 和规则 ID 查找规则。规则不存在，或者规则不属于该 Workspace、应用类型和 section 时返回 `404`。
 
 ### 权限和审计
 
@@ -216,6 +216,7 @@ DELETE /workspaces/:workspaceID/app-spec/:section/:ruleID
 type Rule struct {
     ID          bson.ObjectID
     WorkspaceID string
+    AppType     string // trpc / taf
     ConfigType  appspec.AppSpecSectionID
     EnvTypes    []string
     Spec        *appspec.AppSpec
@@ -224,7 +225,7 @@ type Rule struct {
 }
 ```
 
-MongoDB 使用唯一索引 `(workspaceID, configType, envTypes)`（见 `db/migrations/000005_workspace_app_spec_rules_env_types_idx`）。`envTypes` 是数组，索引按元素展开，因此同一 section 下两个规则不能占用相同环境类型。
+MongoDB 使用唯一索引 `(workspaceID, appType, configType, envTypes)`（见 `db/migrations/000005_workspace_app_spec_rules_env_types_idx`）。`envTypes` 是数组，索引按元素展开，因此同一应用类型与 section 下两个规则不能占用相同环境类型；tRPC 与 TAF 互不影响。
 
 删除 Workspace 时，会同时删除该 Workspace 的全部规则。删除单个环境时不需要清理规则，因为规则引用的是环境类型，不引用具体环境。
 

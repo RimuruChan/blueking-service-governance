@@ -14154,7 +14154,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/workspaces/{workspaceID}/app-spec/dev-mode": {
+        "/workspaces/{workspaceID}/app-spec/{appType}/dev-mode": {
             "get": {
                 "security": [
                     {
@@ -14177,6 +14177,13 @@ const docTemplate = `{
                         "type": "string",
                         "description": "工作空间 ID",
                         "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "应用类型（trpc/taf）",
+                        "name": "appType",
                         "in": "path",
                         "required": true
                     }
@@ -14231,6 +14238,13 @@ const docTemplate = `{
                         "required": true
                     },
                     {
+                        "type": "string",
+                        "description": "应用类型（trpc/taf）",
+                        "name": "appType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
                         "description": "开发模式默认配置规则",
                         "name": "body",
                         "in": "body",
@@ -14262,7 +14276,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/workspaces/{workspaceID}/app-spec/dev-mode/{ruleID}": {
+        "/workspaces/{workspaceID}/app-spec/{appType}/dev-mode/{ruleID}": {
             "put": {
                 "security": [
                     {
@@ -14288,6 +14302,13 @@ const docTemplate = `{
                         "type": "string",
                         "description": "工作空间 ID",
                         "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "应用类型（trpc/taf）",
+                        "name": "appType",
                         "in": "path",
                         "required": true
                     },
@@ -14356,6 +14377,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
+                        "description": "应用类型（trpc/taf）",
+                        "name": "appType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
                         "description": "规则 ID",
                         "name": "ruleID",
                         "in": "path",
@@ -14384,7 +14412,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/workspaces/{workspaceID}/app-spec/resources": {
+        "/workspaces/{workspaceID}/app-spec/{appType}/resources": {
             "get": {
                 "security": [
                     {
@@ -14407,6 +14435,13 @@ const docTemplate = `{
                         "type": "string",
                         "description": "工作空间 ID",
                         "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "应用类型（trpc/taf）",
+                        "name": "appType",
                         "in": "path",
                         "required": true
                     }
@@ -14461,6 +14496,13 @@ const docTemplate = `{
                         "required": true
                     },
                     {
+                        "type": "string",
+                        "description": "应用类型（trpc/taf）",
+                        "name": "appType",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
                         "description": "资源规格默认配置规则",
                         "name": "body",
                         "in": "body",
@@ -14492,7 +14534,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/workspaces/{workspaceID}/app-spec/resources/{ruleID}": {
+        "/workspaces/{workspaceID}/app-spec/{appType}/resources/{ruleID}": {
             "put": {
                 "security": [
                     {
@@ -14518,6 +14560,13 @@ const docTemplate = `{
                         "type": "string",
                         "description": "工作空间 ID",
                         "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "应用类型（trpc/taf）",
+                        "name": "appType",
                         "in": "path",
                         "required": true
                     },
@@ -14581,6 +14630,13 @@ const docTemplate = `{
                         "type": "string",
                         "description": "工作空间 ID",
                         "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "应用类型（trpc/taf）",
+                        "name": "appType",
                         "in": "path",
                         "required": true
                     },
@@ -22587,12 +22643,16 @@ const docTemplate = `{
         "serializer.DevModeRuleInput": {
             "type": "object",
             "required": [
-                "envType",
+                "envTypes",
                 "spec"
             ],
             "properties": {
-                "envType": {
-                    "type": "string"
+                "envTypes": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "spec": {
                     "$ref": "#/definitions/serializer.DevModeSpecInput"
@@ -22613,8 +22673,11 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
-                "envType": {
-                    "type": "string"
+                "envTypes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "id": {
                     "type": "string"
@@ -27991,12 +28054,16 @@ const docTemplate = `{
         "serializer.ResourcesRuleInput": {
             "type": "object",
             "required": [
-                "envType",
+                "envTypes",
                 "spec"
             ],
             "properties": {
-                "envType": {
-                    "type": "string"
+                "envTypes": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "spec": {
                     "$ref": "#/definitions/serializer.ResourcesSpecInput"
@@ -28017,8 +28084,11 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
-                "envType": {
-                    "type": "string"
+                "envTypes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "id": {
                     "type": "string"

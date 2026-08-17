@@ -1,6 +1,6 @@
 [
   {
     "dropIndexes": "workspace_app_spec_rules",
-    "index": "workspaceID_1_configType_1_envTypes_1"
+    "index": "workspaceID_1_appType_1_configType_1_envTypes_1"
   }
 ]

@@ -86,6 +86,7 @@ var _ = Describe("TAF application service", func() {
 	It("initializes AppModel and AppSpecs from platform defaults and workspace rules", func() {
 		err := ruleStore.Create(ctx, &appdefaults.Rule{
 			WorkspaceID: workspace.ID,
+			AppType:     bkmsapp.AppTypeTAF,
 			ConfigType:  appspec.AppSpecSectionResources,
 			EnvTypes:    []string{environment.Type},
 			Spec: &appspec.AppSpec{
@@ -101,6 +102,7 @@ var _ = Describe("TAF application service", func() {
 		Expect(err).NotTo(HaveOccurred())
 		err = ruleStore.Create(ctx, &appdefaults.Rule{
 			WorkspaceID: workspace.ID,
+			AppType:     bkmsapp.AppTypeTAF,
 			ConfigType:  appspec.AppSpecSectionDevMode,
 			EnvTypes:    []string{environment.Type},
 			Spec: &appspec.AppSpec{

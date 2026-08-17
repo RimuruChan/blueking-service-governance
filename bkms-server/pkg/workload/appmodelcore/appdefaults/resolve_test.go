@@ -11,6 +11,7 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
+	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
 	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	bkmsworkspace "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
@@ -54,7 +55,7 @@ var _ = Describe("Application default resolution", func() {
 	})
 
 	It("uses platform defaults without persisting rules", func() {
-		resolved, err := appdefaults.Resolve(ctx, ruleStore, envStore, workspace.ID, "app-without-rules")
+		resolved, err := appdefaults.Resolve(ctx, ruleStore, envStore, workspace.ID, bkmsapp.AppTypeTRPC, "app-without-rules")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resolved.Default.AppID).To(Equal("app-without-rules"))
 		Expect(resolved.Default.EnvName).To(Equal(appspec.DefaultEnvName))
@@ -75,7 +76,7 @@ var _ = Describe("Application default resolution", func() {
 		Expect(ruleStore.Create(ctx, resourcesRule(workspace.ID, "production"))).To(Succeed())
 		Expect(ruleStore.Create(ctx, devModeRule(workspace.ID, "production", true))).To(Succeed())
 
-		resolved, err := appdefaults.Resolve(ctx, ruleStore, envStore, workspace.ID, "app-combined-defaults")
+		resolved, err := appdefaults.Resolve(ctx, ruleStore, envStore, workspace.ID, bkmsapp.AppTypeTRPC, "app-combined-defaults")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resolved.Environments).To(HaveLen(1))
 		spec := resolved.Environments[0]
@@ -100,7 +101,7 @@ var _ = Describe("Application default resolution", func() {
 		})
 		Expect(ruleStore.Create(ctx, devModeRule(workspace.ID, "production", true))).To(Succeed())
 
-		resolved, err := appdefaults.Resolve(ctx, ruleStore, envStore, workspace.ID, "app-matching-envs")
+		resolved, err := appdefaults.Resolve(ctx, ruleStore, envStore, workspace.ID, bkmsapp.AppTypeTRPC, "app-matching-envs")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resolved.Environments).To(HaveLen(2))
 
@@ -129,7 +130,7 @@ var _ = Describe("Application default resolution", func() {
 		})
 		Expect(ruleStore.Create(ctx, resourcesRule(workspace.ID, "production", "staging"))).To(Succeed())
 
-		resolved, err := appdefaults.Resolve(ctx, ruleStore, envStore, workspace.ID, "app-multi-env-types")
+		resolved, err := appdefaults.Resolve(ctx, ruleStore, envStore, workspace.ID, bkmsapp.AppTypeTRPC, "app-multi-env-types")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(resolved.Environments).To(HaveLen(2))
 
@@ -142,11 +143,40 @@ var _ = Describe("Application default resolution", func() {
 		Expect(*specs[production.Name].Resources.Replicas).To(Equal(int32(2)))
 		Expect(*specs[staging.Name].Resources.Replicas).To(Equal(int32(2)))
 	})
+
+	It("ignores rules that belong to another application type", func() {
+		_ = dbfactory.EnvWithOpts(ctx, envService, &dbfactory.EnvOpts{
+			WorkspaceID: workspace.ID,
+			Type:        "production",
+		})
+		Expect(ruleStore.Create(ctx, resourcesRule(workspace.ID, "production"))).To(Succeed())
+		tafRule := resourcesRule(workspace.ID, "production")
+		tafRule.AppType = bkmsapp.AppTypeTAF
+		tafRule.Spec = &appspec.AppSpec{
+			Resources: resourcesSpec(9, "500m", "1", "1Gi", "2Gi"),
+		}
+		Expect(ruleStore.Create(ctx, tafRule)).To(Succeed())
+
+		resolved, err := appdefaults.Resolve(
+			ctx, ruleStore, envStore, workspace.ID, bkmsapp.AppTypeTAF, "app-taf-only",
+		)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resolved.Environments).To(HaveLen(1))
+		Expect(*resolved.Environments[0].Resources.Replicas).To(Equal(int32(9)))
+
+		resolved, err = appdefaults.Resolve(
+			ctx, ruleStore, envStore, workspace.ID, bkmsapp.AppTypeTRPC, "app-trpc-only",
+		)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(resolved.Environments).To(HaveLen(1))
+		Expect(*resolved.Environments[0].Resources.Replicas).To(Equal(int32(2)))
+	})
 })
 
 func resourcesRule(workspaceID string, envTypes ...string) *appdefaults.Rule {
 	return &appdefaults.Rule{
 		WorkspaceID: workspaceID,
+		AppType:     bkmsapp.AppTypeTRPC,
 		ConfigType:  appspec.AppSpecSectionResources,
 		EnvTypes:    envTypes,
 		Spec: &appspec.AppSpec{
@@ -158,6 +188,7 @@ func resourcesRule(workspaceID string, envTypes ...string) *appdefaults.Rule {
 func devModeRule(workspaceID string, envType string, enabled bool) *appdefaults.Rule {
 	return &appdefaults.Rule{
 		WorkspaceID: workspaceID,
+		AppType:     bkmsapp.AppTypeTRPC,
 		ConfigType:  appspec.AppSpecSectionDevMode,
 		EnvTypes:    []string{envType},
 		Spec: &appspec.AppSpec{
