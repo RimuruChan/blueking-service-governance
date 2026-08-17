@@ -53,6 +53,14 @@ type PolarisConfigStore interface {
 	Update(ctx context.Context, appID, name string, updateData *ConfigUpdateData) error
 	// UpsertEnvState 幂等新增或更新指定环境的信息
 	UpsertEnvState(ctx context.Context, appID, name, envName string, update PolarisEnvStateUpdate) error
+	// UpsertEnvStateIfUpdatedAt 仅当配置的顶层 updatedAt 未变化时更新环境信息。
+	// 返回值表示是否匹配到期望版本；版本不匹配时不会返回错误，也不会写入数据。
+	UpsertEnvStateIfUpdatedAt(
+		ctx context.Context,
+		appID, name, envName string,
+		expectedUpdatedAt time.Time,
+		update PolarisEnvStateUpdate,
+	) (bool, error)
 	// UpsertEnvWeight 幂等设置指定环境的单实例权重
 	UpsertEnvWeight(ctx context.Context, appID, name, envName string, weight int32) error
 	// RemoveEnvStates 幂等移除多个指定环境的信息
@@ -254,6 +262,36 @@ func (s *PolarisConfigStoreMongo) UpsertEnvState(
 		return ErrConfigNotFound
 	}
 	return nil
+}
+
+// UpsertEnvStateIfUpdatedAt 仅在配置仍为 expectedUpdatedAt 时更新环境信息。
+// 版本不匹配通常表示任务处理的是旧配置，此时返回 false 并跳过写入。
+func (s *PolarisConfigStoreMongo) UpsertEnvStateIfUpdatedAt(
+	ctx context.Context,
+	appID, name, envName string,
+	expectedUpdatedAt time.Time,
+	update PolarisEnvStateUpdate,
+) (bool, error) {
+	fieldPrefix, err := envFieldPrefix("envStates", envName)
+	if err != nil {
+		return false, err
+	}
+	setFields := bson.M{fieldPrefix + ".updatedAt": time.Now()}
+	if update.AppliedFields != nil {
+		setFields[fieldPrefix+".appliedFields"] = update.AppliedFields
+	}
+	if update.LastError != nil {
+		setFields[fieldPrefix+".lastError"] = *update.LastError
+	}
+
+	result, err := s.collection.UpdateOne(ctx,
+		bson.M{"appID": appID, "name": name, "updatedAt": expectedUpdatedAt},
+		bson.M{"$set": setFields},
+	)
+	if err != nil {
+		return false, errors.Wrap(err, "conditionally upsert polaris env state")
+	}
+	return result.MatchedCount > 0, nil
 }
 
 // UpsertEnvWeight 幂等设置指定环境的单实例权重。

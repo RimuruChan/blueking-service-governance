@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	stderrors "errors"
 	"testing"
+	"time"
 
 	"github.com/bytedance/mockey"
 	"github.com/hibiken/asynq"
@@ -214,11 +215,37 @@ var _ = Describe("Polaris dynamic apply task", func() {
 				Expect(enqueued).To(BeFalse())
 			})
 		})
+
+		It("should enqueue repeated updates without a fixed task ID", func() {
+			config := createDeployedConfig("cfg-repeated-enqueue", []string{environment.Name})
+			var calls int
+			mockey.PatchConvey("repeated updates enqueue independently", GinkgoT(), func() {
+				mockey.Mock(taskq.Enqueue).To(func(
+					_ context.Context, _ *taskq.Task, opts ...asynq.Option,
+				) error {
+					calls++
+					for _, opt := range opts {
+						Expect(opt.Type()).NotTo(Equal(asynq.TaskIDOpt))
+					}
+					return nil
+				}).Build()
+
+				updated, err := service.Update(ctx, app, config, &polaris.ConfigUpdateData{
+					Direct: lo.ToPtr(true),
+				})
+				Expect(err).NotTo(HaveOccurred())
+				_, err = service.Update(ctx, app, updated, &polaris.ConfigUpdateData{
+					Direct: lo.ToPtr(false),
+				})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(calls).To(Equal(2))
+			})
+		})
 	})
 
 	Describe("handler", func() {
 		It("should stop retry when the task is not initialized", func() {
-			appStore = nil
+			dynamicApplyService = nil
 			err := runHandler(Args{
 				AppID: app.ID, ConfigName: "missing", EnvName: environment.Name,
 			})
@@ -286,20 +313,64 @@ var _ = Describe("Polaris dynamic apply task", func() {
 			})
 		})
 
+		It("should retry without overwriting a newer result when config changes during apply", func() {
+			config := createDeployedConfig("cfg-changed-during-apply", []string{environment.Name})
+			Expect(appModelStore.CreateAppModel(ctx, &appmodel.AppModel{AppID: app.ID})).To(Succeed())
+			DeferCleanup(func() { _ = appModelStore.DeleteAppModel(ctx, app.ID) })
+
+			mockey.PatchConvey("config changes while applying", GinkgoT(), func() {
+				mockey.Mock((*polaris.CRApplier).Apply).To(func(
+					_ *polaris.CRApplier,
+					_ context.Context,
+					_ *bkmsapp.Application,
+					_ *bkmsenv.Environment,
+					_ *polaris.PolarisConfig,
+					_ map[string]string,
+				) error {
+					time.Sleep(5 * time.Millisecond)
+					Expect(store.Update(ctx, app.ID, config.Name, &polaris.ConfigUpdateData{
+						Direct: lo.ToPtr(true),
+					})).To(Succeed())
+					latest, err := store.Get(ctx, app.ID, config.Name)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(envStateManager.RecordDynamicApplyResultIfUpdatedAt(
+						ctx,
+						app.ID,
+						config.Name,
+						environment.Name,
+						latest.UpdatedAt,
+						errors.New("newer task error"),
+					)).To(Succeed())
+					return nil
+				}).Build()
+
+				err := runHandler(Args{
+					AppID: app.ID, ConfigName: config.Name, EnvName: environment.Name,
+				})
+				Expect(err).To(MatchError(ContainSubstring("changed during dynamic apply")))
+				Expect(stderrors.Is(err, asynq.SkipRetry)).To(BeFalse())
+				Expect(stderrors.Is(err, polaris.ErrDynamicApplyConfigChanged)).To(BeTrue())
+
+				stored, getErr := store.Get(ctx, app.ID, config.Name)
+				Expect(getErr).NotTo(HaveOccurred())
+				Expect(stored.GetEnvState(environment.Name).LastError).To(Equal("newer task error"))
+			})
+		})
+
 		It("should mark lastError as exhausted when retries are exhausted", func() {
 			config := createDeployedConfig("cfg-retry-exhausted", []string{environment.Name})
-			Expect(envStateManager.RecordDynamicApplyResult(
-				ctx, app.ID, config.Name, environment.Name,
-				errors.New("upsert polaris CR failed (retry 11/11)"),
-			)).To(Succeed())
+			Expect(appModelStore.CreateAppModel(ctx, &appmodel.AppModel{AppID: app.ID})).To(Succeed())
+			DeferCleanup(func() { _ = appModelStore.DeleteAppModel(ctx, app.ID) })
 
 			mockey.PatchConvey("retries exhausted", GinkgoT(), func() {
+				mockey.Mock((*polaris.CRApplier).Apply).Return(errors.New("upsert polaris CR failed")).Build()
 				mockey.Mock(asynq.GetRetryCount).Return(10, true).Build()
 				mockey.Mock(asynq.GetMaxRetry).Return(10, true).Build()
 
-				handleExhausted(ctx, Args{
+				err := runHandler(Args{
 					AppID: app.ID, ConfigName: config.Name, EnvName: environment.Name,
-				}, errors.New("upsert polaris CR failed"))
+				})
+				Expect(err).To(MatchError("upsert polaris CR failed"))
 
 				stored, getErr := store.Get(ctx, app.ID, config.Name)
 				Expect(getErr).NotTo(HaveOccurred())

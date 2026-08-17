@@ -21,6 +21,7 @@ package polaris_test
 import (
 	"context"
 	"errors"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -258,6 +259,62 @@ var _ = Describe("PolarisEnvStateManager", func() {
 			stored, err = store.Get(ctx, app.ID, config.Name)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(stored.GetEnvState(environment.Name).LastError).To(BeEmpty())
+		})
+
+		It("should not overwrite a newer config result", func() {
+			config := createConfig(
+				"cfg-stale-apply-result",
+				[]string{environment.Name},
+				map[string]polaris.PolarisEnvState{
+					environment.Name: envState(redeployFields("k1", "t1", 8080)),
+				},
+			)
+			expectedUpdatedAt := config.UpdatedAt
+
+			time.Sleep(5 * time.Millisecond)
+			direct := true
+			Expect(store.Update(ctx, app.ID, config.Name, &polaris.ConfigUpdateData{
+				Direct: &direct,
+			})).To(Succeed())
+			latest, err := store.Get(ctx, app.ID, config.Name)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latest.UpdatedAt).NotTo(Equal(expectedUpdatedAt))
+
+			Expect(manager.RecordDynamicApplyResultIfUpdatedAt(
+				ctx,
+				app.ID,
+				config.Name,
+				environment.Name,
+				latest.UpdatedAt,
+				errors.New("latest task error"),
+			)).To(Succeed())
+			stored, err := store.Get(ctx, app.ID, config.Name)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(stored.GetEnvState(environment.Name).LastError).To(Equal("latest task error"))
+
+			Expect(manager.RecordDynamicApplyResultIfUpdatedAt(
+				ctx,
+				app.ID,
+				config.Name,
+				environment.Name,
+				expectedUpdatedAt,
+				nil,
+			)).To(Succeed())
+			stored, err = store.Get(ctx, app.ID, config.Name)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(stored.GetEnvState(environment.Name).LastError).To(Equal("latest task error"))
+
+			Expect(manager.RecordDynamicApplyResultIfUpdatedAt(
+				ctx,
+				app.ID,
+				config.Name,
+				environment.Name,
+				expectedUpdatedAt,
+				errors.New("stale task error"),
+			)).To(Succeed())
+			stored, err = store.Get(ctx, app.ID, config.Name)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(stored.GetEnvState(environment.Name).LastError).To(Equal("latest task error"))
 		})
 	})
 
