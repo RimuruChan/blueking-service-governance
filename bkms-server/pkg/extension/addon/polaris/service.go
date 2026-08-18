@@ -20,6 +20,7 @@ package polaris
 
 import (
 	"context"
+	stderrors "errors"
 
 	"github.com/pkg/errors"
 
@@ -119,7 +120,9 @@ func (s *PolarisConfigService) Update(
 		return newConfig, errors.Wrap(err, "prepare dynamic polaris apply")
 	}
 	// 请求结束后仍需保证任务投递，避免客户端断开导致配置更新成功但任务丢失。
-	s.triggerDynamicApply(context.WithoutCancel(ctx), newConfig, envNames)
+	if err = s.triggerDynamicApply(context.WithoutCancel(ctx), newConfig, envNames); err != nil {
+		return newConfig, errors.Wrap(err, "enqueue polaris dynamic apply")
+	}
 	return newConfig, nil
 }
 
@@ -144,12 +147,13 @@ func (s *PolarisConfigService) Delete(
 }
 
 // triggerDynamicApply 为每个可下发环境投递一条 asynq 任务。
-// 某个环境投递失败会写入该环境 LastError，不阻止其余环境入队。
+// 某个环境投递失败会写入该环境 LastError，不阻止其余环境入队；返回全部投递错误的汇总。
 func (s *PolarisConfigService) triggerDynamicApply(
 	ctx context.Context,
 	config *PolarisConfig,
 	envNames []string,
-) {
+) error {
+	var errs []error
 	for _, envName := range envNames {
 		if err := s.enqueueDynamicApply(ctx, config.AppID, config.Name, envName); err != nil {
 			enqueueErr := errors.Wrapf(err, "enqueue polaris dynamic apply for env %s", envName)
@@ -159,8 +163,10 @@ func (s *PolarisConfigService) triggerDynamicApply(
 				log.Errorf(ctx, "record polaris enqueue failure failed, app=%s config=%s env=%s: %v",
 					config.AppID, config.Name, envName, recErr)
 			}
+			errs = append(errs, enqueueErr)
 		}
 	}
+	return stderrors.Join(errs...)
 }
 
 func (s *PolarisConfigService) patchEnvWeight(

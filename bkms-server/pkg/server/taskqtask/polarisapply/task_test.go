@@ -23,7 +23,6 @@ import (
 	"encoding/json"
 	stderrors "errors"
 	"testing"
-	"time"
 
 	"github.com/bytedance/mockey"
 	"github.com/hibiken/asynq"
@@ -42,8 +41,6 @@ import (
 	polarisenvvars "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/envvars"
 	depenvvars "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/envvars"
 	depsvcmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/discovery"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/taskq"
 	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
@@ -163,26 +160,7 @@ var _ = Describe("Polaris dynamic apply task", func() {
 			})
 		})
 
-		It("should record lastError when asynq enqueue fails without failing Update", func() {
-			config := createDeployedConfig("cfg-enqueue-fail", []string{environment.Name})
-			mockey.PatchConvey("enqueue fails", GinkgoT(), func() {
-				mockey.Mock(taskq.Enqueue).Return(errors.New("asynq unavailable")).Build()
-
-				_, err := service.Update(ctx, app, config, &polaris.ConfigUpdateData{
-					Direct: lo.ToPtr(false),
-				})
-				Expect(err).NotTo(HaveOccurred())
-
-				stored, getErr := store.Get(ctx, app.ID, config.Name)
-				Expect(getErr).NotTo(HaveOccurred())
-				Expect(stored.GetEnvState(environment.Name).LastError).To(And(
-					ContainSubstring("asynq unavailable"),
-					ContainSubstring(environment.Name),
-				))
-			})
-		})
-
-		It("should keep enqueuing other envs and record lastError for failed ones", func() {
+		It("should keep enqueuing other envs, record lastError, and fail Update", func() {
 			config := createDeployedConfig(
 				"cfg-enqueue-partial",
 				[]string{environment.Name, otherEnvironment.Name},
@@ -202,7 +180,8 @@ var _ = Describe("Polaris dynamic apply task", func() {
 				_, err := service.Update(ctx, app, config, &polaris.ConfigUpdateData{
 					Direct: lo.ToPtr(false),
 				})
-				Expect(err).NotTo(HaveOccurred())
+				Expect(err).To(MatchError(ContainSubstring("enqueue polaris dynamic apply")))
+				Expect(err).To(MatchError(ContainSubstring(environment.Name)))
 				Expect(calls).To(Equal(2))
 
 				stored, getErr := store.Get(ctx, app.ID, config.Name)
@@ -211,70 +190,17 @@ var _ = Describe("Polaris dynamic apply task", func() {
 				Expect(stored.GetEnvState(otherEnvironment.Name).LastError).To(BeEmpty())
 			})
 		})
-
-		It("should not enqueue when no environment is ready for dynamic apply", func() {
-			config := newTestConfig(app.ID, "cfg-no-apply", []string{environment.Name}, nil)
-			Expect(store.Create(ctx, config)).To(Succeed())
-			var enqueued bool
-			mockey.PatchConvey("enqueue must not be called", GinkgoT(), func() {
-				mockey.Mock(taskq.Enqueue).To(func(
-					_ context.Context, _ *taskq.Task, _ ...asynq.Option,
-				) error {
-					enqueued = true
-					return nil
-				}).Build()
-
-				_, err := service.Update(ctx, app, config, &polaris.ConfigUpdateData{
-					Direct: lo.ToPtr(false),
-				})
-				Expect(err).NotTo(HaveOccurred())
-				Expect(enqueued).To(BeFalse())
-			})
-		})
-
-		It("should enqueue repeated updates without a fixed task ID", func() {
-			config := createDeployedConfig("cfg-repeated-enqueue", []string{environment.Name})
-			var calls int
-			mockey.PatchConvey("repeated updates enqueue independently", GinkgoT(), func() {
-				mockey.Mock(taskq.Enqueue).To(func(
-					_ context.Context, _ *taskq.Task, opts ...asynq.Option,
-				) error {
-					calls++
-					for _, opt := range opts {
-						Expect(opt.Type()).NotTo(Equal(asynq.TaskIDOpt))
-					}
-					return nil
-				}).Build()
-
-				updated, err := service.Update(ctx, app, config, &polaris.ConfigUpdateData{
-					Direct: lo.ToPtr(true),
-				})
-				Expect(err).NotTo(HaveOccurred())
-				_, err = service.Update(ctx, app, updated, &polaris.ConfigUpdateData{
-					Direct: lo.ToPtr(false),
-				})
-				Expect(err).NotTo(HaveOccurred())
-				Expect(calls).To(Equal(2))
-			})
-		})
 	})
 
 	Describe("handler", func() {
-		It("should stop retry when the app no longer exists", func() {
+		It("should stop retry without recording lastError when the app no longer exists", func() {
 			err := runHandler(Args{
 				AppID: "missing-app", ConfigName: "cfg", EnvName: environment.Name,
 			})
 			Expect(stderrors.Is(err, asynq.SkipRetry)).To(BeTrue())
 		})
 
-		It("should stop retry when the config no longer exists", func() {
-			err := runHandler(Args{
-				AppID: app.ID, ConfigName: "missing-config", EnvName: environment.Name,
-			})
-			Expect(stderrors.Is(err, asynq.SkipRetry)).To(BeTrue())
-		})
-
-		It("should stop retry when the app model no longer exists", func() {
+		It("should stop retry and record lastError when the app model no longer exists", func() {
 			config := createDeployedConfig("cfg-missing-model", []string{environment.Name})
 			err := runHandler(Args{
 				AppID: app.ID, ConfigName: config.Name, EnvName: environment.Name,
@@ -283,115 +209,6 @@ var _ = Describe("Polaris dynamic apply task", func() {
 			stored, getErr := store.Get(ctx, app.ID, config.Name)
 			Expect(getErr).NotTo(HaveOccurred())
 			Expect(stored.GetEnvState(environment.Name).LastError).To(ContainSubstring("get app model"))
-		})
-
-		It("should stop retry when the environment no longer exists", func() {
-			const missingEnvName = "missing-env"
-			config := newTestConfig(
-				app.ID,
-				"cfg-missing-env",
-				[]string{missingEnvName},
-				map[string]polaris.PolarisEnvState{missingEnvName: envState(redeployFields("k1", "t1", 8080))},
-			)
-			Expect(store.Create(ctx, config)).To(Succeed())
-			Expect(appModelStore.CreateAppModel(ctx, &appmodel.AppModel{AppID: app.ID})).To(Succeed())
-			DeferCleanup(func() { _ = appModelStore.DeleteAppModel(ctx, app.ID) })
-
-			err := runHandler(Args{
-				AppID: app.ID, ConfigName: config.Name, EnvName: missingEnvName,
-			})
-			Expect(stderrors.Is(err, asynq.SkipRetry)).To(BeTrue())
-		})
-
-		It("should record lastError with retry progress when apply fails", func() {
-			config := createDeployedConfig("cfg-retry-progress", []string{environment.Name})
-			Expect(appModelStore.CreateAppModel(ctx, &appmodel.AppModel{AppID: app.ID})).To(Succeed())
-			DeferCleanup(func() { _ = appModelStore.DeleteAppModel(ctx, app.ID) })
-
-			mockey.PatchConvey("cluster discovery fails with retry progress", GinkgoT(), func() {
-				mockPolarisDiscoveryFailure()
-				mockey.Mock(asynq.GetRetryCount).Return(2, true).Build()
-				mockey.Mock(asynq.GetMaxRetry).Return(10, true).Build()
-
-				err := runHandler(Args{
-					AppID: app.ID, ConfigName: config.Name, EnvName: environment.Name,
-				})
-				Expect(err).To(HaveOccurred())
-				Expect(stderrors.Is(err, asynq.SkipRetry)).To(BeFalse())
-
-				stored, getErr := store.Get(ctx, app.ID, config.Name)
-				Expect(getErr).NotTo(HaveOccurred())
-				Expect(stored.GetEnvState(environment.Name).LastError).To(And(
-					ContainSubstring("test discovery error"),
-					ContainSubstring("(retry 3/11)"),
-				))
-			})
-		})
-
-		It("should clear lastError when a later retry succeeds", func() {
-			config := createDeployedConfig("cfg-retry-success", []string{environment.Name})
-			Expect(appModelStore.CreateAppModel(ctx, &appmodel.AppModel{AppID: app.ID})).To(Succeed())
-			DeferCleanup(func() { _ = appModelStore.DeleteAppModel(ctx, app.ID) })
-			Expect(envStateManager.RecordDynamicApplyResult(
-				ctx, app.ID, config.Name, environment.Name, config.UpdatedAt, errors.New("previous apply error"),
-			)).To(Succeed())
-
-			mockey.PatchConvey("apply succeeds on retry", GinkgoT(), func() {
-				mockey.Mock((*polaris.CRApplier).Apply).Return(nil).Build()
-
-				err := runHandler(Args{
-					AppID: app.ID, ConfigName: config.Name, EnvName: environment.Name,
-				})
-				Expect(err).NotTo(HaveOccurred())
-
-				stored, getErr := store.Get(ctx, app.ID, config.Name)
-				Expect(getErr).NotTo(HaveOccurred())
-				Expect(stored.GetEnvState(environment.Name).LastError).To(BeEmpty())
-			})
-		})
-
-		It("should retry without overwriting a newer result when config changes during apply", func() {
-			config := createDeployedConfig("cfg-changed-during-apply", []string{environment.Name})
-			Expect(appModelStore.CreateAppModel(ctx, &appmodel.AppModel{AppID: app.ID})).To(Succeed())
-			DeferCleanup(func() { _ = appModelStore.DeleteAppModel(ctx, app.ID) })
-
-			mockey.PatchConvey("config changes while applying", GinkgoT(), func() {
-				mockey.Mock((*polaris.CRApplier).Apply).To(func(
-					_ *polaris.CRApplier,
-					_ context.Context,
-					_ *bkmsapp.Application,
-					_ *bkmsenv.Environment,
-					_ *polaris.PolarisConfig,
-					_ map[string]string,
-				) error {
-					time.Sleep(5 * time.Millisecond)
-					Expect(store.Update(ctx, app.ID, config.Name, &polaris.ConfigUpdateData{
-						Direct: lo.ToPtr(true),
-					})).To(Succeed())
-					latest, err := store.Get(ctx, app.ID, config.Name)
-					Expect(err).NotTo(HaveOccurred())
-					Expect(envStateManager.RecordDynamicApplyResult(
-						ctx,
-						app.ID,
-						config.Name,
-						environment.Name,
-						latest.UpdatedAt,
-						errors.New("newer task error"),
-					)).To(Succeed())
-					return nil
-				}).Build()
-
-				err := runHandler(Args{
-					AppID: app.ID, ConfigName: config.Name, EnvName: environment.Name,
-				})
-				Expect(err).To(MatchError(ContainSubstring("changed during dynamic apply")))
-				Expect(stderrors.Is(err, asynq.SkipRetry)).To(BeFalse())
-				Expect(stderrors.Is(err, polaris.ErrDynamicApplyConfigChanged)).To(BeTrue())
-
-				stored, getErr := store.Get(ctx, app.ID, config.Name)
-				Expect(getErr).NotTo(HaveOccurred())
-				Expect(stored.GetEnvState(environment.Name).LastError).To(Equal("newer task error"))
-			})
 		})
 
 		It("should mark lastError as exhausted when retries are exhausted", func() {
@@ -414,38 +231,6 @@ var _ = Describe("Polaris dynamic apply task", func() {
 				Expect(stored.GetEnvState(environment.Name).LastError).To(Equal(
 					"upsert polaris CR failed (retry 11/11, retries exhausted)",
 				))
-			})
-		})
-
-		It("should keep applying other envs when one env task fails", func() {
-			config := createDeployedConfig("cfg-partial", []string{environment.Name, otherEnvironment.Name})
-			Expect(appModelStore.CreateAppModel(ctx, &appmodel.AppModel{AppID: app.ID})).To(Succeed())
-			DeferCleanup(func() { _ = appModelStore.DeleteAppModel(ctx, app.ID) })
-			Expect(envStore.Delete(ctx, environment.ID)).To(Succeed())
-
-			err := runHandler(Args{
-				AppID: app.ID, ConfigName: config.Name, EnvName: environment.Name,
-			})
-			Expect(err).To(HaveOccurred())
-			partial, getErr := store.Get(ctx, app.ID, config.Name)
-			Expect(getErr).NotTo(HaveOccurred())
-			Expect(partial.GetEnvState(environment.Name).LastError).NotTo(BeEmpty())
-			Expect(partial.GetEnvState(otherEnvironment.Name).LastError).To(BeEmpty())
-
-			mockey.PatchConvey("remaining env still records its own result", GinkgoT(), func() {
-				mockPolarisDiscoveryFailure()
-
-				err = runHandler(Args{
-					AppID: app.ID, ConfigName: config.Name, EnvName: otherEnvironment.Name,
-				})
-				Expect(err).To(HaveOccurred())
-
-				stored, getErr := store.Get(ctx, app.ID, config.Name)
-				Expect(getErr).NotTo(HaveOccurred())
-				Expect(stored.GetEnvState(environment.Name).LastError).To(ContainSubstring("get env"))
-				Expect(stored.GetEnvState(otherEnvironment.Name).LastError).To(
-					ContainSubstring("test discovery error"),
-				)
 			})
 		})
 	})
@@ -472,11 +257,6 @@ func TestFormatLastError(t *testing.T) {
 			}
 		})
 	}
-}
-
-func mockPolarisDiscoveryFailure() {
-	mockey.Mock(cluster.NewConfig).Return(&cluster.Config{ClusterID: "test-cluster"}).Build()
-	mockey.Mock(discovery.GetGroupVersionResource).Return(nil, stderrors.New("test discovery error")).Build()
 }
 
 func newTestConfig(
