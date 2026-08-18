@@ -46,23 +46,22 @@ import (
 // 投递进程只需构造 task, 无需调用。被 registry 依赖的子包(如 depsvcredis)自行取
 // store 会形成导入环, 这类依赖统一在本聚合包注入。
 func Setup(mux *asynq.ServeMux) error {
-	r := storereg.G()
-
 	// 构建状态轮询
 	mux.Handle(buildpoll.Task.Name(), buildpoll.Task.Handler())
 	// AppModel 部署状态轮询
 	mux.Handle(appmodeldeploypoll.Task.Name(), appmodeldeploypoll.Task.Handler())
+	// Workspace 初始化
+	mux.Handle(workspace.Initialization.Name(), workspace.Initialization.Handler())
 	// Redis 生命周期 tasks
-	if err := depsvcredis.Init(r.DepSvcInstStore); err != nil {
+	if err := depsvcredis.Init(storereg.G().DepSvcInstStore); err != nil {
 		return errors.Wrap(err, "init depsvcredis")
 	}
-	mux.Handle(workspace.Initialization.Name(), workspace.Initialization.Handler())
 	mux.Handle(depsvcredis.CreateTask.Name(), depsvcredis.CreateTask.Handler())
 	mux.Handle(depsvcredis.DisableTask.Name(), depsvcredis.DisableTask.Handler())
 	mux.Handle(depsvcredis.DestroyTask.Name(), depsvcredis.DestroyTask.Handler())
-
 	// Polaris 动态下发 tasks
 	mux.Handle(polarisapply.DynamicApplyTask.Name(), polarisapply.DynamicApplyTask.Handler())
+	// 示例任务
 	mux.Handle(example.ExampleTask.Name(), example.ExampleTask.Handler())
 	return nil
 }
