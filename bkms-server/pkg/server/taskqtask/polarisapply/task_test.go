@@ -39,10 +39,13 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
 	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
+	polarisenvvars "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/envvars"
+	depenvvars "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/envvars"
 	depsvcmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/discovery"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/taskq"
+	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars"
 )
@@ -59,6 +62,7 @@ var _ = Describe("Polaris dynamic apply task", func() {
 		scopedEnvVarStore envvars.ScopedEnvVarStore
 		depSvcStore       depsvcmodel.ServiceStore
 		depSvcInstStore   depsvcmodel.ServiceInstanceStore
+		depSvcBindStore   depsvcmodel.ServiceBindingStore
 		envStateManager   *polaris.PolarisEnvStateManager
 		service           *polaris.PolarisConfigService
 		app               *bkmsapp.Application
@@ -85,12 +89,24 @@ var _ = Describe("Polaris dynamic apply task", func() {
 				&scopedEnvVarStore,
 				&depSvcStore,
 				&depSvcInstStore,
+				&depSvcBindStore,
 				&envStateManager,
 			),
 		)
 		diApp.RequireStart()
 
-		Init(appStore, store, envStore, appModelStore, scopedEnvVarStore, depSvcInstStore)
+		registry := &storereg.Registry{
+			AppStore:           appStore,
+			EnvStore:           envStore,
+			AppModelStore:      appModelStore,
+			ScopedEnvVarStore:  scopedEnvVarStore,
+			PolarisConfigStore: store,
+			AppDepsVarReader:   depenvvars.NewReader(depSvcInstStore, depSvcBindStore),
+			PolarisVarReader:   polarisenvvars.NewReader(store),
+		}
+		registryMock := mockey.Mock(storereg.G).Return(registry).Build()
+		DeferCleanup(registryMock.UnPatch)
+
 		service = polaris.NewPolarisConfigService(
 			store,
 			polaris.NewPolarisPlatformManager(depSvcStore, depSvcInstStore, store),
@@ -244,14 +260,6 @@ var _ = Describe("Polaris dynamic apply task", func() {
 	})
 
 	Describe("handler", func() {
-		It("should stop retry when the task is not initialized", func() {
-			dynamicApplyService = nil
-			err := runHandler(Args{
-				AppID: app.ID, ConfigName: "missing", EnvName: environment.Name,
-			})
-			Expect(stderrors.Is(err, asynq.SkipRetry)).To(BeTrue())
-		})
-
 		It("should stop retry when the app no longer exists", func() {
 			err := runHandler(Args{
 				AppID: "missing-app", ConfigName: "cfg", EnvName: environment.Name,

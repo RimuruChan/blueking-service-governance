@@ -19,7 +19,8 @@
 // Package polarisapply 实现北极星配置动态下发的 asynq 任务。
 //
 // 一条消息对应一个环境的 PolarisConfig CR Upsert。投递侧调用 Enqueue；
-// 消费侧在 taskqtask.Setup 中调用一次 Init 后挂载 DynamicApplyTask。
+// 消费侧在 taskqtask.Setup 中挂载 DynamicApplyTask，执行所需 store 由 handler
+// 从 store registry 现取。
 // 任务包只负责队列适配和重试策略，查询、渲染及版本校验由 Polaris 服务完成。
 package polarisapply
 
@@ -35,10 +36,8 @@ import (
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
-	polarisenvvars "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/envvars"
-	depenvvars "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/envvars"
-	depsvcmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/taskq"
+	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars"
 )
@@ -56,42 +55,12 @@ type Args struct {
 	EnvName    string `json:"envName"`
 }
 
-var (
-	// DynamicApplyTask 向单个目标环境下发 PolarisConfig CR。
-	DynamicApplyTask = taskq.NewTaskType(
-		dynamicApplyTaskName,
-		handle,
-		asynq.MaxRetry(dynamicApplyMaxRetry),
-	)
-
-	dynamicApplyService *polaris.DynamicApplyService
-	envStateManager     *polaris.PolarisEnvStateManager
+// DynamicApplyTask 向单个目标环境下发 PolarisConfig CR。
+var DynamicApplyTask = taskq.NewTaskType(
+	dynamicApplyTaskName,
+	handle,
+	asynq.MaxRetry(dynamicApplyMaxRetry),
 )
-
-// Init 注入动态下发所需的 Store。由 worker 在 taskqtask.Setup 中调用一次。
-func Init(
-	applicationStore bkmsapp.ApplicationStore,
-	polarisConfigStore polaris.PolarisConfigStore,
-	environmentStore bkmsenv.EnvironmentStore,
-	modelStore appmodel.AppModelStore,
-	scopedEnvVarStore envvars.ScopedEnvVarStore,
-	depSvcInstStore depsvcmodel.ServiceInstanceStore,
-) {
-	reader := envvars.NewUnifiedEnvVarsReader(
-		scopedEnvVarStore,
-		depenvvars.NewReader(depSvcInstStore),
-		polarisenvvars.NewReader(polarisConfigStore),
-	)
-	envStateManager = polaris.NewPolarisEnvStateManager(polarisConfigStore)
-	dynamicApplyService = polaris.NewDynamicApplyService(
-		applicationStore,
-		polarisConfigStore,
-		environmentStore,
-		modelStore,
-		reader,
-		envStateManager,
-	)
-}
 
 // Enqueue 为单个环境投递一条动态下发任务。
 func Enqueue(ctx context.Context, appID, configName, envName string) error {
@@ -105,12 +74,39 @@ func Enqueue(ctx context.Context, appID, configName, envName string) error {
 	)
 }
 
+// handle asynq 入口：从 store registry 现取依赖，交给 applier 执行。
 func handle(ctx context.Context, args Args) error {
-	if dynamicApplyService == nil {
-		return errors.Wrap(taskq.ErrStopRetry, "polaris dynamic apply is not initialized")
-	}
+	return newApplier(storereg.G()).apply(ctx, args)
+}
 
-	configUpdatedAt, err := dynamicApplyService.Apply(
+// applier 执行一个环境的一次 CR 下发
+type applier struct {
+	service      *polaris.DynamicApplyService
+	stateManager *polaris.PolarisEnvStateManager
+}
+
+// newApplier 注入动态下发所需 store，供 asynq handler 与单测共用
+func newApplier(reg *storereg.Registry) *applier {
+	stateManager := polaris.NewPolarisEnvStateManager(reg.PolarisConfigStore)
+	return &applier{
+		service: polaris.NewDynamicApplyService(
+			reg.AppStore,
+			reg.PolarisConfigStore,
+			reg.EnvStore,
+			reg.AppModelStore,
+			envvars.NewUnifiedEnvVarsReader(
+				reg.ScopedEnvVarStore,
+				reg.AppDepsVarReader,
+				reg.PolarisVarReader,
+			),
+			stateManager,
+		),
+		stateManager: stateManager,
+	}
+}
+
+func (a *applier) apply(ctx context.Context, args Args) error {
+	configUpdatedAt, err := a.service.Apply(
 		ctx,
 		args.AppID,
 		args.ConfigName,
@@ -128,27 +124,27 @@ func handle(ctx context.Context, args Args) error {
 				args.ConfigName,
 			)
 		case errors.Is(err, appmodel.ErrAppModelNotFound):
-			recordResult(ctx, args, configUpdatedAt, err)
+			a.recordResult(ctx, args, configUpdatedAt, err)
 			return errors.Wrap(taskq.ErrStopRetry, "app model not found")
 		case errors.Is(err, bkmsenv.ErrEnvNotFound):
-			recordResult(ctx, args, configUpdatedAt, err)
+			a.recordResult(ctx, args, configUpdatedAt, err)
 			return errors.Wrapf(taskq.ErrStopRetry, "env %s not found", args.EnvName)
 		case errors.Is(err, polaris.ErrDynamicApplyNotReady):
 			return errors.Wrap(taskq.ErrStopRetry, err.Error())
 		default:
-			return fail(ctx, args, configUpdatedAt, err)
+			return a.fail(ctx, args, configUpdatedAt, err)
 		}
 	}
 
-	recordResult(ctx, args, configUpdatedAt, nil)
+	a.recordResult(ctx, args, configUpdatedAt, nil)
 	return nil
 }
 
 // fail 记录重试进度，并在最后一次尝试时标记 exhausted。
 // 结果在此处写入，是因为 exhausted 回调只有主键，无法安全确定配置版本。
-func fail(ctx context.Context, args Args, configUpdatedAt time.Time, applyErr error) error {
+func (a *applier) fail(ctx context.Context, args Args, configUpdatedAt time.Time, applyErr error) error {
 	attempt, total, exhausted := retryProgress(ctx)
-	recordResult(
+	a.recordResult(
 		ctx,
 		args,
 		configUpdatedAt,
@@ -157,11 +153,8 @@ func fail(ctx context.Context, args Args, configUpdatedAt time.Time, applyErr er
 	return applyErr
 }
 
-func recordResult(ctx context.Context, args Args, configUpdatedAt time.Time, applyErr error) {
-	if envStateManager == nil {
-		return
-	}
-	if err := envStateManager.RecordDynamicApplyResult(
+func (a *applier) recordResult(ctx context.Context, args Args, configUpdatedAt time.Time, applyErr error) {
+	if err := a.stateManager.RecordDynamicApplyResult(
 		ctx,
 		args.AppID,
 		args.ConfigName,

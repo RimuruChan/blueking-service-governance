@@ -43,8 +43,8 @@ import (
 // Setup 初始化各业务任务 handler 所需依赖, 并将 handler 挂载到给定的 mux。
 //
 // 由消费进程(worker)在 store registry 初始化之后、asynq server 启动之前调用一次;
-// 投递进程只需构造 task, 无需调用。各任务子包无法自行从 store registry 取依赖
-// (会与 registry 形成导入环), 因此统一在本聚合包完成注入。
+// 投递进程只需构造 task, 无需调用。被 registry 依赖的子包(如 depsvcredis)自行取
+// store 会形成导入环, 这类依赖统一在本聚合包注入。
 func Setup(mux *asynq.ServeMux) error {
 	r := storereg.G()
 
@@ -62,14 +62,6 @@ func Setup(mux *asynq.ServeMux) error {
 	mux.Handle(depsvcredis.DestroyTask.Name(), depsvcredis.DestroyTask.Handler())
 
 	// Polaris 动态下发 tasks
-	polarisapply.Init(
-		r.AppStore,
-		r.PolarisConfigStore,
-		r.EnvStore,
-		r.AppModelStore,
-		r.ScopedEnvVarStore,
-		r.DepSvcInstStore,
-	)
 	mux.Handle(polarisapply.DynamicApplyTask.Name(), polarisapply.DynamicApplyTask.Handler())
 	mux.Handle(example.ExampleTask.Name(), example.ExampleTask.Handler())
 	return nil
