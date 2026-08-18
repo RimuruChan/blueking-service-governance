@@ -32,7 +32,7 @@ type RuleStoreMongo struct {
 }
 
 // NewRuleStoreMongo creates a MongoDB-backed rule store.
-// Indexes are managed by db/migrations, see 000005.
+// Indexes are managed by db/migrations, see 000006.
 func NewRuleStoreMongo(client *mongo.Client, dbName string) (*RuleStoreMongo, error) {
 	return &RuleStoreMongo{collection: client.Database(dbName).Collection(CollectionName)}, nil
 }

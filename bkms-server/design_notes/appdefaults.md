@@ -224,7 +224,7 @@ type Rule struct {
 }
 ```
 
-MongoDB 使用唯一索引 `(workspaceID, configType, envTypes)`（见 `db/migrations/000005_workspace_app_spec_rules_env_types_idx`）。`envTypes` 是数组，索引按元素展开，因此同一 section 下两个规则不能占用相同环境类型。
+MongoDB 使用唯一索引 `(workspaceID, configType, envTypes)`（见 `db/migrations/000006_workspace_app_spec_rules_env_types_idx`）。`envTypes` 是数组，索引按元素展开，因此同一 section 下两个规则不能占用相同环境类型。
 
 删除 Workspace 时，会同时删除该 Workspace 的全部规则。删除单个环境时不需要清理规则，因为规则引用的是环境类型，不引用具体环境。
 
@@ -236,7 +236,7 @@ MongoDB 使用唯一索引 `(workspaceID, configType, envTypes)`（见 `db/migra
 | `model.go` | Rule 数据结构和 section 写入逻辑 |
 | `validate.go` | 规则内容校验 |
 | `resolve.go` | 创建应用时解析默认 AppSpec |
-| `store.go` | MongoDB 读写；唯一索引由 `db/migrations/000005_*` 管理 |
+| `store.go` | MongoDB 读写；唯一索引由 `db/migrations/000006_*` 管理 |
 | `router.go` | API 路由 |
 | `handler/` | 各 section 的规则校验、数据库操作和审计 |
 | `serializer/` | 各 section 的请求和响应结构 |
