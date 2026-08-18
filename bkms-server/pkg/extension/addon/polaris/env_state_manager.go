@@ -171,7 +171,7 @@ func (m *PolarisEnvStateManager) RecordDynamicApplyResult(
 	if applyErr != nil {
 		lastError = applyErr.Error()
 	}
-	if _, err := m.store.UpsertEnvStateIfUpdatedAt(
+	if _, err := m.store.UpsertEnvStateIfUpdatedAtMatch(
 		ctx,
 		appID,
 		configName,

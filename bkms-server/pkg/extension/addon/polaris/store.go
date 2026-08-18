@@ -53,9 +53,9 @@ type PolarisConfigStore interface {
 	Update(ctx context.Context, appID, name string, updateData *ConfigUpdateData) error
 	// UpsertEnvState 幂等新增或更新指定环境的信息
 	UpsertEnvState(ctx context.Context, appID, name, envName string, update PolarisEnvStateUpdate) error
-	// UpsertEnvStateIfUpdatedAt 仅当配置的顶层 updatedAt 未变化时更新环境信息。
+	// UpsertEnvStateIfUpdatedAtMatch 仅当配置的顶层 updatedAt 与期望值匹配时更新环境信息。
 	// 返回值表示是否匹配到期望版本；版本不匹配时不会返回错误，也不会写入数据。
-	UpsertEnvStateIfUpdatedAt(
+	UpsertEnvStateIfUpdatedAtMatch(
 		ctx context.Context,
 		appID, name, envName string,
 		expectedUpdatedAt time.Time,
@@ -264,9 +264,9 @@ func (s *PolarisConfigStoreMongo) UpsertEnvState(
 	return nil
 }
 
-// UpsertEnvStateIfUpdatedAt 仅在配置仍为 expectedUpdatedAt 时更新环境信息。
+// UpsertEnvStateIfUpdatedAtMatch 仅在配置顶层 updatedAt 仍与 expectedUpdatedAt 匹配时更新环境信息。
 // 版本不匹配通常表示任务处理的是旧配置，此时返回 false 并跳过写入。
-func (s *PolarisConfigStoreMongo) UpsertEnvStateIfUpdatedAt(
+func (s *PolarisConfigStoreMongo) UpsertEnvStateIfUpdatedAtMatch(
 	ctx context.Context,
 	appID, name, envName string,
 	expectedUpdatedAt time.Time,

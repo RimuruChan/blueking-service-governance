@@ -142,3 +142,15 @@ func (s *DynamicApplyService) Apply(
 
 	return configUpdatedAt, nil
 }
+
+// RecordDynamicApplyResult 按配置版本记录一次动态下发结果。
+func (s *DynamicApplyService) RecordDynamicApplyResult(
+	ctx context.Context,
+	appID, configName, envName string,
+	expectedUpdatedAt time.Time,
+	applyErr error,
+) error {
+	return s.envStateManager.RecordDynamicApplyResult(
+		ctx, appID, configName, envName, expectedUpdatedAt, applyErr,
+	)
+}

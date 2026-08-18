@@ -81,13 +81,11 @@ func handle(ctx context.Context, args Args) error {
 
 // applier 执行一个环境的一次 CR 下发
 type applier struct {
-	service      *polaris.DynamicApplyService
-	stateManager *polaris.PolarisEnvStateManager
+	service *polaris.DynamicApplyService
 }
 
 // newApplier 注入动态下发所需 store，供 asynq handler 与单测共用
 func newApplier(reg *storereg.Registry) *applier {
-	stateManager := polaris.NewPolarisEnvStateManager(reg.PolarisConfigStore)
 	return &applier{
 		service: polaris.NewDynamicApplyService(
 			reg.AppStore,
@@ -99,9 +97,8 @@ func newApplier(reg *storereg.Registry) *applier {
 				reg.AppDepsVarReader,
 				reg.PolarisVarReader,
 			),
-			stateManager,
+			polaris.NewPolarisEnvStateManager(reg.PolarisConfigStore),
 		),
-		stateManager: stateManager,
 	}
 }
 
@@ -154,7 +151,7 @@ func (a *applier) fail(ctx context.Context, args Args, configUpdatedAt time.Time
 }
 
 func (a *applier) recordResult(ctx context.Context, args Args, configUpdatedAt time.Time, applyErr error) {
-	if err := a.stateManager.RecordDynamicApplyResult(
+	if err := a.service.RecordDynamicApplyResult(
 		ctx,
 		args.AppID,
 		args.ConfigName,
