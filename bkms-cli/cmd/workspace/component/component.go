@@ -16,34 +16,24 @@
  * to the current version of the project delivered to anyone in the future.
  */
 
-// Package workspace provide workspace command
-package workspace
+// Package component provides workspace component command group
+package component
 
-import (
-	"github.com/spf13/cobra"
+import "github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/workspace/component"
-)
-
-// NewCmd create workspace command
+// NewCmd returns a Command instance for 'workspace component' command group
 func NewCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "workspace",
-		Short: "Manage workspaces",
-		Long: `Manage BKMS workspaces and workspace-related configurations.
+		Use:   "component",
+		Short: "Manage workspace component instances",
+		Long: `List workspace-level component instances that applications can reference.
 
-Use this command to list workspaces, set or unset default workspace for your CLI operations.`,
+Workspace components are shared presets. Applications attach them with
+'bkms-cli app component create --ref <name>'.`,
 		DisableFlagsInUseLine: true,
 	}
 
-	// 有权限的工作空间列表
 	cmd.AddCommand(NewListCmd())
-	// 设置默认工作空间
-	cmd.AddCommand(NewSetCmd())
-	// 取消设置默认工作空间
-	cmd.AddCommand(NewUnsetCmd())
-	// 工作空间组件实例
-	cmd.AddCommand(component.NewCmd())
 
 	return cmd
 }

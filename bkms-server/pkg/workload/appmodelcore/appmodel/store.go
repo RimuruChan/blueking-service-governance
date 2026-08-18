@@ -287,6 +287,9 @@ func (s *AppModelStoreMongo) DeleteAppModel(ctx context.Context, appID string) e
 func (s *AppModelStoreMongo) AddComponent(ctx context.Context, appID string, comp *component.Component) error {
 	// Ensure the component has a name
 	comp.EnsureName()
+	if err := validate.Struct(comp); err != nil {
+		return errors.Wrap(formatValidationError(err), "component validation failed")
+	}
 
 	// Use filter to check app model exists and component name does not exist
 	filter := bson.M{

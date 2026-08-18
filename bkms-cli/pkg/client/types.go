@@ -161,6 +161,15 @@ type Client interface {
 	// PatchAppPolarisConfig 更新应用的北极星配置（部分更新）
 	PatchAppPolarisConfig(ctx context.Context, appID, configName string, body any) error
 
+	// ---------- 应用 / 空间组件 ----------
+
+	// ListWorkspaceComponents 获取工作空间组件列表
+	ListWorkspaceComponents(ctx context.Context, workspaceID string) ([]WorkspaceComponent, error)
+	// CreateAppComponent 添加应用组件，返回组件名称
+	CreateAppComponent(ctx context.Context, appID string, body any) (string, error)
+	// DeleteAppComponent 删除应用组件
+	DeleteAppComponent(ctx context.Context, appID, compName string) error
+
 	// ---------- AppSpec ----------
 
 	// GetAppDetail 获取应用详情（包含类型和启动命令）

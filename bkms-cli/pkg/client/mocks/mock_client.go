@@ -270,6 +270,78 @@ func (_c *MockClient_CreateAppBuild_Call) RunAndReturn(run func(ctx context.Cont
 	return _c
 }
 
+// CreateAppComponent provides a mock function for the type MockClient
+func (_mock *MockClient) CreateAppComponent(ctx context.Context, appID string, body any) (string, error) {
+	ret := _mock.Called(ctx, appID, body)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateAppComponent")
+	}
+
+	var r0 string
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, any) (string, error)); ok {
+		return returnFunc(ctx, appID, body)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, any) string); ok {
+		r0 = returnFunc(ctx, appID, body)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, any) error); ok {
+		r1 = returnFunc(ctx, appID, body)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockClient_CreateAppComponent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateAppComponent'
+type MockClient_CreateAppComponent_Call struct {
+	*mock.Call
+}
+
+// CreateAppComponent is a helper method to define mock.On call
+//   - ctx context.Context
+//   - appID string
+//   - body any
+func (_e *MockClient_Expecter) CreateAppComponent(ctx any, appID any, body any) *MockClient_CreateAppComponent_Call {
+	return &MockClient_CreateAppComponent_Call{Call: _e.mock.On("CreateAppComponent", ctx, appID, body)}
+}
+
+func (_c *MockClient_CreateAppComponent_Call) Run(run func(ctx context.Context, appID string, body any)) *MockClient_CreateAppComponent_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 any
+		if args[2] != nil {
+			arg2 = args[2].(any)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_CreateAppComponent_Call) Return(s string, err error) *MockClient_CreateAppComponent_Call {
+	_c.Call.Return(s, err)
+	return _c
+}
+
+func (_c *MockClient_CreateAppComponent_Call) RunAndReturn(run func(ctx context.Context, appID string, body any) (string, error)) *MockClient_CreateAppComponent_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateAppHelmDeploy provides a mock function for the type MockClient
 func (_mock *MockClient) CreateAppHelmDeploy(ctx context.Context, appID string, envName string, opts client.HelmDeployOptions) error {
 	ret := _mock.Called(ctx, appID, envName, opts)
@@ -473,6 +545,69 @@ func (_c *MockClient_CreateAppTrpcDeploy_Call) Return(err error) *MockClient_Cre
 }
 
 func (_c *MockClient_CreateAppTrpcDeploy_Call) RunAndReturn(run func(ctx context.Context, appID string, envName string, opts client.AppModelDeployOptions) error) *MockClient_CreateAppTrpcDeploy_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeleteAppComponent provides a mock function for the type MockClient
+func (_mock *MockClient) DeleteAppComponent(ctx context.Context, appID string, compName string) error {
+	ret := _mock.Called(ctx, appID, compName)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteAppComponent")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = returnFunc(ctx, appID, compName)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockClient_DeleteAppComponent_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteAppComponent'
+type MockClient_DeleteAppComponent_Call struct {
+	*mock.Call
+}
+
+// DeleteAppComponent is a helper method to define mock.On call
+//   - ctx context.Context
+//   - appID string
+//   - compName string
+func (_e *MockClient_Expecter) DeleteAppComponent(ctx any, appID any, compName any) *MockClient_DeleteAppComponent_Call {
+	return &MockClient_DeleteAppComponent_Call{Call: _e.mock.On("DeleteAppComponent", ctx, appID, compName)}
+}
+
+func (_c *MockClient_DeleteAppComponent_Call) Run(run func(ctx context.Context, appID string, compName string)) *MockClient_DeleteAppComponent_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_DeleteAppComponent_Call) Return(err error) *MockClient_DeleteAppComponent_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockClient_DeleteAppComponent_Call) RunAndReturn(run func(ctx context.Context, appID string, compName string) error) *MockClient_DeleteAppComponent_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -2055,6 +2190,74 @@ func (_c *MockClient_ListTrpcDeployRecords_Call) RunAndReturn(run func(ctx conte
 	return _c
 }
 
+// ListWorkspaceComponents provides a mock function for the type MockClient
+func (_mock *MockClient) ListWorkspaceComponents(ctx context.Context, workspaceID string) ([]client.WorkspaceComponent, error) {
+	ret := _mock.Called(ctx, workspaceID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListWorkspaceComponents")
+	}
+
+	var r0 []client.WorkspaceComponent
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) ([]client.WorkspaceComponent, error)); ok {
+		return returnFunc(ctx, workspaceID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) []client.WorkspaceComponent); ok {
+		r0 = returnFunc(ctx, workspaceID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]client.WorkspaceComponent)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, workspaceID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockClient_ListWorkspaceComponents_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListWorkspaceComponents'
+type MockClient_ListWorkspaceComponents_Call struct {
+	*mock.Call
+}
+
+// ListWorkspaceComponents is a helper method to define mock.On call
+//   - ctx context.Context
+//   - workspaceID string
+func (_e *MockClient_Expecter) ListWorkspaceComponents(ctx any, workspaceID any) *MockClient_ListWorkspaceComponents_Call {
+	return &MockClient_ListWorkspaceComponents_Call{Call: _e.mock.On("ListWorkspaceComponents", ctx, workspaceID)}
+}
+
+func (_c *MockClient_ListWorkspaceComponents_Call) Run(run func(ctx context.Context, workspaceID string)) *MockClient_ListWorkspaceComponents_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_ListWorkspaceComponents_Call) Return(workspaceComponents []client.WorkspaceComponent, err error) *MockClient_ListWorkspaceComponents_Call {
+	_c.Call.Return(workspaceComponents, err)
+	return _c
+}
+
+func (_c *MockClient_ListWorkspaceComponents_Call) RunAndReturn(run func(ctx context.Context, workspaceID string) ([]client.WorkspaceComponent, error)) *MockClient_ListWorkspaceComponents_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListWorkspaces provides a mock function for the type MockClient
 func (_mock *MockClient) ListWorkspaces(ctx context.Context, keyword string) ([]client.Workspace, error) {
 	ret := _mock.Called(ctx, keyword)
@@ -2806,6 +3009,19 @@ func (_mock *MockClient) GetAppDetail(ctx context.Context, appID string) (*clien
 		r0 = ret.Get(0).(*client.AppDetail)
 	}
 	return r0, ret.Error(1)
+}
+
+type MockClient_GetAppDetail_Call struct {
+	*mock.Call
+}
+
+func (_e *MockClient_Expecter) GetAppDetail(ctx any, appID any) *MockClient_GetAppDetail_Call {
+	return &MockClient_GetAppDetail_Call{Call: _e.mock.On("GetAppDetail", ctx, appID)}
+}
+
+func (_c *MockClient_GetAppDetail_Call) Return(appDetail *client.AppDetail, err error) *MockClient_GetAppDetail_Call {
+	_c.Call.Return(appDetail, err)
+	return _c
 }
 
 func (_mock *MockClient) GetAppSpecDefaultSection(ctx context.Context, appID string, section client.AppSpecSectionName, result any) error {

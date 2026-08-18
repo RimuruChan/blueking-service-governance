@@ -391,6 +391,29 @@ var _ = Describe("AppModelStoreMongo", func() {
 			})
 		})
 
+		Context("when component type and workspace reference are both set", func() {
+			It("should reject the component before persistence", func() {
+				comp := &component.Component{
+					Name: "invalid-component",
+					ComponentInst: component.ComponentInst{
+						Type:    "VolumeSecret",
+						Version: "v1.0.0",
+					},
+					ComponentRef: component.ComponentRef{
+						RefWorkspaceCompName: "workspace-component",
+					},
+				}
+
+				err := appModelStore.AddComponent(ctx, app.ID, comp)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("must have only one of"))
+
+				am, err := appModelStore.GetAppModel(ctx, app.ID)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(am.Components).To(BeEmpty())
+			})
+		})
+
 		Context("when component name already exists", func() {
 			It("should return ErrComponentNameExists", func() {
 				// Add first component

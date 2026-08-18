@@ -1057,6 +1057,56 @@ func (c *SvcBasedClient) DeleteAppPolarisConfig(ctx context.Context, appID, conf
 	return nil
 }
 
+// ListWorkspaceComponents 获取工作空间组件列表
+func (c *SvcBasedClient) ListWorkspaceComponents(
+	ctx context.Context,
+	workspaceID string,
+) ([]WorkspaceComponent, error) {
+	url := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/components", workspaceID)
+
+	var respData ListWorkspaceComponentsRespData
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return nil, errors.Errorf("list workspace components failed: [%d] -> %s", resp.StatusCode(), resp.Body())
+	}
+
+	return respData.Data, nil
+}
+
+// CreateAppComponent 添加应用组件，返回组件名称
+func (c *SvcBasedClient) CreateAppComponent(ctx context.Context, appID string, body any) (string, error) {
+	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/components", appID)
+
+	var respData CreateAppComponentRespData
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&respData).Post(url)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode() != http.StatusOK && resp.StatusCode() != http.StatusCreated {
+		return "", errors.Errorf("create app component failed: [%d] -> %s", resp.StatusCode(), resp.Body())
+	}
+
+	return respData.Data.Name, nil
+}
+
+// DeleteAppComponent 删除应用组件
+func (c *SvcBasedClient) DeleteAppComponent(ctx context.Context, appID, compName string) error {
+	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/components/%s", appID, compName)
+
+	resp, err := c.cli.R().SetContext(ctx).Delete(url)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode() != http.StatusOK && resp.StatusCode() != http.StatusNoContent {
+		return errors.Errorf("delete app component failed: [%d] -> %s", resp.StatusCode(), resp.Body())
+	}
+
+	return nil
+}
+
 // PatchAppPolarisConfig 更新应用的北极星配置（部分更新）
 func (c *SvcBasedClient) PatchAppPolarisConfig(ctx context.Context, appID, configName string, body any) error {
 	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/deps/polaris-configs/%s", appID, configName)

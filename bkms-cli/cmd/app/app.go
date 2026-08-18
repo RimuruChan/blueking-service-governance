@@ -25,6 +25,7 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/appcfgfile"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/appspec"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/build"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/component"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/deploy"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/image"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/instance"
@@ -61,6 +62,8 @@ Use this command to list and manage applications in your BKMS workspaces.`,
 	cmd.AddCommand(publish.NewCmd())
 	// 应用部署配置管理（命令组）
 	cmd.AddCommand(appspec.NewCmd())
+	// 应用组件引用管理（命令组）
+	cmd.AddCommand(component.NewCmd())
 	// 北极星配置管理（命令组）
 	cmd.AddCommand(polaris.NewCmd())
 

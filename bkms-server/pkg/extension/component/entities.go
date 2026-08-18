@@ -241,9 +241,9 @@ func (c *Component) EnsureName() {
 	if c.Name != "" {
 		return
 	}
-	if c.Type != "" {
-		c.Name = c.ComponentInst.GenerateName()
-	} else if c.RefWorkspaceCompName != "" {
+	if c.RefWorkspaceCompName != "" {
 		c.Name = c.ComponentRef.GenerateName()
+	} else if c.Type != "" {
+		c.Name = c.ComponentInst.GenerateName()
 	}
 }

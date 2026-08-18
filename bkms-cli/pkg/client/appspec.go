@@ -50,10 +50,11 @@ type AppDetail struct {
 
 // AppModelSpec represents the appModelSpec field in app detail.
 type AppModelSpec struct {
-	Command  []string  `json:"command"`
-	Args     []string  `json:"args"`
-	TrpcSpec *TrpcSpec `json:"trpcSpec,omitempty"`
-	TafSpec  *TafSpec  `json:"tafSpec,omitempty"`
+	Command    []string       `json:"command"`
+	Args       []string       `json:"args"`
+	Components []AppComponent `json:"components"`
+	TrpcSpec   *TrpcSpec      `json:"trpcSpec,omitempty"`
+	TafSpec    *TafSpec       `json:"tafSpec,omitempty"`
 }
 
 // TrpcSpec tRPC 框架配置
