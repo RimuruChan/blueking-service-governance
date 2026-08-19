@@ -23,6 +23,10 @@ func ValidateRule(rule *Rule) error {
 			return errors.Wrapf(ErrInvalidRule, "envTypes must contain only valid environment types")
 		}
 	}
+	if rule.ConfigType == appspec.AppSpecSectionDevMode &&
+		lo.Contains(rule.EnvTypes, bkmsenv.TypeProduction.String()) {
+		return errors.Wrapf(ErrInvalidRule, "devMode rules cannot target production environments")
+	}
 	if rule.Spec == nil {
 		return errors.Wrapf(ErrInvalidRule, "spec is required")
 	}

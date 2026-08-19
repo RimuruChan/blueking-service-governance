@@ -18,7 +18,7 @@ var _ = Describe("Application default rule model", func() {
 			rule := &appdefaults.Rule{
 				WorkspaceID: "workspace-supported-sections",
 				ConfigType:  configType,
-				EnvTypes:    []string{"production"},
+				EnvTypes:    []string{"staging"},
 				Spec:        spec,
 			}
 			Expect(appdefaults.ValidateRule(rule)).To(Succeed())
@@ -34,6 +34,16 @@ var _ = Describe("Application default rule model", func() {
 			&appspec.AppSpec{DevMode: &appspec.DevModeSpec{Enabled: lo.ToPtr(false)}},
 		),
 	)
+
+	It("rejects dev-mode rules targeting production environments", func() {
+		rule := &appdefaults.Rule{
+			WorkspaceID: "workspace-production-dev-mode",
+			ConfigType:  appspec.AppSpecSectionDevMode,
+			EnvTypes:    []string{"production"},
+			Spec:        &appspec.AppSpec{DevMode: &appspec.DevModeSpec{Enabled: lo.ToPtr(false)}},
+		}
+		Expect(errors.Is(appdefaults.ValidateRule(rule), appdefaults.ErrInvalidRule)).To(BeTrue())
+	})
 
 	It("rejects unsupported sections", func() {
 		rule := &appdefaults.Rule{
