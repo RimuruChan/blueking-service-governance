@@ -19,35 +19,35 @@
 package client
 
 const (
-	// AppComponentSourceReference 应用组件来自空间组件引用
-	AppComponentSourceReference = "reference"
-	// AppComponentSourceCustom 应用组件为自定义实例
-	AppComponentSourceCustom = "custom"
+	// AppComponentKindRef 引用工作空间组件实例
+	AppComponentKindRef = "ref"
+	// AppComponentKindInst 应用上直接创建的组件实例
+	AppComponentKindInst = "inst"
 )
 
-// AppComponent 应用组件（来自 GET /apps/:appID 的 appModelSpec.components）
+// AppComponent 应用组件实例
 type AppComponent struct {
-	// 应用内组件名称
+	// 应用内组件实例名称
 	Name string `json:"name" yaml:"name"`
-	// 来源：reference（引用空间组件）或 custom（自定义实例）。由 CLI 根据 refWorkspaceCompName 计算。
-	Source string `json:"source" yaml:"source"`
-	// 组件类型（引用时由空间组件回填）
+	// 形态：ref 或 inst。refWorkspaceCompName 非空时为 ref。
+	Kind string `json:"kind" yaml:"kind"`
+	// 组件类型
 	Type string `json:"type" yaml:"type"`
-	// 组件版本（引用时由空间组件回填）
+	// 组件版本
 	Version string `json:"version" yaml:"version"`
-	// 引用的空间组件名称，非空表示引用
+	// 引用的工作空间组件实例名称，非空表示 ref
 	RefWorkspaceCompName string `json:"refWorkspaceCompName,omitempty" yaml:"refWorkspaceCompName,omitempty"`
 	// 生效范围类型：global / environment
 	ScopeType string `json:"scopeType" yaml:"scopeType"`
 	// 生效的环境列表
 	ScopeEnvNames []string `json:"scopeEnvNames" yaml:"scopeEnvNames"`
-	// 组件属性（引用时为空间组件的值）
+	// 组件属性。ref 使用被引用工作空间组件实例的值。
 	Properties map[string]any `json:"properties" yaml:"properties" table:"-"`
 }
 
 // WorkspaceComponent 工作空间组件实例
 type WorkspaceComponent struct {
-	// 组件名称，用于应用引用
+	// 组件实例名称，应用引用时使用
 	Name string `json:"name" yaml:"name"`
 	// 组件类型
 	Type string `json:"type" yaml:"type"`

@@ -44,7 +44,7 @@ var _ = Describe("ListAppComponents", func() {
 		cli = mocks.NewMockClient(GinkgoT())
 	})
 
-	It("marks referenced and custom components and returns both by default", func() {
+	It("marks ref and inst component instances and returns both by default", func() {
 		cli.EXPECT().GetAppDetail(mock.Anything, appID).Return(&client.AppDetail{
 			Type: constant.AppTypeTrpc,
 			AppModelSpec: &client.AppModelSpec{
@@ -59,11 +59,11 @@ var _ = Describe("ListAppComponents", func() {
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(comps).To(HaveLen(2))
-		Expect(comps[0].Source).To(Equal(client.AppComponentSourceReference))
-		Expect(comps[1].Source).To(Equal(client.AppComponentSourceCustom))
+		Expect(comps[0].Kind).To(Equal(client.AppComponentKindRef))
+		Expect(comps[1].Kind).To(Equal(client.AppComponentKindInst))
 	})
 
-	It("filters referenced components when source=reference", func() {
+	It("filters referenced instances when kind=ref", func() {
 		cli.EXPECT().GetAppDetail(mock.Anything, appID).Return(&client.AppDetail{
 			Type: constant.AppTypeTaf,
 			AppModelSpec: &client.AppModelSpec{
@@ -74,12 +74,12 @@ var _ = Describe("ListAppComponents", func() {
 			},
 		}, nil)
 
-		comps, err := ListAppComponents(ctx, cli, appID, client.AppComponentSourceReference)
+		comps, err := ListAppComponents(ctx, cli, appID, client.AppComponentKindRef)
 
 		Expect(err).NotTo(HaveOccurred())
 		Expect(comps).To(HaveLen(1))
 		Expect(comps[0].Name).To(Equal("shared-limits"))
-		Expect(comps[0].Source).To(Equal(client.AppComponentSourceReference))
+		Expect(comps[0].Kind).To(Equal(client.AppComponentKindRef))
 	})
 
 	It("rejects unsupported app types", func() {
@@ -94,11 +94,11 @@ var _ = Describe("ListAppComponents", func() {
 		Expect(err.Error()).To(ContainSubstring("only trpc/taf"))
 	})
 
-	It("rejects unknown source filters", func() {
+	It("rejects unknown kind filters", func() {
 		_, err := ListAppComponents(ctx, cli, appID, "unknown")
 
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(ContainSubstring("unsupported source"))
+		Expect(err.Error()).To(ContainSubstring("unsupported kind"))
 	})
 })
 

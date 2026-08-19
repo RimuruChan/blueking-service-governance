@@ -33,16 +33,16 @@ func NewDeleteCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "delete",
-		Short: "Remove an application component",
-		Long: `Remove a component from an application by its app-local name.
+		Short: "Remove an application component instance",
+		Long: `Remove a component instance from an application by name.
 
---name is the component name returned by list, not the workspace component
-name unless they happen to be the same. This only removes the app-side
-attachment; the workspace component itself is not deleted.
+--name is the application-local name returned by list. Both ref and inst
+instances can be deleted. Deleting a ref does not delete the referenced
+workspace component instance.
 
-After deleting a reference, trigger a deployment for the change to take
-effect. Only trpc and taf apps are supported.`,
-		Example: `  # Remove a referenced component from an application
+The change takes effect after the next deployment. Only trpc and taf apps
+are supported.`,
+		Example: `  # Remove a component instance from an application
   bkms-cli app component delete --app my-app --name my-limits`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := handler.DeleteAppComponent(cmd.Context(), client.New(), appID, compName); err != nil {
@@ -56,7 +56,7 @@ effect. Only trpc and taf apps are supported.`,
 	}
 
 	cmd.Flags().StringVar(&appID, "app", "", "application ID")
-	cmd.Flags().StringVar(&compName, "name", "", "app-local component name from list")
+	cmd.Flags().StringVar(&compName, "name", "", "application-local component instance name")
 
 	_ = cmd.MarkFlagRequired("app")
 	_ = cmd.MarkFlagRequired("name")

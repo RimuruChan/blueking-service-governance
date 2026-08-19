@@ -16,7 +16,7 @@
  * to the current version of the project delivered to anyone in the future.
  */
 
-// Package component 处理应用组件引用相关逻辑。
+// Package component 处理应用组件实例相关逻辑。
 package component
 
 import (
@@ -30,21 +30,21 @@ import (
 
 // CreateAppComponentRefInput 是创建应用组件引用的请求体。
 type CreateAppComponentRefInput struct {
-	// CompName 应用内组件名称，为空时由后端生成
+	// CompName 应用内组件实例名称，为空时由服务端生成
 	CompName string `json:"compName,omitempty"`
-	// RefWorkspaceCompName 引用的空间组件名称
+	// RefWorkspaceCompName 引用的工作空间组件实例名称
 	RefWorkspaceCompName string `json:"refWorkspaceCompName"`
 }
 
-// ListAppComponents 列出应用组件，source 为空返回全部，可为 reference 或 custom。
+// ListAppComponents 列出应用组件实例。kind 为空返回全部，取值 ref 或 inst。
 func ListAppComponents(
 	ctx context.Context,
 	cli client.Client,
-	appID, source string,
+	appID, kind string,
 ) ([]client.AppComponent, error) {
-	if source != "" && source != client.AppComponentSourceReference && source != client.AppComponentSourceCustom {
-		return nil, errors.Errorf("unsupported source %q, want %s or %s",
-			source, client.AppComponentSourceReference, client.AppComponentSourceCustom)
+	if kind != "" && kind != client.AppComponentKindRef && kind != client.AppComponentKindInst {
+		return nil, errors.Errorf("unsupported kind %q, want %s or %s",
+			kind, client.AppComponentKindRef, client.AppComponentKindInst)
 	}
 
 	app, err := cli.GetAppDetail(ctx, appID)
@@ -61,8 +61,8 @@ func ListAppComponents(
 	}
 	out := make([]client.AppComponent, 0, len(comps))
 	for _, comp := range comps {
-		comp.Source = componentSource(comp)
-		if source == "" || comp.Source == source {
+		comp.Kind = componentKind(comp)
+		if kind == "" || comp.Kind == kind {
 			out = append(out, comp)
 		}
 	}
@@ -88,7 +88,7 @@ func CreateAppComponentRef(
 	})
 }
 
-// DeleteAppComponent 删除应用上的组件（引用或自定义实例）。
+// DeleteAppComponent 按名称删除应用上的组件实例。
 func DeleteAppComponent(ctx context.Context, cli client.Client, appID, compName string) error {
 	app, err := cli.GetAppDetail(ctx, appID)
 	if err != nil {
@@ -107,9 +107,9 @@ func ensureAppModelApp(appType string) error {
 	return errors.Errorf("app type %q does not support components (only trpc/taf apps are supported)", appType)
 }
 
-func componentSource(comp client.AppComponent) string {
+func componentKind(comp client.AppComponent) string {
 	if comp.RefWorkspaceCompName != "" {
-		return client.AppComponentSourceReference
+		return client.AppComponentKindRef
 	}
-	return client.AppComponentSourceCustom
+	return client.AppComponentKindInst
 }

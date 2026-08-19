@@ -28,8 +28,8 @@ func NewCmd() *cobra.Command {
 		Short: "Manage workspace component instances",
 		Long: `List workspace-level component instances that applications can reference.
 
-Workspace components are shared presets. Applications attach them with
-'bkms-cli app component create --ref <name>'.`,
+Workspace component instances are shared presets. Applications attach them
+with 'bkms-cli app component create --ref <name>'.`,
 		DisableFlagsInUseLine: true,
 	}
 

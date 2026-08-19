@@ -62,7 +62,7 @@ Use this command to list and manage applications in your BKMS workspaces.`,
 	cmd.AddCommand(publish.NewCmd())
 	// 应用部署配置管理（命令组）
 	cmd.AddCommand(appspec.NewCmd())
-	// 应用组件引用管理（命令组）
+	// 应用组件实例管理（命令组）
 	cmd.AddCommand(component.NewCmd())
 	// 北极星配置管理（命令组）
 	cmd.AddCommand(polaris.NewCmd())

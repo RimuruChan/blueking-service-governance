@@ -37,8 +37,8 @@ func NewListCmd() *cobra.Command {
 		Short: "List workspace component instances",
 		Long: `List component instances defined in a workspace.
 
-Use the 'name' field as --ref when attaching a component to an application
-with 'bkms-cli app component create'.
+Use the 'name' field as --ref when attaching a component instance to an
+application with 'bkms-cli app component create'.
 
 If you have set a default workspace using 'workspace set', the --workspace flag
 is optional.`,

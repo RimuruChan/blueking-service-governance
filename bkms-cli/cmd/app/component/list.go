@@ -30,28 +30,26 @@ import (
 
 // NewListCmd returns a Command instance for 'app component list' sub command
 func NewListCmd() *cobra.Command {
-	var appID, source, outputFormat string
+	var appID, kind, outputFormat string
 
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List application components",
-		Long: `List components attached to an application.
+		Short: "List application component instances",
+		Long: `List component instances attached to an application.
 
-Each item is either a workspace-component reference (source=reference) or a
-custom instance (source=custom). Use --source to filter.
-
-Referenced components show type, version, properties and scope resolved from
-the workspace component. Only trpc and taf apps are supported.`,
-		Example: `  # List all components for an application
+kind=ref is a reference to a workspace component instance.
+kind=inst is a component instance created on the application.
+Use --kind to filter. Only trpc and taf apps are supported.`,
+		Example: `  # List all component instances for an application
   bkms-cli app component list --app my-app
 
   # List only workspace component references
-  bkms-cli app component list --app my-app --source reference
+  bkms-cli app component list --app my-app --kind ref
 
   # Output in JSON format
   bkms-cli app component list --app my-app -o json`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			comps, err := handler.ListAppComponents(cmd.Context(), client.New(), appID, source)
+			comps, err := handler.ListAppComponents(cmd.Context(), client.New(), appID, kind)
 			if err != nil {
 				return errors.Wrap(err, "list app components")
 			}
@@ -66,7 +64,7 @@ the workspace component. Only trpc and taf apps are supported.`,
 	}
 
 	cmd.Flags().StringVar(&appID, "app", "", "application ID")
-	cmd.Flags().StringVar(&source, "source", "", "filter by source: reference | custom")
+	cmd.Flags().StringVar(&kind, "kind", "", "filter by kind: ref | inst")
 	cmd.Flags().StringVarP(&outputFormat, "output", "o", "", output.FlagUsage)
 
 	_ = cmd.MarkFlagRequired("app")

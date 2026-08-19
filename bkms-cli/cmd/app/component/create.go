@@ -36,18 +36,17 @@ func NewCreateCmd() *cobra.Command {
 		Short: "Reference a workspace component instance",
 		Long: `Attach a workspace component instance to an application by name.
 
-The application does not copy properties; deploy uses the workspace component's
-values. Referenced components cannot be edited. Only trpc and taf apps are
-supported.
+The application does not copy properties; deploy uses the workspace component
+instance's values. Referenced instances cannot be edited. Only trpc and taf
+apps are supported.
 
---name is optional. If omitted, the backend generates a name from the
-workspace component name.
+--name is optional. If omitted, the server generates a name.
 
-After creating a reference, trigger a deployment for it to take effect.`,
-		Example: `  # Reference a workspace component (backend generates the app component name)
+The change takes effect after the next deployment.`,
+		Example: `  # Reference a workspace component instance
   bkms-cli app component create --app my-app --ref shared-limits
 
-  # Reference with an explicit app-local name
+  # Reference with an explicit application-local name
   bkms-cli app component create --app my-app --ref shared-limits --name my-limits`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			name, err := handler.CreateAppComponentRef(cmd.Context(), client.New(), appID, refName, compName)
@@ -62,8 +61,8 @@ After creating a reference, trigger a deployment for it to take effect.`,
 	}
 
 	cmd.Flags().StringVar(&appID, "app", "", "application ID")
-	cmd.Flags().StringVar(&refName, "ref", "", "workspace component name to reference")
-	cmd.Flags().StringVar(&compName, "name", "", "app-local component name (optional, generated if omitted)")
+	cmd.Flags().StringVar(&refName, "ref", "", "workspace component instance name")
+	cmd.Flags().StringVar(&compName, "name", "", "application-local component instance name")
 
 	_ = cmd.MarkFlagRequired("app")
 	_ = cmd.MarkFlagRequired("ref")

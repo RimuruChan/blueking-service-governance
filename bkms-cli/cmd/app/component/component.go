@@ -25,15 +25,17 @@ import "github.com/spf13/cobra"
 func NewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "component",
-		Short: "Manage application component references",
-		Long: `Manage application references to workspace component instances.
+		Short: "Manage application component instances",
+		Long: `Manage application component instances, including references to
+workspace component instances.
 
-Use this command to list application components, reference a workspace
-component instance, or remove an application component by name.
+Use this command to list application component instances, reference a
+workspace component instance, or remove an application component instance
+by name.
 
-Referencing a workspace component does not copy its properties. The app uses
-the workspace component's values at deploy time. Only trpc and taf apps are
-supported.`,
+Referencing a workspace component instance does not copy its properties. The
+app uses the workspace instance's values at deploy time. Only trpc and taf
+apps are supported.`,
 		DisableFlagsInUseLine: true,
 	}
 
