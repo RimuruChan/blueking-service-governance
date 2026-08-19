@@ -156,4 +156,95 @@ var _ = Describe("Test polaris provider", func() {
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("baseUrl is required"))
 	})
+
+	It("test update instance owners", func() {
+		mockey.PatchConvey("test", GinkgoT(), func() {
+			defer gock.Off()
+
+			gock.New(testURL).
+				Put("/naming/v1/services").
+				JSON([]map[string]any{{
+					"name":      "test-service",
+					"namespace": "test-namespace",
+					"token":     "test-token",
+					"owners":    "lisi,wangwu",
+				}}).
+				Reply(200).
+				JSON(map[string]any{})
+
+			err := p.UpdateInstance(
+				ctx,
+				"test-inst-id",
+				&types.ServicePlanConfig{Config: planConfig},
+				map[string]any{
+					"polarisName":      "test-service",
+					"polarisNamespace": "test-namespace",
+					"token":            "test-token",
+				},
+				&UpdateParams{Owners: "lisi,wangwu"},
+			)
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
+
+	It("test update instance polaris api error", func() {
+		mockey.PatchConvey("test", GinkgoT(), func() {
+			defer gock.Off()
+
+			gock.New(testURL).
+				Put("/naming/v1/services").
+				Reply(500).
+				JSON(map[string]any{"info": "invalid owners"})
+
+			err := p.UpdateInstance(
+				ctx,
+				"test-inst-id",
+				&types.ServicePlanConfig{Config: planConfig},
+				map[string]any{
+					"polarisName":      "test-service",
+					"polarisNamespace": "test-namespace",
+					"token":            "test-token",
+				},
+				&UpdateParams{Owners: "bad"},
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid owners"))
+		})
+	})
+
+	It("test update instance missing required params", func() {
+		mockey.PatchConvey("test", GinkgoT(), func() {
+			err := p.UpdateInstance(
+				ctx,
+				"test-inst-id",
+				&types.ServicePlanConfig{Config: planConfig},
+				map[string]any{
+					"polarisName":      "test-service",
+					"polarisNamespace": "test-namespace",
+					"token":            "test-token",
+				},
+				&UpdateParams{},
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Owners"))
+		})
+	})
+
+	It("test update instance invalid params type", func() {
+		mockey.PatchConvey("test", GinkgoT(), func() {
+			err := p.UpdateInstance(
+				ctx,
+				"test-inst-id",
+				&types.ServicePlanConfig{Config: planConfig},
+				map[string]any{
+					"polarisName":      "test-service",
+					"polarisNamespace": "test-namespace",
+					"token":            "test-token",
+				},
+				&CreateParams{},
+			)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("*polaris.UpdateParams"))
+		})
+	})
 })

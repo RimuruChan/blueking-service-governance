@@ -74,6 +74,23 @@ type ServiceProvider interface {
 	) (*types.DeleteInstanceResult, error)
 }
 
+// InstanceUpdater 是 provider 可选的服务实例更新能力。
+// 不支持更新的 provider 不需要实现此接口。
+type InstanceUpdater interface {
+	// UpdateInstance 更新服务实例，调用返回时更新已完成。
+	//
+	// instID 为实例 ID（hex 字符串）。
+	// instConfig 为实例的持久化配置，取值自 ServiceInstance.Config。
+	// params 为各 provider 自定义的强类型参数，需实现 types.ProvisionParams 接口。
+	UpdateInstance(
+		ctx context.Context,
+		instID string,
+		config *types.ServicePlanConfig,
+		instConfig map[string]any,
+		params types.ProvisionParams,
+	) error
+}
+
 // New creates a new service provider
 func New(serviceName string, plan *model.ServicePlan) (ServiceProvider, error) {
 	switch serviceName {

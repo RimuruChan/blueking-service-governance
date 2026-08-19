@@ -22,3 +22,6 @@ import "github.com/pkg/errors"
 
 // ErrInvalidArgument 参数/业务校验失败
 var ErrInvalidArgument = errors.New("invalid argument")
+
+// ErrUpdateNotSupported provider 不支持更新服务实例
+var ErrUpdateNotSupported = errors.New("service instance update is not supported")

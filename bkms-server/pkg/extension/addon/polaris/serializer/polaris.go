@@ -296,6 +296,8 @@ type PatchAppPolarisConfigInput struct {
 	ScopeEnvNames []string `json:"scopeEnvNames"`
 	// 北极星 Token（可选更新）
 	PolarisToken *string `json:"polarisToken"`
+	// 操作人/负责人（可选更新；未出现表示不改；空字符串非法）
+	Operator *string `json:"operator"`
 }
 
 // PatchAppPolarisConfigOutput is the JSON response for updating a polaris config.

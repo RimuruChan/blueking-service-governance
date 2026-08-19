@@ -67,7 +67,9 @@ Updatable YAML spec file fields:
   serviceLabels:      Labels applied to ALL registered polaris instances (map[string]string).
                       When provided, fully replaces existing labels (not merged)
   scopeEnvNames:      Replace the environments where this config takes effect ([]string).
-                      An empty list clears the scope`,
+                      An empty list clears the scope
+  operator:           Owner of a platform-created polaris service (comma-separated).
+                      Omitted field is left unchanged; empty string is rejected`,
 		Example: `  # Update service port
   bkms-cli app polaris update --app my-app --name polaris-xxxxx -f update.yaml
 
@@ -82,7 +84,10 @@ Updatable YAML spec file fields:
   # Example update.yaml (update labels):
   # serviceLabels:
   #   version: v2
-  #   region: shenzhen`,
+  #   region: shenzhen
+
+  # Example update.yaml (change owner of a platform-created service):
+  # operator: zhangsan,lisi`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// 读取并解析 YAML 规格文件
 			if _, err := os.Stat(specFile); err != nil {

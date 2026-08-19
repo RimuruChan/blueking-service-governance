@@ -202,6 +202,21 @@ func (m *PolarisPlatformManager) DeleteService(
 	return nil
 }
 
+// UpdateServiceOwners 将平台创建的北极星服务负责人同步到北极星侧。
+func (m *PolarisPlatformManager) UpdateServiceOwners(
+	ctx context.Context,
+	config *PolarisConfig,
+	owners string,
+) error {
+	svcMgr := depservice.New(m.svcStore, m.instStore, nil, nil)
+	if err := svcMgr.UpdateServiceInstance(ctx, config.DepSvcInstID, &polarisprovider.UpdateParams{
+		Owners: owners,
+	}); err != nil {
+		return errors.Wrap(err, "update polaris service owners")
+	}
+	return nil
+}
+
 // ListPolarisServiceInstances 根据应用和环境获取所有生效北极星服务的实例。
 func (m *PolarisPlatformManager) ListPolarisServiceInstances(
 	ctx context.Context,

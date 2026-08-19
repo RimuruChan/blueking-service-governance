@@ -248,6 +248,7 @@ func (h *Handler) PatchAppPolarisConfig(c *gin.Context) {
 		ServiceLabels:     jsonInput.ServiceLabels,
 		ScopeEnvNames:     jsonInput.ScopeEnvNames,
 		PolarisToken:      jsonInput.PolarisToken,
+		Operator:          jsonInput.Operator,
 	}
 
 	updatedConfig, updateErr := service.Update(ctx, app, existingConfig, updateData)
@@ -258,6 +259,11 @@ func (h *Handler) PatchAppPolarisConfig(c *gin.Context) {
 				"polaris config(%s) not found in app(%s)",
 				uriInput.ConfigName, uriInput.AppID,
 			))
+			return
+		}
+		if errors.Is(updateErr, polaris.ErrOperatorEmpty) ||
+			errors.Is(updateErr, polaris.ErrOperatorNotManaged) {
+			bkerrs.AbortWithErr(c, bkerrs.Wrap(updateErr, bkerrs.ErrCodeInvalidRequest, updateErr.Error()))
 			return
 		}
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(updateErr, bkerrs.ErrCodeInternalServerError, "update polaris config"))

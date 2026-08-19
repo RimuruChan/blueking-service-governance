@@ -120,6 +120,42 @@ func (p *Provider) CreateInstance(
 	}, nil
 }
 
+// UpdateInstance 更新 Polaris 服务实例，同步完成。
+func (p *Provider) UpdateInstance(
+	ctx context.Context,
+	_ string,
+	_ *types.ServicePlanConfig,
+	instConfig map[string]any,
+	params types.ProvisionParams,
+) error {
+	updateParams, ok := params.(*UpdateParams)
+	if !ok {
+		return errors.New("invalid params type, expected *polaris.UpdateParams")
+	}
+	if err := updateParams.Validate(); err != nil {
+		return errors.Wrap(err, "validate polaris update params")
+	}
+
+	instCfg, err := ParseInstConfig(instConfig)
+	if err != nil {
+		return errors.Wrap(err, "parse polaris inst config")
+	}
+	if err = instCfg.Validate(); err != nil {
+		return errors.Wrap(err, "validate polaris inst config")
+	}
+	if err = p.updateService(
+		ctx,
+		instCfg.PolarisName,
+		instCfg.PolarisNamespace,
+		instCfg.Token,
+		updateParams.Owners,
+	); err != nil {
+		metrics.DepservicePolarisFailed("update")
+		return errors.Wrap(err, "update polaris service")
+	}
+	return nil
+}
+
 // DeleteInstance 删除 Polaris 服务实例，同步完成。
 //
 // 若实例配置不完整（例如仍处于 provisioning、尚未写出 polaris 资源标识），
@@ -167,6 +203,21 @@ func (p *Provider) createService(ctx context.Context, name, namespace, owners st
 	}
 
 	return tokenField.String(), nil
+}
+
+// updateService calls Polaris API to update a service.
+func (p *Provider) updateService(ctx context.Context, name, namespace, token, owners string) error {
+	reqBody := []map[string]any{
+		{
+			"name":      name,
+			"namespace": namespace,
+			"token":     token,
+			"owners":    owners,
+		},
+	}
+
+	_, err := p.doRequest(ctx, http.MethodPut, "/naming/v1/services", reqBody)
+	return err
 }
 
 // deleteService calls Polaris API to delete a service

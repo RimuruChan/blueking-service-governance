@@ -23,7 +23,7 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-// ProvisionParams 是所有 provider 创建参数的公共接口。
+// ProvisionParams 是所有 provider 创建/更新参数的公共接口。
 // 各 provider 定义自己的强类型结构体并实现此接口。
 type ProvisionParams interface {
 	Validate() error

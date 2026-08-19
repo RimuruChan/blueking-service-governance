@@ -271,6 +271,55 @@ var _ = Describe("ServiceManager", func() {
 		})
 	})
 
+	Context("UpdateServiceInstance", func() {
+		It("updates an instance through the provider", func() {
+			instID := createInstance(model.AvailableStatus)
+
+			Expect(mgr.UpdateServiceInstance(ctx, instID, fakeProvisionParams{})).To(Succeed())
+		})
+
+		It("returns the provider error", func() {
+			fake.Use(&fake.Provider{UpdateErr: errors.New("update failed")})
+			instID := createInstance(model.AvailableStatus)
+
+			err := mgr.UpdateServiceInstance(ctx, instID, fakeProvisionParams{})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("update failed"))
+		})
+
+		It("returns not found for a missing instance", func() {
+			err := mgr.UpdateServiceInstance(ctx, bson.NewObjectID(), fakeProvisionParams{})
+			Expect(model.AsNotFoundError(err)).To(BeTrue())
+		})
+
+		It("returns not supported when the provider has no updater", func() {
+			Expect(svcStore.Create(ctx, &model.Service{
+				Name:        "redis",
+				DisplayName: "redis",
+				Plans: []model.ServicePlan{{
+					Name:         planName,
+					ProviderType: model.ProviderTypeSystemAllocated,
+					Config:       map[string]any{},
+				}},
+			})).To(Succeed())
+
+			instID, err := instStore.Create(ctx, &model.ServiceInstance{
+				Name:         "redis-" + stringx.Random(6),
+				ServiceName:  "redis",
+				PlanName:     planName,
+				ProviderType: model.ProviderTypeSystemAllocated,
+				ScopeType:    model.ScopeTypeWorkspace,
+				WorkspaceID:  "ws-" + stringx.Random(6),
+				Status:       model.AvailableStatus,
+				Operator:     "tester",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			err = mgr.UpdateServiceInstance(ctx, instID, fakeProvisionParams{})
+			Expect(errors.Is(err, depservice.ErrUpdateNotSupported)).To(BeTrue())
+		})
+	})
+
 	Context("ListServiceInstances", func() {
 		It("filters by workspace", func() {
 			wsID := "ws-" + stringx.Random(6)

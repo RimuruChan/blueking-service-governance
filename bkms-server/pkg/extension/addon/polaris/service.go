@@ -21,6 +21,7 @@ package polaris
 import (
 	"context"
 	stderrors "errors"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -98,6 +99,19 @@ func (s *PolarisConfigService) Update(
 	oldConfig *PolarisConfig,
 	updateData *ConfigUpdateData,
 ) (*PolarisConfig, error) {
+	// 处理对负责人字段的更新
+	if updateData.Operator != nil {
+		if strings.TrimSpace(*updateData.Operator) == "" {
+			return nil, ErrOperatorEmpty
+		}
+		if oldConfig.DepSvcInstID.IsZero() {
+			return nil, ErrOperatorNotManaged
+		}
+		if err := s.platformManager.UpdateServiceOwners(ctx, oldConfig, *updateData.Operator); err != nil {
+			return nil, err
+		}
+	}
+
 	if updateData.ScopeEnvNames != nil {
 		// scope 变化时保留仍有效的权重，并为新增环境补充默认值。
 		updateData.envWeights = s.envStateManager.reconcileEnvWeightsForScope(

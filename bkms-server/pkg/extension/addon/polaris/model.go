@@ -150,6 +150,7 @@ type ConfigUpdateData struct {
 	// ScopeEnvNames 生效环境列表；nil 表示不更新，非 nil（含空切片）表示覆盖
 	ScopeEnvNames []string
 	PolarisToken  *string
+	Operator      *string
 	// envWeights 仅由 service 在 scope 变化时生成并交给 store 持久化。
 	envWeights map[string]int32
 }

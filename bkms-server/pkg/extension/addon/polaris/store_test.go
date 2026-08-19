@@ -236,6 +236,21 @@ var _ = Describe("PolarisConfigStore", func() {
 			})
 		})
 
+		Context("when updating operator", func() {
+			It("should update operator successfully", func() {
+				operator := "lisi,wangwu"
+				err := store.Update(ctx, testAppID, configName, &polaris.ConfigUpdateData{
+					Operator: &operator,
+				})
+				Expect(err).NotTo(HaveOccurred())
+
+				updatedConfig, err := store.Get(ctx, testAppID, configName)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(updatedConfig.Operator).To(Equal(operator))
+				Expect(updatedConfig.PolarisName).To(Equal("original-name"))
+			})
+		})
+
 		Context("when config does not exist", func() {
 			It("should return ErrConfigNotFound", func() {
 				newPort := int32(9090)

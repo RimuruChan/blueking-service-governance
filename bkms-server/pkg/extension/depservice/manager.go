@@ -132,6 +132,36 @@ func (m *ServiceManager) CreateServiceInstance(
 	return instID, m.updateInstanceStatus(ctx, instID, model.AvailableStatus, nil)
 }
 
+// UpdateServiceInstance 通过对应 provider 更新服务实例。
+func (m *ServiceManager) UpdateServiceInstance(
+	ctx context.Context,
+	instID bson.ObjectID,
+	params types.ProvisionParams,
+) error {
+	inst, err := m.instStore.Get(ctx, instID)
+	if err != nil {
+		return errors.Wrap(err, "get service instance")
+	}
+
+	plan, svcProvider, err := m.getPlanAndProvider(ctx, inst.ServiceName, inst.PlanName)
+	if err != nil {
+		return err
+	}
+
+	updater, ok := svcProvider.(provider.InstanceUpdater)
+	if !ok {
+		return errors.Wrapf(ErrUpdateNotSupported, "service %s", inst.ServiceName)
+	}
+
+	err = updater.UpdateInstance(ctx, instID.Hex(), &types.ServicePlanConfig{
+		Config: plan.Config,
+	}, inst.Config, params)
+	if err != nil {
+		return errors.Wrap(err, "update service instance by provider")
+	}
+	return nil
+}
+
 // getPlanAndProvider 按服务名与 plan 名解析 plan 并构造对应 provider。
 func (m *ServiceManager) getPlanAndProvider(
 	ctx context.Context,

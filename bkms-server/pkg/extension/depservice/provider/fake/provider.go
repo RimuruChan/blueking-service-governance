@@ -30,7 +30,7 @@ import (
 )
 
 // Provider 是 provider.ServiceProvider 的测试替身。
-// 可通过字段控制 Create/Delete 的返回行为。
+// 可通过字段控制 Create/Update/Delete 的返回行为。
 type Provider struct {
 	// CreateAsync 为 true 时 CreateInstance 返回 Async=true
 	CreateAsync bool
@@ -43,6 +43,9 @@ type Provider struct {
 	DeleteAsync bool
 	// DeleteErr 非空时 DeleteInstance 直接返回该错误
 	DeleteErr error
+
+	// UpdateErr 非空时 UpdateInstance 直接返回该错误
+	UpdateErr error
 }
 
 var (
@@ -93,6 +96,20 @@ func (p *Provider) CreateInstance(
 		return p.CreateResult, nil
 	}
 	return &types.CreateInstanceResult{Async: p.CreateAsync}, nil
+}
+
+// UpdateInstance implements provider.InstanceUpdater.
+func (p *Provider) UpdateInstance(
+	_ context.Context,
+	_ string,
+	_ *types.ServicePlanConfig,
+	_ map[string]any,
+	_ types.ProvisionParams,
+) error {
+	if p.UpdateErr != nil {
+		return p.UpdateErr
+	}
+	return nil
 }
 
 // DeleteInstance implements provider.ServiceProvider.

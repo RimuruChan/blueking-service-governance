@@ -37,6 +37,10 @@ var (
 	ErrConfigNotFound = errors.New("polaris config not found")
 	// ErrConfigNameExists 北极星配置名称已存在
 	ErrConfigNameExists = errors.New("polaris config name already exists")
+	// ErrOperatorEmpty 不允许将负责人清空
+	ErrOperatorEmpty = errors.New("operator cannot be empty")
+	// ErrOperatorNotManaged 仅平台创建的北极星配置允许修改负责人
+	ErrOperatorNotManaged = errors.New("operator can only be updated for platform-created polaris services")
 )
 
 // PolarisConfigStore 北极星配置存储接口
@@ -191,6 +195,10 @@ func (s *PolarisConfigStoreMongo) Update(
 	}
 	if updateData.PolarisToken != nil {
 		updateSet["polarisToken"] = *updateData.PolarisToken
+		needUpdate = true
+	}
+	if updateData.Operator != nil {
+		updateSet["operator"] = *updateData.Operator
 		needUpdate = true
 	}
 	if updateData.ScopeEnvNames != nil {

@@ -179,6 +179,82 @@ var _ = Describe("PolarisConfigService", func() {
 			Expect(updated.EnvStates).NotTo(HaveKey(environment.Name))
 			Expect(updated.EnvWeights[environment.Name]).To(Equal(polaris.DefaultEnvWeight))
 		})
+
+		It("should reject an empty operator", func() {
+			config := newTestConfig(app.ID, "cfg-operator-empty", nil, nil)
+			config.DepSvcInstID = bson.NewObjectID()
+			config.Operator = "zhangsan"
+			Expect(store.Create(ctx, config)).To(Succeed())
+
+			empty := ""
+			_, err := service.Update(ctx, app, config, &polaris.ConfigUpdateData{Operator: &empty})
+			Expect(err).To(MatchError(polaris.ErrOperatorEmpty))
+
+			stored, getErr := store.Get(ctx, app.ID, config.Name)
+			Expect(getErr).NotTo(HaveOccurred())
+			Expect(stored.Operator).To(Equal("zhangsan"))
+		})
+
+		It("should reject operator updates for imported polaris services", func() {
+			config := newTestConfig(app.ID, "cfg-operator-imported", nil, nil)
+			config.Operator = "zhangsan"
+			Expect(store.Create(ctx, config)).To(Succeed())
+
+			operator := "lisi"
+			_, err := service.Update(ctx, app, config, &polaris.ConfigUpdateData{Operator: &operator})
+			Expect(err).To(MatchError(polaris.ErrOperatorNotManaged))
+
+			stored, getErr := store.Get(ctx, app.ID, config.Name)
+			Expect(getErr).NotTo(HaveOccurred())
+			Expect(stored.Operator).To(Equal("zhangsan"))
+		})
+
+		It("should sync polaris owners then persist operator for managed configs", func() {
+			mockey.PatchConvey("update managed polaris owners", GinkgoT(), func() {
+				config := newTestConfig(app.ID, "cfg-operator-managed", nil, nil)
+				config.DepSvcInstID = bson.NewObjectID()
+				config.Operator = "zhangsan"
+				Expect(store.Create(ctx, config)).To(Succeed())
+
+				mockey.Mock((*polaris.PolarisPlatformManager).UpdateServiceOwners).To(func(
+					_ *polaris.PolarisPlatformManager,
+					_ context.Context,
+					got *polaris.PolarisConfig,
+					owners string,
+				) error {
+					Expect(got.Name).To(Equal(config.Name))
+					Expect(owners).To(Equal("lisi"))
+					return nil
+				}).Build()
+
+				operator := "lisi"
+				updated, err := service.Update(ctx, app, config, &polaris.ConfigUpdateData{Operator: &operator})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(updated.Operator).To(Equal("lisi"))
+			})
+		})
+
+		It("should not persist operator when polaris owner sync fails", func() {
+			mockey.PatchConvey("polaris owners update fails", GinkgoT(), func() {
+				config := newTestConfig(app.ID, "cfg-operator-sync-fail", nil, nil)
+				config.DepSvcInstID = bson.NewObjectID()
+				config.Operator = "zhangsan"
+				Expect(store.Create(ctx, config)).To(Succeed())
+
+				mockey.Mock((*polaris.PolarisPlatformManager).UpdateServiceOwners).Return(
+					errors.New("invalid owners"),
+				).Build()
+
+				operator := "lisi"
+				_, err := service.Update(ctx, app, config, &polaris.ConfigUpdateData{Operator: &operator})
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("invalid owners"))
+
+				stored, getErr := store.Get(ctx, app.ID, config.Name)
+				Expect(getErr).NotTo(HaveOccurred())
+				Expect(stored.Operator).To(Equal("zhangsan"))
+			})
+		})
 	})
 
 	Describe("Environment weights", func() {

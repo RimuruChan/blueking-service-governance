@@ -29,6 +29,7 @@ var validate = validator.New(validator.WithRequiredStructEnabled())
 // compile-time check
 var (
 	_ types.ProvisionParams = (*CreateParams)(nil)
+	_ types.ProvisionParams = (*UpdateParams)(nil)
 )
 
 // CreateParams 创建北极星服务实例所需的参数
@@ -40,6 +41,16 @@ type CreateParams struct {
 
 // Validate 使用 validator 校验 CreateParams 中所有必填字段是否已设置
 func (p *CreateParams) Validate() error {
+	return validate.Struct(p)
+}
+
+// UpdateParams 更新北极星服务实例所需的参数
+type UpdateParams struct {
+	Owners string `mapstructure:"Owners" validate:"required"`
+}
+
+// Validate 使用 validator 校验 UpdateParams 中所有必填字段是否已设置
+func (p *UpdateParams) Validate() error {
 	return validate.Struct(p)
 }
 

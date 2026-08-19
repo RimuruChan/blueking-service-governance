@@ -184,6 +184,7 @@ bkms-cli app polaris delete --app my-app --name polaris-xxxxx
 **生效时机：**
 - `instanceKey`、`servicePort` 和 `polarisToken`：修改后需要重新部署才能生效
 - 其他字段（`keepNotReadyPod`、`enableHealthCheck`、`serviceLabels`、`scopeEnvNames`）：在环境已部署且上述需重新部署字段未变化时立即生效
+- `operator`：立即生效，自动同步到北极星
 
 更新成功后输出：
 
@@ -232,6 +233,12 @@ enableHealthCheck: true
 polarisToken: "new-token-value"
 ```
 
+#### 更新平台创建服务的负责人
+
+```yaml
+operator: zhangsan,lisi
+```
+
 ### 可更新字段说明
 
 | 字段 | 类型 | 说明 |
@@ -243,6 +250,7 @@ polarisToken: "new-token-value"
 | `enableHealthCheck` | bool | 启用北极星健康检查 |
 | `serviceLabels` | map | 服务标签。传入时全量替换（不是合并） |
 | `scopeEnvNames` | []string | 生效环境列表。传入时全量替换，空数组表示清空 |
+| `operator` | string | 负责人。仅平台创建（`createNewService=true`）的配置可改；未出现则不改；空字符串会被拒绝。多人用逗号分隔，会同步到北极星 Owners |
 
 ### 参数说明
 
