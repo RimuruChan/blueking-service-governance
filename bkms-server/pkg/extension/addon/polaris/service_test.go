@@ -234,6 +234,42 @@ var _ = Describe("PolarisConfigService", func() {
 			})
 		})
 
+		It("should not enqueue dynamic apply when only operator is updated", func() {
+			mockey.PatchConvey("operator-only update skips dynamic apply", GinkgoT(), func() {
+				enqueued := 0
+				service = polaris.NewPolarisConfigService(
+					store,
+					polaris.NewPolarisPlatformManager(depSvcStore, depSvcInstStore, store),
+					envStateManager,
+					envStore,
+					func(_ context.Context, _, _, _ string) error {
+						enqueued++
+						return nil
+					},
+				)
+
+				applied := redeployFields("k1", "t1", 8080)
+				config := newTestConfig(
+					app.ID,
+					"cfg-operator-no-apply",
+					[]string{environment.Name},
+					map[string]polaris.PolarisEnvState{
+						environment.Name: envState(applied),
+					},
+				)
+				config.DepSvcInstID = bson.NewObjectID()
+				config.Operator = "zhangsan"
+				Expect(store.Create(ctx, config)).To(Succeed())
+
+				mockey.Mock((*polaris.PolarisPlatformManager).UpdateServiceOwners).Return(nil).Build()
+
+				operator := "lisi"
+				_, err := service.Update(ctx, app, config, &polaris.ConfigUpdateData{Operator: &operator})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(enqueued).To(Equal(0))
+			})
+		})
+
 		It("should not persist operator when polaris owner sync fails", func() {
 			mockey.PatchConvey("polaris owners update fails", GinkgoT(), func() {
 				config := newTestConfig(app.ID, "cfg-operator-sync-fail", nil, nil)

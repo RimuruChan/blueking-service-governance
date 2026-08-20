@@ -155,6 +155,22 @@ type ConfigUpdateData struct {
 	envWeights map[string]int32
 }
 
+// affectsWorkload 判断本次更新是否影响 PolarisConfig CR / 工作负载渲染。
+// operator 只同步北极星 Owners，不参与 CR，因此单独更新负责人时不触发动态下发。
+func (d *ConfigUpdateData) affectsWorkload() bool {
+	if d == nil {
+		return false
+	}
+	return d.InstanceKey != nil ||
+		d.ServicePort != nil ||
+		d.Direct != nil ||
+		d.KeepNotReadyPod != nil ||
+		d.EnableHealthCheck != nil ||
+		d.ServiceLabels != nil ||
+		d.ScopeEnvNames != nil ||
+		d.PolarisToken != nil
+}
+
 // RegistryServiceEntry 表示 tRPC 配置中 plugins.registry.polaris.service 的单条服务配置
 type RegistryServiceEntry struct {
 	Name      string `yaml:"name"`

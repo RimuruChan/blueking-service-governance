@@ -129,6 +129,9 @@ func (s *PolarisConfigService) Update(
 	if err != nil {
 		return nil, errors.Wrap(err, "get updated polaris config")
 	}
+	if !updateData.affectsWorkload() {
+		return newConfig, nil
+	}
 	envNames, err := s.envStateManager.PrepareDynamicApply(ctx, newConfig)
 	if err != nil {
 		return newConfig, errors.Wrap(err, "prepare dynamic polaris apply")
