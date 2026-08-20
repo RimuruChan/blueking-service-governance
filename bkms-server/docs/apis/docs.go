@@ -22621,12 +22621,16 @@ const docTemplate = `{
         "serializer.DevModeRuleInput": {
             "type": "object",
             "required": [
-                "envType",
+                "envTypes",
                 "spec"
             ],
             "properties": {
-                "envType": {
-                    "type": "string"
+                "envTypes": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "spec": {
                     "$ref": "#/definitions/serializer.DevModeSpecInput"
@@ -22647,8 +22651,11 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
-                "envType": {
-                    "type": "string"
+                "envTypes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "id": {
                     "type": "string"
@@ -26447,6 +26454,10 @@ const docTemplate = `{
                     "description": "是否保留未就绪的 Pod 在北极星（可选更新）",
                     "type": "boolean"
                 },
+                "operator": {
+                    "description": "操作人/负责人（可选更新；未出现表示不改；空字符串非法）",
+                    "type": "string"
+                },
                 "polarisToken": {
                     "description": "北极星 Token（可选更新）",
                     "type": "string"
@@ -28033,12 +28044,16 @@ const docTemplate = `{
         "serializer.ResourcesRuleInput": {
             "type": "object",
             "required": [
-                "envType",
+                "envTypes",
                 "spec"
             ],
             "properties": {
-                "envType": {
-                    "type": "string"
+                "envTypes": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "spec": {
                     "$ref": "#/definitions/serializer.ResourcesSpecInput"
@@ -28059,8 +28074,11 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
-                "envType": {
-                    "type": "string"
+                "envTypes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "id": {
                     "type": "string"

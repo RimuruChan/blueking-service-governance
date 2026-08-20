@@ -3475,12 +3475,15 @@ definitions:
     type: object
   serializer.DevModeRuleInput:
     properties:
-      envType:
-        type: string
+      envTypes:
+        items:
+          type: string
+        minItems: 1
+        type: array
       spec:
         $ref: '#/definitions/serializer.DevModeSpecInput'
     required:
-    - envType
+    - envTypes
     - spec
     type: object
   serializer.DevModeRuleOutput:
@@ -3492,8 +3495,10 @@ definitions:
     properties:
       createdAt:
         type: string
-      envType:
-        type: string
+      envTypes:
+        items:
+          type: string
+        type: array
       id:
         type: string
       spec:
@@ -6026,6 +6031,9 @@ definitions:
       keepNotReadyPod:
         description: 是否保留未就绪的 Pod 在北极星（可选更新）
         type: boolean
+      operator:
+        description: 操作人/负责人（可选更新；未出现表示不改；空字符串非法）
+        type: string
       polarisToken:
         description: 北极星 Token（可选更新）
         type: string
@@ -7146,12 +7154,15 @@ definitions:
     type: object
   serializer.ResourcesRuleInput:
     properties:
-      envType:
-        type: string
+      envTypes:
+        items:
+          type: string
+        minItems: 1
+        type: array
       spec:
         $ref: '#/definitions/serializer.ResourcesSpecInput'
     required:
-    - envType
+    - envTypes
     - spec
     type: object
   serializer.ResourcesRuleOutput:
@@ -7163,8 +7174,10 @@ definitions:
     properties:
       createdAt:
         type: string
-      envType:
-        type: string
+      envTypes:
+        items:
+          type: string
+        type: array
       id:
         type: string
       spec:
