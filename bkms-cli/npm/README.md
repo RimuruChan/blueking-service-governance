@@ -26,9 +26,22 @@ bkms-cli config set \
   --bcs-api-host https://bcs-api.example.com
 ```
 
-## 预置默认 API 地址
+## `bkmsCli` 配置
 
-本包 `package.json` 的 `bkmsCli` 默认为空。若需要在安装时写入默认地址，可在依赖本包的分发包中配置，例如：
+本包 `package.json`：
+
+```json
+"bkmsCli": {
+  "bkmsBaseUrl": "",
+  "bcsApiHost": "",
+  "releaseUrl": "https://github.com/TencentBlueKing/blueking-service-governance/releases/download/bkms-cli%2Fv{version}/{archive}"
+}
+```
+
+- `releaseUrl`：二进制下载地址模板，支持 `{version}`、`{archive}`
+- `bkmsBaseUrl` / `bcsApiHost`：默认为空；非空时 `postinstall` 会 `config set --if-unset`
+
+分发包可依赖本包并只覆盖 endpoint，例如：
 
 ```json
 {
@@ -59,9 +72,8 @@ require("@blueking/bkms-cli/scripts/bkms-cli.js");
 
 说明：
 
-- 安装分发包时会先安装 `@blueking/bkms-cli`（下载二进制）
+- 安装分发包时会先安装 `@blueking/bkms-cli`（按本包 `releaseUrl` 下载二进制）
 - 分发包 `postinstall` 调用 `apply-endpoints.js`；该脚本通过 `npm_package_json` 读取分发包的 `bkmsCli`，再执行 `bkms-cli config set --if-unset`
-- 本包自身的 `bkmsCli` 保持为空，避免覆盖用户已有配置
 - `--if-unset`：仅当配置文件里对应字段为空时写入，因此 `npm update` / 重装不会覆盖用户已改过的地址
 
 ## 发布

@@ -19,8 +19,9 @@
     "postinstall": "node scripts/install.js"
   },
   "bkmsCli": {
-    "bkmsBaseUrl": "https://bkms.example.com",
-    "bcsApiHost": "https://bcs.example.com"
+    "bkmsBaseUrl": "",
+    "bcsApiHost": "",
+    "releaseUrl": "https://github.com/TencentBlueKing/blueking-service-governance/releases/download/bkms-cli%2Fv{version}/{archive}"
   },
   "files": [
     "bin",

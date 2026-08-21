@@ -188,4 +188,19 @@ var _ = Describe("Config", func() {
 			Expect(err).To(HaveOccurred())
 		})
 	})
+
+	Describe("RequireBkmsBaseURL", func() {
+		It("地址为空时应返回引导错误", func() {
+			G = &Config{}
+			err := G.RequireBkmsBaseURL()
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("bkms-cli config set"))
+		})
+
+		It("地址已配置时应通过", func() {
+			G = &Config{BkmsBaseURL: "https://bkms.example.com"}
+			Expect(G.RequireBkmsBaseURL()).To(Succeed())
+			Expect(G.HasBkmsBaseURL()).To(BeTrue())
+		})
+	})
 })

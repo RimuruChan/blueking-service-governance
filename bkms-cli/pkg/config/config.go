@@ -196,3 +196,20 @@ func (c *Config) SetEndpoints(bkmsBaseURL, bcsAPIHost string, ifUnset bool) (End
 func (c *Config) UserIsInitialized() bool {
 	return c.Username != "" && c.AccessToken != ""
 }
+
+// HasBkmsBaseURL reports whether bkmsBaseUrl is set.
+func (c *Config) HasBkmsBaseURL() bool {
+	return c != nil && strings.TrimSpace(c.BkmsBaseURL) != ""
+}
+
+// RequireBkmsBaseURL returns an error with setup guidance when bkmsBaseUrl is empty.
+func (c *Config) RequireBkmsBaseURL() error {
+	if c.HasBkmsBaseURL() {
+		return nil
+	}
+	return errors.New(
+		"bkmsBaseUrl is not configured\n\n" +
+			"Set it first, then continue:\n" +
+			"  bkms-cli config set --bkms-base-url <url> [--bcs-api-host <url>]",
+	)
+}
