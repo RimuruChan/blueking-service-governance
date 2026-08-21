@@ -333,7 +333,11 @@ func buildKubeClient(clusterID, token string) error {
 	}
 
 	if config.G == nil || config.G.BcsAPIHost == "" {
-		return errors.New("bcsApiHost is not configured")
+		return errors.New(
+			"bcsApiHost is not configured\n\n" +
+				"Set it with:\n" +
+				"  bkms-cli config set --bcs-api-host <url>",
+		)
 	}
 
 	console.Info("Using BCS API to connect cluster %s...", clusterID)

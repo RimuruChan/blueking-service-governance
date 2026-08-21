@@ -21,7 +21,8 @@ const path = require("path");
 const { execSync } = require("child_process");
 const os = require("os");
 
-const VERSION = require("../package.json").version;
+const pkg = require("../package.json");
+const VERSION = pkg.version;
 const NAME = "bkms-cli";
 
 const PLATFORM_MAP = {
@@ -50,9 +51,15 @@ const ext = isWindows ? ".zip" : ".tar.gz";
 // Git tag is bkms-cli/vX.Y.Z; GoReleaser archive names use VERSION without "v".
 const archiveName = `${NAME}_${VERSION}_${platform}_${arch}${ext}`;
 
-const GITHUB_RELEASE_URL =
-  `https://github.com/TencentBlueKing/blueking-service-governance/releases/download/` +
-  `bkms-cli%2Fv${VERSION}/${archiveName}`;
+function resolveReleaseURL() {
+  const template = String((pkg.bkmsCli && pkg.bkmsCli.releaseUrl) || "").trim();
+  if (!template) {
+    throw new Error("bkmsCli.releaseUrl is required in package.json");
+  }
+  return template
+    .replaceAll("{version}", VERSION)
+    .replaceAll("{archive}", archiveName);
+}
 
 const binDir = path.join(__dirname, "..", "bin");
 const dest = path.join(binDir, NAME + (isWindows ? ".exe" : ""));
@@ -74,7 +81,7 @@ function install() {
   const archivePath = path.join(tmpDir, archiveName);
 
   try {
-    download(GITHUB_RELEASE_URL, archivePath);
+    download(resolveReleaseURL(), archivePath);
 
     if (isWindows) {
       execSync(
