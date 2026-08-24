@@ -54,6 +54,8 @@ import (
 	deployhandler "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/handler"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
 	gpahandler "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/gpa/handler"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/hostport"
+	hostporthandler "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/hostport/handler"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
 	polarishandler "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/handler"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg"
@@ -180,6 +182,7 @@ func RegisterRouter(ctx context.Context, cfg config.Config, serverRole string) *
 	bkmalert.Register(v1, bkmalerthandler.New(storereg.G()))
 	clusteraddon.Register(v1, clusteraddonhandler.New(storereg.G()))
 	polaris.Register(v1, polarishandler.New(storereg.G()))
+	hostport.Register(v1, hostporthandler.New(storereg.G()))
 	depservice.Register(v1, depservicehandler.New(storereg.G()))
 	gpa.Register(v1, gpahandler.New(storereg.G()))
 	portpool.Register(v1, portpoolhandler.New(storereg.G()))

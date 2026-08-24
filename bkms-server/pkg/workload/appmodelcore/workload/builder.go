@@ -40,6 +40,7 @@ import (
 	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/secret"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/hostport"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component/devmode"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/gvr"
@@ -278,6 +279,13 @@ func (b *Builder) Build(
 			gd.Spec.Template.Annotations = make(map[string]string)
 		}
 		gd.Spec.Template.Annotations[tkeRouteEniAnnotationKey] = tkeRouteEniAnnotationValue
+	}
+
+	// Inject BCS random HostPort webhook annotations for federated environments.
+	if err = hostport.InjectPodAnnotationsFromStore(
+		ctx, b.hostPortStore, b.app.ID, env.Cluster.IsFederation, &gd.Spec.Template.ObjectMeta,
+	); err != nil {
+		return nil, errors.Wrap(err, "injecting hostport annotations")
 	}
 
 	// Inject BSCP configuration management artifacts (initContainer, sidecar, volume, etc.)

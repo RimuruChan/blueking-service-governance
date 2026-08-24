@@ -28,6 +28,7 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/hostport"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/perm"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
@@ -425,6 +426,7 @@ func (h *Handler) newDeployer(app *bkmsapp.Application) *appmodeldeploy.Deployer
 			h.registry.PolarisVarReader,
 			h.registry.WorkspaceCompsStore,
 			h.registry.PolarisConfigStore,
+			h.registry.HostPortStore,
 			h.registry.BscpCfgStore,
 			h.registry.AppModelStore,
 			h.registry.AppSpecStore,
@@ -434,6 +436,7 @@ func (h *Handler) newDeployer(app *bkmsapp.Application) *appmodeldeploy.Deployer
 		h.registry.BuildConfigStore,
 		h.registry.AppConfigFileStore,
 		polaris.NewPolarisEnvStateManager(h.registry.PolarisConfigStore),
+		hostport.NewEnvStateManager(h.registry.HostPortStore),
 		app,
 	)
 }

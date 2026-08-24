@@ -41,6 +41,7 @@ import (
 	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
 	helmdeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/helm"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/hostport"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
 	polarisenvvars "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/envvars"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg"
@@ -98,6 +99,7 @@ type Registry struct {
 	AppConfigFileVersionStore appcfg.AppConfigFileVersionStore
 	AppServiceStore           appnetworking.ServiceStore
 	PolarisConfigStore        polaris.PolarisConfigStore
+	HostPortStore             hostport.HostPortStore
 	GPAConfigStore            gpa.GPAConfigStore
 	BscpCfgStore              bscpcfg.Store
 	HelmAppComponentStore     helmcomp.HelmAppComponentStore
@@ -210,6 +212,7 @@ func (r *Registry) initStores(mongoClient *mongo.Client, dbName string) {
 	r.AppConfigFileStore = mustInit(appcfg.NewAppConfigFileStoreMongo(mongoClient, dbName))
 	r.AppConfigFileVersionStore = mustInit(appcfg.NewAppConfigFileVersionStoreMongo(mongoClient, dbName))
 	r.PolarisConfigStore = mustInit(polaris.NewPolarisConfigStoreMongo(mongoClient, dbName))
+	r.HostPortStore = mustInit(hostport.NewHostPortStoreMongo(mongoClient, dbName))
 	r.GPAConfigStore = mustInit(gpa.NewGPAConfigStoreMongo(mongoClient, dbName))
 	r.BscpCfgStore = mustInit(bscpcfg.NewStoreMongo(mongoClient, dbName))
 	r.AppServiceStore = mustInit(appnetworking.NewServiceStoreMongo(mongoClient, dbName))

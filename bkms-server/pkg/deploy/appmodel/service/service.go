@@ -33,6 +33,7 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy"
 	deployappmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/hostport"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
 	polarisenvvars "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/envvars"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg"
@@ -72,6 +73,7 @@ type Service struct {
 	bscpCfgStore                        bscpcfg.Store
 	workspaceCompsStore                 workspace.WorkspaceCompsStore
 	polarisConfigStore                  polaris.PolarisConfigStore
+	hostPortStore                       hostport.HostPortStore
 	appSpecStore                        appspec.AppSpecStore
 	buildConfigStore                    build.ConfigStore
 	buildAutoDeployRecordStore          autodeploy.RecordStore
@@ -94,6 +96,7 @@ type ServiceDeps struct {
 	PolarisVarReader                    *polarisenvvars.Reader               `validate:"required"`
 	WorkspaceCompsStore                 workspace.WorkspaceCompsStore        `validate:"required"`
 	PolarisConfigStore                  polaris.PolarisConfigStore           `validate:"required"`
+	HostPortStore                       hostport.HostPortStore               `validate:"required"`
 	BscpCfgStore                        bscpcfg.Store                        `validate:"required"`
 	AppSpecStore                        appspec.AppSpecStore                 `validate:"required"`
 	BuildConfigStore                    build.ConfigStore                    `validate:"required"`
@@ -124,6 +127,7 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		bscpCfgStore:                        deps.BscpCfgStore,
 		workspaceCompsStore:                 deps.WorkspaceCompsStore,
 		polarisConfigStore:                  deps.PolarisConfigStore,
+		hostPortStore:                       deps.HostPortStore,
 		appSpecStore:                        deps.AppSpecStore,
 		buildConfigStore:                    deps.BuildConfigStore,
 		buildAutoDeployRecordStore:          deps.BuildAutoDeployRecordStore,
@@ -156,6 +160,7 @@ func NewServiceFromRegistry(reg *storereg.Registry) (*Service, error) {
 		PolarisVarReader:                    reg.PolarisVarReader,
 		WorkspaceCompsStore:                 reg.WorkspaceCompsStore,
 		PolarisConfigStore:                  reg.PolarisConfigStore,
+		HostPortStore:                       reg.HostPortStore,
 		BscpCfgStore:                        reg.BscpCfgStore,
 		AppSpecStore:                        reg.AppSpecStore,
 		BuildConfigStore:                    reg.BuildConfigStore,
@@ -215,6 +220,7 @@ func (s *Service) Deploy(ctx context.Context, app *bkmsapp.Application, params D
 		s.polarisVarReader,
 		s.workspaceCompsStore,
 		s.polarisConfigStore,
+		s.hostPortStore,
 		s.bscpCfgStore,
 		s.appModelStore,
 		s.appSpecStore,
@@ -230,6 +236,7 @@ func (s *Service) Deploy(ctx context.Context, app *bkmsapp.Application, params D
 		s.buildConfigStore,
 		s.appConfigFileStore,
 		polaris.NewPolarisEnvStateManager(s.polarisConfigStore),
+		hostport.NewEnvStateManager(s.hostPortStore),
 		app,
 	)
 	deployID, err := deployer.Deploy(

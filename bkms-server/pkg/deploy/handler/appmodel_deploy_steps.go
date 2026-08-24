@@ -37,6 +37,7 @@ import (
 	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
 	appmodeldeploysvc "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel/service"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/serializer"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/hostport"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/taskq"
@@ -129,6 +130,7 @@ func (h *Handler) newEnvVarPreChecker() *deploypkg.EnvVarPreChecker {
 		h.registry.PolarisVarReader,
 		h.registry.WorkspaceCompsStore,
 		h.registry.PolarisConfigStore,
+		h.registry.HostPortStore,
 		h.registry.BscpCfgStore,
 		h.registry.AppModelStore,
 		h.registry.AppSpecStore,
@@ -450,6 +452,7 @@ func (h *Handler) newAppModelDeployService() (*appmodeldeploysvc.Service, error)
 		PolarisVarReader:                    reg.PolarisVarReader,
 		WorkspaceCompsStore:                 reg.WorkspaceCompsStore,
 		PolarisConfigStore:                  reg.PolarisConfigStore,
+		HostPortStore:                       reg.HostPortStore,
 		BscpCfgStore:                        reg.BscpCfgStore,
 		AppSpecStore:                        reg.AppSpecStore,
 		BuildConfigStore:                    reg.BuildConfigStore,
@@ -473,6 +476,7 @@ func (h *Handler) newDeployer(app *bkmsapp.Application) *appmodeldeploy.Deployer
 			h.registry.PolarisVarReader,
 			h.registry.WorkspaceCompsStore,
 			h.registry.PolarisConfigStore,
+			h.registry.HostPortStore,
 			h.registry.BscpCfgStore,
 			h.registry.AppModelStore,
 			h.registry.AppSpecStore,
@@ -482,6 +486,7 @@ func (h *Handler) newDeployer(app *bkmsapp.Application) *appmodeldeploy.Deployer
 		h.registry.BuildConfigStore,
 		h.registry.AppConfigFileStore,
 		polaris.NewPolarisEnvStateManager(h.registry.PolarisConfigStore),
+		hostport.NewEnvStateManager(h.registry.HostPortStore),
 		app,
 	)
 }

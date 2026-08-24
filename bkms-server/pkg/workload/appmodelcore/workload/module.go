@@ -23,6 +23,7 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/hostport"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
@@ -38,6 +39,7 @@ var FxModule = fx.Module("workload",
 		envvars.NewScopedEnvVarStoreMongo,
 		workspace.NewWorkspaceCompsStoreMongo,
 		polaris.NewPolarisConfigStoreMongo,
+		hostport.NewHostPortStoreMongo,
 		bscpcfg.NewStoreMongo,
 		fx.Annotate(build.NewConfigStoreMongo, fx.As(new(build.ConfigStore))),
 		fx.Annotate(appspec.NewAppSpecStoreMongo, fx.As(new(appspec.AppSpecStore))),
