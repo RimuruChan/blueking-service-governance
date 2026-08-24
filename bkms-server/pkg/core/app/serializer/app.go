@@ -566,7 +566,7 @@ func (o *DeployOverviewAutoscalingObj) FromModel(info *overview.AutoscalingInfo)
 }
 
 // DeployOverviewClusterObj is the env-bound BCS cluster shown in deploy overview.
-// Base fields match env EnvClusterOutput; Name is filled from BCS ListClustersByProject.
+// Base fields match env EnvClusterOutput; ClusterName is filled from BCS ListClustersByProject.
 type DeployOverviewClusterObj struct {
 	// 集群 ID
 	ClusterID string `json:"clusterID"`
@@ -577,7 +577,7 @@ type DeployOverviewClusterObj struct {
 	// 项目 code
 	ProjectCode string `json:"projectCode"`
 	// 集群展示名（来自 BCS）；拉取失败时为空字符串
-	Name string `json:"name"`
+	ClusterName string `json:"clusterName"`
 }
 
 // FromModel fills output fields from overview cluster info.
@@ -587,7 +587,7 @@ func (o *DeployOverviewClusterObj) FromModel(cluster overview.ClusterInfo) *Depl
 		ClusterType: cluster.ClusterType,
 		Namespace:   cluster.Namespace,
 		ProjectCode: cluster.ProjectCode,
-		Name:        cluster.Name,
+		ClusterName: cluster.ClusterName,
 	}
 	return o
 }

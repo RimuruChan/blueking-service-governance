@@ -3445,11 +3445,11 @@ definitions:
       clusterID:
         description: 集群 ID
         type: string
+      clusterName:
+        description: 集群展示名（来自 BCS）；拉取失败时为空字符串
+        type: string
       clusterType:
         description: 集群类型
-        type: string
-      name:
-        description: 集群展示名（来自 BCS）；拉取失败时为空字符串
         type: string
       namespace:
         description: 集群命名空间

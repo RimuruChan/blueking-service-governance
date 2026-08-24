@@ -22650,12 +22650,12 @@ const docTemplate = `{
                     "description": "集群 ID",
                     "type": "string"
                 },
-                "clusterType": {
-                    "description": "集群类型",
+                "clusterName": {
+                    "description": "集群展示名（来自 BCS）；拉取失败时为空字符串",
                     "type": "string"
                 },
-                "name": {
-                    "description": "集群展示名（来自 BCS）；拉取失败时为空字符串",
+                "clusterType": {
+                    "description": "集群类型",
                     "type": "string"
                 },
                 "namespace": {

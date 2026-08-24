@@ -344,7 +344,7 @@ func extractGameDeployReplicas(gd *tkex.GameDeployment) (int32, bool) {
 }
 
 // extractMainContainerResources 读取 GameDeployment 主容器的 CPU/内存 requests 与 limits。
-// 找不到名为 main 的容器或字段缺失时，对应字段为空字符串。
+// 找不到主容器或字段缺失时，对应字段为空字符串。
 func extractMainContainerResources(ctx context.Context, gd *tkex.GameDeployment) ResourceSpec {
 	if gd == nil {
 		return ResourceSpec{}

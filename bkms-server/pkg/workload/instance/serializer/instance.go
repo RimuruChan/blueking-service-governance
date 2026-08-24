@@ -275,8 +275,8 @@ func (o *AppInstanceOutputObj) FromPodManifest(
 	return o, nil
 }
 
-// extractMainContainerResources 从 Pod containers 中读取名为 main 的容器的 CPU/内存。
-// 找不到 main 容器时返回零值，不阻断实例列表。
+// extractMainContainerResources 从 Pod containers 中读取主容器的 CPU/内存。
+// 找不到主容器时返回零值，不阻断实例列表。
 func extractMainContainerResources(containers []any) AppInstanceResourcesObj {
 	for _, c := range containers {
 		cMap, ok := c.(map[string]any)

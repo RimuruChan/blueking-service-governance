@@ -94,8 +94,8 @@ type ClusterInfo struct {
 	ClusterType string
 	// Namespace 蓝鲸 BCS 命名空间
 	Namespace string
-	// Name BCS 集群展示名；拉取失败时为空字符串
-	Name string
+	// ClusterName BCS 集群展示名；拉取失败时为空字符串
+	ClusterName string
 }
 
 // EnvRow 部署总览表格的一行。

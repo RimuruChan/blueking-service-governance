@@ -75,7 +75,7 @@ var _ = Describe("App deploy status serializers", func() {
 				ClusterID:   "BCS-K8S-40316",
 				ClusterType: "single",
 				Namespace:   "prod-ns",
-				Name:        "深圳-预发布集群",
+				ClusterName: "深圳-预发布集群",
 			},
 			LastDeployStartedAt: lo.ToPtr(startedAt),
 			Resources: overview.ResourceSpec{
@@ -93,7 +93,7 @@ var _ = Describe("App deploy status serializers", func() {
 			ClusterID:   "BCS-K8S-40316",
 			ClusterType: "single",
 			Namespace:   "prod-ns",
-			Name:        "深圳-预发布集群",
+			ClusterName: "深圳-预发布集群",
 		}))
 		Expect(output.Resources.CPURequests).To(Equal("1"))
 		Expect(output.Instances.Expected).To(Equal(int32(2)))

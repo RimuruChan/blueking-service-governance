@@ -143,7 +143,7 @@ func (s *Service) GetOverview(ctx context.Context, application *bkmsapp.Applicat
 			rows[i].Autoscaling.Status = status
 		}
 		if name, ok := clusterNames[rows[i].Cluster.ClusterID]; ok {
-			rows[i].Cluster.Name = name
+			rows[i].Cluster.ClusterName = name
 		}
 	}
 
