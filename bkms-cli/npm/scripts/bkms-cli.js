@@ -17,6 +17,15 @@
  * to the current version of the project delivered to anyone in the future.
  */
 
+// 这个文件是 npm 装好后，用户敲 `bkms-cli` 时真正跑到的入口（package.json 的 bin）。
+//
+// 它自己不实现 CLI 逻辑，只是找到同级目录下 postinstall 下载好的原生二进制，
+// 把命令行参数原样转过去。如果二进制不存在（比如 postinstall 被跳过或下载失败），
+// 会打印怎么手动重跑 install.js。
+//
+// Windows 上如果之前用过自更新，有可能留下一个改名失败的 .old 文件；这里会尽量
+// 把它恢复成可用的 bkms-cli，避免命令直接挂掉。
+
 const { execFileSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");

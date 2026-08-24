@@ -16,6 +16,16 @@
  * to the current version of the project delivered to anyone in the future.
  */
 
+// 这个文件是 npm 的 postinstall 脚本：负责把对应平台的 bkms-cli 二进制下载到本机。
+//
+// 流程大致是：看当前系统是 mac/linux/windows、cpu 是 amd64 还是 arm64，再结合
+// package.json 的 version，拼出要下的压缩包名字；下载地址来自 bkmsCli.releaseUrl
+//（里面的 {version}、{archive} 会被替换）。下完后解压，把二进制拷到 npm 包的
+// bin/ 目录，并 chmod 成可执行。最后再调一下 apply-endpoints.js，如果 package.json
+// 里配了默认地址就写进本地配置。
+//
+// 下载依赖本机 curl；解压用 tar。失败时会提示检查代理 / 网络。
+
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");

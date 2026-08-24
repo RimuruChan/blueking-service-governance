@@ -16,6 +16,15 @@
  * to the current version of the project delivered to anyone in the future.
  */
 
+// 这个文件负责「装完 npm 包之后，把默认 API 地址写进本地配置」。
+//
+// 典型用法：分发包在 postinstall 里调用本脚本。脚本会读当前正在安装的那个
+// package.json（优先 npm 注入的 npm_package_json，否则读本包自己的）里的
+// bkmsCli.bkmsBaseUrl / bcsApiHost。字段为空就跳过；有值则调用本机已下载好的
+// bkms-cli，执行 `config set --if-unset`。
+//
+// 用 --if-unset 是为了：用户已经改过地址时，npm 重装/升级不要把它盖掉。
+
 const fs = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
