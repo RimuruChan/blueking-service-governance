@@ -57,8 +57,6 @@ type Config struct {
 	BkmsBaseURL string `yaml:"bkmsBaseUrl"`
 	// BcsAPIHost BCS API 网关地址
 	BcsAPIHost string `yaml:"bcsApiHost"`
-	// Deprecated: 兼容历史配置项，读取后会迁移到 BkmsBaseURL
-	BkmsApigwURL string `yaml:"bkmsApigwUrl,omitempty"`
 	// Username 用户名
 	Username string `yaml:"username"`
 	// AccessToken 服务访问凭证
@@ -106,14 +104,10 @@ func (c *Config) Load() (*Config, error) {
 	return conf, nil
 }
 
-// normalizeLoadedConfig 兼容历史配置项，并统一去除尾斜杠
+// normalizeLoadedConfig 统一去除尾斜杠
 func normalizeLoadedConfig(conf *Config) {
-	if conf.BkmsBaseURL == "" {
-		conf.BkmsBaseURL = conf.BkmsApigwURL
-	}
 	conf.BkmsBaseURL = strings.TrimSuffix(conf.BkmsBaseURL, "/")
 	conf.BcsAPIHost = strings.TrimSuffix(conf.BcsAPIHost, "/")
-	conf.BkmsApigwURL = ""
 }
 
 // createDefaultConfig 创建默认配置文件（含目录），并返回默认配置

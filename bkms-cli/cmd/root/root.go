@@ -50,6 +50,8 @@ func NewRootCmd() *cobra.Command {
 		Short: "bkms cli",
 		Long:  "Work seamlessly with bkms from the command line.",
 		Run: func(cmd *cobra.Command, args []string) {
+			// 仅无参执行 `bkms-cli` 时走到这里（不鉴权）。
+			// login / 业务命令的地址检查在下面 PersistentPreRunE 里做。
 			if !config.G.HasBkmsBaseURL() {
 				console.Info(
 					"Welcome to bkms-cli!\n\n" +
@@ -76,7 +78,8 @@ func NewRootCmd() *cobra.Command {
 			if err := logx.SetLevel(logLevel); err != nil {
 				return errors.Wrap(err, "set log level")
 			}
-			// login / 需鉴权命令都依赖 bkmsBaseUrl
+			// login 与需鉴权命令都会请求 bkms；先保证 bkmsBaseUrl 已配置，
+			// 避免空地址落到 ValidateAccessToken / 业务请求。
 			if cmd.Name() == "login" || cmdutil.IsAuthRequired(cmd) {
 				if err := config.G.RequireBkmsBaseURL(); err != nil {
 					return err

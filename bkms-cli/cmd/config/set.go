@@ -42,9 +42,9 @@ At least one of --bkms-base-url or --bcs-api-host must be provided.
 Unspecified fields are left unchanged.
 
 With --if-unset, a field is written only when it is currently empty.`,
-		Example: "  bkms-cli config set --bkms-base-url https://bkms.example.com\n" +
-			"  bkms-cli config set --bkms-base-url https://bkms.example.com --bcs-api-host https://bcs-api.example.com\n" +
-			"  bkms-cli config set --if-unset --bkms-base-url https://bkms.example.com",
+		Example: `  bkms-cli config set --bkms-base-url https://bkms.example.com
+  bkms-cli config set --bkms-base-url https://bkms.example.com --bcs-api-host https://bcs-api.example.com
+  bkms-cli config set --if-unset --bkms-base-url https://bkms.example.com`,
 		DisableFlagsInUseLine: true,
 		Annotations: map[string]string{
 			cmdutil.SkipAuthAnnotationKey: "true",

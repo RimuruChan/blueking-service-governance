@@ -1,6 +1,6 @@
 # bkms-cli config Reference
 
-管理本地配置文件（默认 `~/.bkms/config.yaml`，可用 `BKMS_CLI_CONFIG` 覆盖）。
+管理本地配置文件（`${HOME}/.bkms/config.yaml`）。
 
 ## 查看配置
 
