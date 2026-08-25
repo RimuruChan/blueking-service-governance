@@ -21,9 +21,7 @@ npm i -g @blueking/bkms-cli@latest
 手动设置 API 地址：
 
 ```bash
-bkms-cli config set \
-  --bkms-base-url https://bkms.example.com \
-  --bcs-api-host https://bcs-api.example.com
+bkms-cli config set --bkms-base-url https://bkms.example.com
 ```
 
 ## `bkmsCli` 配置
@@ -33,13 +31,12 @@ bkms-cli config set \
 ```json
 "bkmsCli": {
   "bkmsBaseUrl": "",
-  "bcsApiHost": "",
   "releaseUrl": "https://github.com/TencentBlueKing/blueking-service-governance/releases/download/bkms-cli%2Fv{version}/{archive}"
 }
 ```
 
 - `releaseUrl`：二进制下载地址模板，支持 `{version}`、`{archive}`
-- `bkmsBaseUrl` / `bcsApiHost`：默认为空；非空时 `postinstall` 会 `config set --if-unset`
+- `bkmsBaseUrl`：默认为空；非空时 `postinstall` 会 `config set --if-unset`
 
 分发包可依赖本包并只覆盖 endpoint，例如：
 
@@ -57,8 +54,7 @@ bkms-cli config set \
     "postinstall": "node node_modules/@blueking/bkms-cli/scripts/apply-endpoints.js"
   },
   "bkmsCli": {
-    "bkmsBaseUrl": "https://bkms.example.com",
-    "bcsApiHost": "https://bcs-api.example.com"
+    "bkmsBaseUrl": "https://bkms.example.com"
   }
 }
 ```

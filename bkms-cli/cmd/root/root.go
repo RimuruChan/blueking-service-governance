@@ -56,7 +56,7 @@ func NewRootCmd() *cobra.Command {
 				console.Info(
 					"Welcome to bkms-cli!\n\n" +
 						"API endpoints are not configured yet. Run:\n" +
-						"  bkms-cli config set --bkms-base-url <url> [--bcs-api-host <url>]\n\n" +
+						"  bkms-cli config set --bkms-base-url <url>\n\n" +
 						"Then run `bkms-cli login` to get started.",
 				)
 				return

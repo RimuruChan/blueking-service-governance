@@ -55,8 +55,6 @@ func (d *Defaults) String() string {
 type Config struct {
 	// BkmsBaseURL 服务治理平台服务访问基础地址
 	BkmsBaseURL string `yaml:"bkmsBaseUrl"`
-	// BcsAPIHost BCS API 网关地址
-	BcsAPIHost string `yaml:"bcsApiHost"`
 	// Username 用户名
 	Username string `yaml:"username"`
 	// AccessToken 服务访问凭证
@@ -68,8 +66,8 @@ type Config struct {
 // String 返回配置的字符串表示
 func (c *Config) String() string {
 	return fmt.Sprintf(
-		"configFilePath: %s\n\nbkmsBaseUrl: %s\nbcsApiHost: %s\nusername: %s\naccessToken: [REDACTED]\n%s",
-		cfgFilePath, G.BkmsBaseURL, G.BcsAPIHost, G.Username, c.Defaults.String(),
+		"configFilePath: %s\n\nbkmsBaseUrl: %s\nusername: %s\naccessToken: [REDACTED]\n%s",
+		cfgFilePath, G.BkmsBaseURL, G.Username, c.Defaults.String(),
 	)
 }
 
@@ -107,7 +105,6 @@ func (c *Config) Load() (*Config, error) {
 // normalizeLoadedConfig 统一去除尾斜杠
 func normalizeLoadedConfig(conf *Config) {
 	conf.BkmsBaseURL = strings.TrimSuffix(conf.BkmsBaseURL, "/")
-	conf.BcsAPIHost = strings.TrimSuffix(conf.BcsAPIHost, "/")
 }
 
 // createDefaultConfig 创建默认配置文件（含目录），并返回默认配置
@@ -143,46 +140,21 @@ func (c *Config) Dump() error {
 	return nil
 }
 
-// EndpointUpdate 描述本次 SetEndpoints 实际写入了哪些字段。
-type EndpointUpdate struct {
-	BkmsBaseURLUpdated bool
-	BcsAPIHostUpdated  bool
-}
-
-// Changed 返回是否有字段被写入。
-func (u EndpointUpdate) Changed() bool {
-	return u.BkmsBaseURLUpdated || u.BcsAPIHostUpdated
-}
-
-// SetEndpoints 更新 API 地址并持久化。空入参表示不改对应字段；
-// ifUnset 为 true 时仅写入当前仍为空的字段。
-func (c *Config) SetEndpoints(bkmsBaseURL, bcsAPIHost string, ifUnset bool) (EndpointUpdate, error) {
+// SetBkmsBaseURL 更新 bkmsBaseUrl 并持久化。
+// ifUnset 为 true 时仅在当前仍为空时写入。
+func (c *Config) SetBkmsBaseURL(bkmsBaseURL string, ifUnset bool) (updated bool, err error) {
 	bkmsBaseURL = strings.TrimSpace(bkmsBaseURL)
-	bcsAPIHost = strings.TrimSpace(bcsAPIHost)
-	if bkmsBaseURL == "" && bcsAPIHost == "" {
-		return EndpointUpdate{}, errors.New("at least one of bkmsBaseUrl or bcsApiHost is required")
+	if bkmsBaseURL == "" {
+		return false, errors.New("bkmsBaseUrl is required")
 	}
-
-	var updated EndpointUpdate
-	if bkmsBaseURL != "" {
-		if !ifUnset || strings.TrimSpace(c.BkmsBaseURL) == "" {
-			c.BkmsBaseURL = strings.TrimSuffix(bkmsBaseURL, "/")
-			updated.BkmsBaseURLUpdated = true
-		}
+	if ifUnset && strings.TrimSpace(c.BkmsBaseURL) != "" {
+		return false, nil
 	}
-	if bcsAPIHost != "" {
-		if !ifUnset || strings.TrimSpace(c.BcsAPIHost) == "" {
-			c.BcsAPIHost = strings.TrimSuffix(bcsAPIHost, "/")
-			updated.BcsAPIHostUpdated = true
-		}
-	}
-	if !updated.Changed() {
-		return updated, nil
-	}
+	c.BkmsBaseURL = strings.TrimSuffix(bkmsBaseURL, "/")
 	if err := c.Dump(); err != nil {
-		return EndpointUpdate{}, errors.Wrap(err, "save config")
+		return false, errors.Wrap(err, "save config")
 	}
-	return updated, nil
+	return true, nil
 }
 
 // UserIsInitialized 判断配置是否已完成用户初始化，仅检查 AccessToken 等配置项是否存在
@@ -204,6 +176,6 @@ func (c *Config) RequireBkmsBaseURL() error {
 	return errors.New(
 		"bkmsBaseUrl is not configured\n\n" +
 			"Set it first, then continue:\n" +
-			"  bkms-cli config set --bkms-base-url <url> [--bcs-api-host <url>]",
+			"  bkms-cli config set --bkms-base-url <url>",
 	)
 }

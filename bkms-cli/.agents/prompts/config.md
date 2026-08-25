@@ -12,14 +12,10 @@ bkms-cli config view
 
 ```bash
 bkms-cli config set --bkms-base-url https://bkms.example.com
-bkms-cli config set --bcs-api-host https://bcs-api.example.com
-bkms-cli config set \
-  --bkms-base-url https://bkms.example.com \
-  --bcs-api-host https://bcs-api.example.com
 bkms-cli config set --if-unset --bkms-base-url https://bkms.example.com
 ```
 
-至少提供一个 flag；未传的字段保持不变。写入前会去掉 URL 尾部 `/`。
+`--bkms-base-url` 必填。写入前会去掉 URL 尾部 `/`。
 
 `--if-unset`：仅当配置文件中该字段为空时才写入（npm postinstall 用这个，避免更新时覆盖已有配置）。
 

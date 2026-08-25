@@ -58,7 +58,6 @@ var _ = Describe("Config", func() {
 
 			cfg := &Config{
 				BkmsBaseURL: "http://existing.example.com/",
-				BcsAPIHost:  "https://bcs.example.com/",
 				Username:    "testuser",
 				AccessToken: "test-token",
 				Defaults:    Defaults{WorkspaceID: "ws-123"},
@@ -70,7 +69,6 @@ var _ = Describe("Config", func() {
 			conf, err := G.Load()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(conf.BkmsBaseURL).To(Equal("http://existing.example.com"))
-			Expect(conf.BcsAPIHost).To(Equal("https://bcs.example.com"))
 			Expect(conf.Username).To(Equal("testuser"))
 			Expect(conf.AccessToken).To(Equal("test-token"))
 			Expect(conf.Defaults.WorkspaceID).To(Equal("ws-123"))
@@ -81,7 +79,6 @@ var _ = Describe("Config", func() {
 			conf, err := G.Load()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(conf.BkmsBaseURL).To(Equal(""))
-			Expect(conf.BcsAPIHost).To(Equal(""))
 			Expect(G).To(Equal(conf))
 
 			_, statErr := os.Stat(cfgFile)
@@ -103,7 +100,6 @@ var _ = Describe("Config", func() {
 
 			G = &Config{
 				BkmsBaseURL: "http://dump.example.com",
-				BcsAPIHost:  "https://bcs-dump.example.com",
 				Username:    "dumpuser",
 				AccessToken: "dump-token",
 				Defaults:    Defaults{WorkspaceID: "ws-dump"},
@@ -113,7 +109,6 @@ var _ = Describe("Config", func() {
 			conf, err := G.Load()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(conf.BkmsBaseURL).To(Equal("http://dump.example.com"))
-			Expect(conf.BcsAPIHost).To(Equal("https://bcs-dump.example.com"))
 			Expect(conf.Username).To(Equal("dumpuser"))
 			Expect(conf.AccessToken).To(Equal("dump-token"))
 			Expect(conf.Defaults.WorkspaceID).To(Equal("ws-dump"))
@@ -124,67 +119,47 @@ var _ = Describe("Config", func() {
 		It("应展示普通字段并隐藏敏感字段", func() {
 			G = &Config{
 				BkmsBaseURL: "http://string-test.example.com",
-				BcsAPIHost:  "https://bcs-string.example.com",
 				Username:    "stringuser",
 				AccessToken: "secret-token",
 			}
 
 			s := G.String()
 			Expect(s).To(ContainSubstring("http://string-test.example.com"))
-			Expect(s).To(ContainSubstring("https://bcs-string.example.com"))
 			Expect(s).To(ContainSubstring("stringuser"))
 			Expect(s).ToNot(ContainSubstring("secret-token"))
 			Expect(s).To(ContainSubstring("[REDACTED]"))
 		})
 	})
 
-	Describe("SetEndpoints", func() {
+	Describe("SetBkmsBaseURL", func() {
 		BeforeEach(func() {
 			Expect(os.MkdirAll(filepath.Dir(cfgFile), 0o755)).To(Succeed())
 			G = &Config{}
 		})
 
 		It("应写入地址并持久化", func() {
-			updated, err := G.SetEndpoints("http://bkms.example.com/", "https://bcs.example.com/", false)
+			updated, err := G.SetBkmsBaseURL("http://bkms.example.com/", false)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(updated.Changed()).To(BeTrue())
-			Expect(updated.BkmsBaseURLUpdated).To(BeTrue())
-			Expect(updated.BcsAPIHostUpdated).To(BeTrue())
+			Expect(updated).To(BeTrue())
 			Expect(G.BkmsBaseURL).To(Equal("http://bkms.example.com"))
-			Expect(G.BcsAPIHost).To(Equal("https://bcs.example.com"))
 
 			conf, err := (&Config{}).Load()
 			Expect(err).ToNot(HaveOccurred())
 			Expect(conf.BkmsBaseURL).To(Equal("http://bkms.example.com"))
-			Expect(conf.BcsAPIHost).To(Equal("https://bcs.example.com"))
 		})
 
 		It("ifUnset 时不应覆盖已有值", func() {
 			G.BkmsBaseURL = "http://existing.example.com"
-			G.BcsAPIHost = "https://existing-bcs.example.com"
 			Expect(G.Dump()).To(Succeed())
 
-			updated, err := G.SetEndpoints("http://new.example.com", "https://new-bcs.example.com", true)
+			updated, err := G.SetBkmsBaseURL("http://new.example.com", true)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(updated.Changed()).To(BeFalse())
+			Expect(updated).To(BeFalse())
 			Expect(G.BkmsBaseURL).To(Equal("http://existing.example.com"))
-			Expect(G.BcsAPIHost).To(Equal("https://existing-bcs.example.com"))
 		})
 
-		It("ifUnset 时应仅填充空字段", func() {
-			G.BkmsBaseURL = "http://existing.example.com"
-			Expect(G.Dump()).To(Succeed())
-
-			updated, err := G.SetEndpoints("http://new.example.com", "https://new-bcs.example.com", true)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(updated.BkmsBaseURLUpdated).To(BeFalse())
-			Expect(updated.BcsAPIHostUpdated).To(BeTrue())
-			Expect(G.BkmsBaseURL).To(Equal("http://existing.example.com"))
-			Expect(G.BcsAPIHost).To(Equal("https://new-bcs.example.com"))
-		})
-
-		It("两个地址都为空时应返回错误", func() {
-			_, err := G.SetEndpoints("  ", "", false)
+		It("地址为空时应返回错误", func() {
+			_, err := G.SetBkmsBaseURL("  ", false)
 			Expect(err).To(HaveOccurred())
 		})
 	})

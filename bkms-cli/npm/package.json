@@ -20,7 +20,6 @@
   },
   "bkmsCli": {
     "bkmsBaseUrl": "",
-    "bcsApiHost": "",
     "releaseUrl": "https://github.com/TencentBlueKing/blueking-service-governance/releases/download/bkms-cli%2Fv{version}/{archive}"
   },
   "files": [

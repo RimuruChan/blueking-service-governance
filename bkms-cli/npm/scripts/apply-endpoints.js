@@ -20,8 +20,8 @@
 //
 // 典型用法：分发包在 postinstall 里调用本脚本。脚本会读当前正在安装的那个
 // package.json（优先 npm 注入的 npm_package_json，否则读本包自己的）里的
-// bkmsCli.bkmsBaseUrl / bcsApiHost。字段为空就跳过；有值则调用本机已下载好的
-// bkms-cli，执行 `config set --if-unset`。
+// bkmsCli.bkmsBaseUrl。字段为空就跳过；有值则调用本机已下载好的
+// bkms-cli，执行 `config set --if-unset --bkms-base-url ...`。
 //
 // 用 --if-unset 是为了：用户已经改过地址时，npm 重装/升级不要把它盖掉。
 
@@ -47,8 +47,7 @@ function applyEndpoints() {
   const pkg = JSON.parse(fs.readFileSync(packageJSONPath(), "utf8"));
   const endpoints = pkg.bkmsCli || {};
   const bkmsBaseUrl = String(endpoints.bkmsBaseUrl || "").trim();
-  const bcsApiHost = String(endpoints.bcsApiHost || "").trim();
-  if (!bkmsBaseUrl && !bcsApiHost) {
+  if (!bkmsBaseUrl) {
     return;
   }
 
@@ -57,14 +56,9 @@ function applyEndpoints() {
     throw new Error(`bkms-cli binary not found at ${bin}; install the binary first`);
   }
 
-  const args = ["config", "set", "--if-unset"];
-  if (bkmsBaseUrl) {
-    args.push("--bkms-base-url", bkmsBaseUrl);
-  }
-  if (bcsApiHost) {
-    args.push("--bcs-api-host", bcsApiHost);
-  }
-  execFileSync(bin, args, { stdio: "inherit" });
+  execFileSync(bin, ["config", "set", "--if-unset", "--bkms-base-url", bkmsBaseUrl], {
+    stdio: "inherit",
+  });
 }
 
 module.exports = { applyEndpoints, packageJSONPath, binaryPath };
