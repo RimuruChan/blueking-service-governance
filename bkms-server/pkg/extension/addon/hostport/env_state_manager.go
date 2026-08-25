@@ -37,8 +37,26 @@ func NewEnvStateManager(store HostPortStore) *EnvStateManager {
 	return &EnvStateManager{store: store}
 }
 
-// ReconcileAfterDeploy records current declared ports as applied for a federated env.
+// ReconcileAfterDeploy records the ports that were actually injected/deployed
+// for a federated env. appliedPorts must be the build-time snapshot (not a fresh
+// ListPorts), so mid-deploy config changes do not skew pending state.
 func (m *EnvStateManager) ReconcileAfterDeploy(
+	ctx context.Context,
+	app *bkmsapp.Application,
+	env *envmodel.Environment,
+	appliedPorts []int32,
+) error {
+	if !env.Cluster.IsFederation {
+		return nil
+	}
+	if err := m.store.UpsertEnvState(ctx, app.ID, env.Name, appliedPorts); err != nil {
+		return errors.Wrapf(err, "upsert hostport env state for env %s", env.Name)
+	}
+	return nil
+}
+
+// ReconcileAfterUninstall removes the env HostPort snapshot for federated envs.
+func (m *EnvStateManager) ReconcileAfterUninstall(
 	ctx context.Context,
 	app *bkmsapp.Application,
 	env *envmodel.Environment,
@@ -46,24 +64,8 @@ func (m *EnvStateManager) ReconcileAfterDeploy(
 	if !env.Cluster.IsFederation {
 		return nil
 	}
-	ports, err := m.store.ListPorts(ctx, app.ID)
-	if err != nil {
-		return errors.Wrap(err, "list hostport ports after deploy")
-	}
-	if err = m.store.UpsertEnvState(ctx, app.ID, env.Name, ports); err != nil {
-		return errors.Wrapf(err, "upsert hostport env state for env %s", env.Name)
-	}
-	return nil
-}
-
-// ReconcileAfterUninstall removes the env HostPort snapshot.
-func (m *EnvStateManager) ReconcileAfterUninstall(
-	ctx context.Context,
-	app *bkmsapp.Application,
-	envName string,
-) error {
-	if err := m.store.RemoveEnvState(ctx, app.ID, envName); err != nil {
-		return errors.Wrapf(err, "remove hostport env state for env %s", envName)
+	if err := m.store.RemoveEnvState(ctx, app.ID, env.Name); err != nil {
+		return errors.Wrapf(err, "remove hostport env state for env %s", env.Name)
 	}
 	return nil
 }

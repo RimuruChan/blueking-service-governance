@@ -21,6 +21,7 @@ package hostport
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
@@ -35,6 +36,9 @@ import (
 // container declares the corresponding containerPort (same idea as the former
 // Polaris health-check port injection).
 //
+// Returns the ports snapshot used for this inject (empty when none / non-federation),
+// so deploy reconcile can record the same applied set without a second ListPorts.
+//
 // Non-federated environments are a no-op.
 func InjectFromStore(
 	ctx context.Context,
@@ -44,26 +48,25 @@ func InjectFromStore(
 	meta *metav1.ObjectMeta,
 	containers []corev1.Container,
 	mainContainerName string,
-) error {
+) ([]int32, error) {
 	if !isFederation {
-		return nil
+		return nil, nil
 	}
 
 	ports, err := store.ListPorts(ctx, appID)
 	if err != nil {
-		return errors.Wrap(err, "listing hostport mappings")
+		return nil, errors.Wrap(err, "listing hostport mappings")
 	}
+	ports = NormalizePorts(ports)
 	if len(ports) == 0 {
-		return nil
+		return ports, nil
 	}
 
 	if meta != nil {
-		for k, v := range BuildPodAnnotations(ports) {
-			if meta.Annotations == nil {
-				meta.Annotations = make(map[string]string)
-			}
-			meta.Annotations[k] = v
+		if meta.Annotations == nil {
+			meta.Annotations = make(map[string]string)
 		}
+		maps.Copy(meta.Annotations, BuildPodAnnotations(ports))
 	}
 
 	for i := range containers {
@@ -73,7 +76,7 @@ func InjectFromStore(
 		injectContainerPorts(ports, &containers[i])
 		break
 	}
-	return nil
+	return ports, nil
 }
 
 // injectContainerPorts upserts HostPort-declared ports onto the container,

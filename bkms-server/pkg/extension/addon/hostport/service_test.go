@@ -133,7 +133,7 @@ var _ = Describe("Service", func() {
 		It("computes pending add and remove against applied snapshot", func() {
 			_, err := svc.AddPort(ctx, app.ID, 80)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(manager.ReconcileAfterDeploy(ctx, app, fedEnv)).To(Succeed())
+			Expect(manager.ReconcileAfterDeploy(ctx, app, fedEnv, []int32{80})).To(Succeed())
 
 			_, err = svc.AddPort(ctx, app.ID, 443)
 			Expect(err).NotTo(HaveOccurred())

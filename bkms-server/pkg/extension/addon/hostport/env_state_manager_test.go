@@ -88,39 +88,63 @@ var _ = Describe("EnvStateManager", func() {
 
 	Describe("ReconcileAfterDeploy", func() {
 		It("is a no-op for non-federation environments", func() {
-			_, err := store.AddPort(ctx, app.ID, 80)
-			Expect(err).NotTo(HaveOccurred())
+			Expect(manager.ReconcileAfterDeploy(ctx, app, nonFedEnv, []int32{80})).To(Succeed())
 
-			Expect(manager.ReconcileAfterDeploy(ctx, app, nonFedEnv)).To(Succeed())
-			config, err := store.Get(ctx, app.ID)
-			Expect(err).NotTo(HaveOccurred())
-			_, ok := config.EnvStates[nonFedEnv.Name]
-			Expect(ok).To(BeFalse())
+			_, err := store.Get(ctx, app.ID)
+			Expect(err).To(MatchError(hostport.ErrConfigNotFound))
 		})
 
-		It("persists current ports as applied for federation environments", func() {
-			_, err := store.AddPort(ctx, app.ID, 8080)
-			Expect(err).NotTo(HaveOccurred())
-			_, err = store.AddPort(ctx, app.ID, 80)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(manager.ReconcileAfterDeploy(ctx, app, federation)).To(Succeed())
+		It("persists the provided applied ports for federation environments", func() {
+			Expect(manager.ReconcileAfterDeploy(ctx, app, federation, []int32{8080, 80})).To(Succeed())
 
 			config, err := store.Get(ctx, app.ID)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config.EnvStates[federation.Name].AppliedPorts).To(Equal([]int32{80, 8080}))
 		})
+
+		It("records empty applied ports from the deploy snapshot", func() {
+			Expect(manager.ReconcileAfterDeploy(ctx, app, federation, []int32{80})).To(Succeed())
+			Expect(manager.ReconcileAfterDeploy(ctx, app, federation, nil)).To(Succeed())
+
+			config, err := store.Get(ctx, app.ID)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(config.EnvStates[federation.Name].AppliedPorts).To(Equal([]int32{}))
+		})
+
+		It("does not re-list declared ports (avoids mid-deploy race)", func() {
+			_, err := store.AddPort(ctx, app.ID, 80)
+			Expect(err).NotTo(HaveOccurred())
+			// Snapshot at build/inject time was only 80; declared ports changed after inject.
+			_, err = store.AddPort(ctx, app.ID, 443)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(manager.ReconcileAfterDeploy(ctx, app, federation, []int32{80})).To(Succeed())
+
+			config, err := store.Get(ctx, app.ID)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(config.EnvStates[federation.Name].AppliedPorts).To(Equal([]int32{80}))
+		})
 	})
 
 	Describe("ReconcileAfterUninstall", func() {
-		It("removes the env snapshot", func() {
-			Expect(manager.ReconcileAfterDeploy(ctx, app, federation)).To(Succeed())
-			Expect(manager.ReconcileAfterUninstall(ctx, app, federation.Name)).To(Succeed())
+		It("removes the env snapshot for federation environments", func() {
+			Expect(manager.ReconcileAfterDeploy(ctx, app, federation, []int32{80})).To(Succeed())
+			Expect(manager.ReconcileAfterUninstall(ctx, app, federation)).To(Succeed())
 
 			config, err := store.Get(ctx, app.ID)
 			Expect(err).NotTo(HaveOccurred())
 			_, ok := config.EnvStates[federation.Name]
 			Expect(ok).To(BeFalse())
+		})
+
+		It("is a no-op for non-federation environments", func() {
+			Expect(manager.ReconcileAfterDeploy(ctx, app, federation, []int32{80})).To(Succeed())
+			Expect(manager.ReconcileAfterUninstall(ctx, app, nonFedEnv)).To(Succeed())
+
+			config, err := store.Get(ctx, app.ID)
+			Expect(err).NotTo(HaveOccurred())
+			_, ok := config.EnvStates[federation.Name]
+			Expect(ok).To(BeTrue())
 		})
 	})
 })

@@ -83,6 +83,8 @@ type BuildResult struct {
 	SensitiveEnvVarValues map[string]string
 	// UndefinedEnvVars 是渲染过程中引用但未定义的环境变量；仅报告，不阻断部署。
 	UndefinedEnvVars []envvarrefs.UndefinedEnvVar
+	// HostPortAppliedPorts 是本次构建注入到工作负载的 HostPort 容器端口快照（联邦环境）。
+	HostPortAppliedPorts []int32
 }
 
 // workloadMeta 从 MainWorkload 抽出 GameDeployment / Deployment 的公共字段。

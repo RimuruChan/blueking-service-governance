@@ -218,7 +218,9 @@ func (d *Deployer) Deploy(
 		log.Errorf(ctx, "reconcile polaris config after deploy failed, app=%s env=%s: %v",
 			d.app.ID, env.Name, err)
 	}
-	if err = d.hostPortEnvStateManager.ReconcileAfterDeploy(ctx, d.app, env); err != nil {
+	if err = d.hostPortEnvStateManager.ReconcileAfterDeploy(
+		ctx, d.app, env, buildResult.HostPortAppliedPorts,
+	); err != nil {
 		log.Errorf(ctx, "reconcile hostport after deploy failed, app=%s env=%s: %v",
 			d.app.ID, env.Name, err)
 	}
@@ -227,7 +229,8 @@ func (d *Deployer) Deploy(
 }
 
 // Uninstall 执行卸载操作，将最新部署的相关资源从集群中删除
-func (d *Deployer) Uninstall(ctx context.Context, envName, trafficLaneName string) error {
+func (d *Deployer) Uninstall(ctx context.Context, env *bkmsenv.Environment, trafficLaneName string) error {
+	envName := env.Name
 	// 获取最新部署记录
 	record, err := d.recordStore.GetLatest(ctx, d.app.ID, envName, trafficLaneName)
 	if err != nil {
@@ -275,7 +278,7 @@ func (d *Deployer) Uninstall(ctx context.Context, envName, trafficLaneName strin
 			err,
 		)
 	}
-	if err = d.hostPortEnvStateManager.ReconcileAfterUninstall(ctx, d.app, envName); err != nil {
+	if err = d.hostPortEnvStateManager.ReconcileAfterUninstall(ctx, d.app, env); err != nil {
 		log.Errorf(
 			ctx,
 			"reconcile hostport env states after uninstall failed, app=%s env=%s: %v",

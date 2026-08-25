@@ -64,8 +64,9 @@ var _ = Describe("InjectFromStore", func() {
 
 		meta := &metav1.ObjectMeta{}
 		containers := []corev1.Container{{Name: mainContainerName}}
-		err = hostport.InjectFromStore(ctx, store, testAppID, false, meta, containers, mainContainerName)
+		ports, err := hostport.InjectFromStore(ctx, store, testAppID, false, meta, containers, mainContainerName)
 		Expect(err).NotTo(HaveOccurred())
+		Expect(ports).To(BeNil())
 		Expect(meta.Annotations).To(BeNil())
 		Expect(containers[0].Ports).To(BeEmpty())
 	})
@@ -88,8 +89,9 @@ var _ = Describe("InjectFromStore", func() {
 				}},
 			},
 		}
-		err = hostport.InjectFromStore(ctx, store, testAppID, true, meta, containers, mainContainerName)
+		ports, err := hostport.InjectFromStore(ctx, store, testAppID, true, meta, containers, mainContainerName)
 		Expect(err).NotTo(HaveOccurred())
+		Expect(ports).To(Equal([]int32{80, 8080}))
 		Expect(meta.Annotations).To(Equal(map[string]string{
 			"keep":                        "1",
 			hostport.AnnotationEnabledKey: hostport.AnnotationEnabledVal,
@@ -105,8 +107,9 @@ var _ = Describe("InjectFromStore", func() {
 	It("writes nothing when federation env has no declared ports", func() {
 		meta := &metav1.ObjectMeta{}
 		containers := []corev1.Container{{Name: mainContainerName}}
-		err := hostport.InjectFromStore(ctx, store, testAppID, true, meta, containers, mainContainerName)
+		ports, err := hostport.InjectFromStore(ctx, store, testAppID, true, meta, containers, mainContainerName)
 		Expect(err).NotTo(HaveOccurred())
+		Expect(ports).To(Equal([]int32{}))
 		Expect(meta.Annotations).To(BeNil())
 		Expect(containers[0].Ports).To(BeEmpty())
 	})

@@ -225,7 +225,7 @@ func (h *Handler) deleteAppModelDeploy(c *gin.Context) {
 
 	// 执行部署操作
 	deployer := h.newDeployer(app)
-	if err = deployer.Uninstall(ctx, uriInput.EnvName, input.TrafficLaneName); err != nil {
+	if err = deployer.Uninstall(ctx, env, input.TrafficLaneName); err != nil {
 		metricStatus = metrics.StatusErr
 		deployInfo := genDeployInfo(app.WorkspaceID, app.ID, uriInput.EnvName, input.TrafficLaneName)
 		bkerrs.AbortWithErr(c, bkerrs.Wrapf(
