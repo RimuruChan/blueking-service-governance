@@ -26,12 +26,15 @@ import (
 	. "github.com/onsi/gomega"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/hostport"
 )
 
-var _ = Describe("InjectPodAnnotationsFromStore", func() {
+var _ = Describe("InjectFromStore", func() {
+	const mainContainerName = "main"
+
 	var (
 		ctx       context.Context
 		diApp     *fxtest.App
@@ -60,31 +63,51 @@ var _ = Describe("InjectPodAnnotationsFromStore", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		meta := &metav1.ObjectMeta{}
-		err = hostport.InjectPodAnnotationsFromStore(ctx, store, testAppID, false, meta)
+		containers := []corev1.Container{{Name: mainContainerName}}
+		err = hostport.InjectFromStore(ctx, store, testAppID, false, meta, containers, mainContainerName)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(meta.Annotations).To(BeNil())
+		Expect(containers[0].Ports).To(BeEmpty())
 	})
 
-	It("merges webhook annotations for federation environments", func() {
+	It("merges webhook annotations and containerPorts for federation environments", func() {
 		_, err := store.AddPort(ctx, testAppID, 8080)
 		Expect(err).NotTo(HaveOccurred())
 		_, err = store.AddPort(ctx, testAppID, 80)
 		Expect(err).NotTo(HaveOccurred())
 
 		meta := &metav1.ObjectMeta{Annotations: map[string]string{"keep": "1"}}
-		err = hostport.InjectPodAnnotationsFromStore(ctx, store, testAppID, true, meta)
+		containers := []corev1.Container{
+			{Name: "sidecar"},
+			{
+				Name: mainContainerName,
+				Ports: []corev1.ContainerPort{{
+					Name:          "existing",
+					ContainerPort: 80,
+					Protocol:      corev1.ProtocolUDP,
+				}},
+			},
+		}
+		err = hostport.InjectFromStore(ctx, store, testAppID, true, meta, containers, mainContainerName)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(meta.Annotations).To(Equal(map[string]string{
 			"keep":                        "1",
 			hostport.AnnotationEnabledKey: hostport.AnnotationEnabledVal,
 			hostport.AnnotationPortsKey:   "80,8080",
 		}))
+		Expect(containers[0].Ports).To(BeEmpty())
+		Expect(containers[1].Ports).To(Equal([]corev1.ContainerPort{
+			{Name: "hostport-80", ContainerPort: 80, Protocol: corev1.ProtocolTCP},
+			{Name: "hostport-8080", ContainerPort: 8080, Protocol: corev1.ProtocolTCP},
+		}))
 	})
 
 	It("writes nothing when federation env has no declared ports", func() {
 		meta := &metav1.ObjectMeta{}
-		err := hostport.InjectPodAnnotationsFromStore(ctx, store, testAppID, true, meta)
+		containers := []corev1.Container{{Name: mainContainerName}}
+		err := hostport.InjectFromStore(ctx, store, testAppID, true, meta, containers, mainContainerName)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(meta.Annotations).To(BeNil())
+		Expect(containers[0].Ports).To(BeEmpty())
 	})
 })

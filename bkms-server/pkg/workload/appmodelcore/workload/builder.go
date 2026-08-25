@@ -281,11 +281,18 @@ func (b *Builder) Build(
 		gd.Spec.Template.Annotations[tkeRouteEniAnnotationKey] = tkeRouteEniAnnotationValue
 	}
 
-	// Inject BCS random HostPort webhook annotations for federated environments.
-	if err = hostport.InjectPodAnnotationsFromStore(
-		ctx, b.hostPortStore, b.app.ID, env.Cluster.IsFederation, &gd.Spec.Template.ObjectMeta,
+	// Inject BCS random HostPort webhook annotations and main-container ports
+	// for federated environments (containerPort is required for the webhook to work).
+	if err = hostport.InjectFromStore(
+		ctx,
+		b.hostPortStore,
+		b.app.ID,
+		env.Cluster.IsFederation,
+		&gd.Spec.Template.ObjectMeta,
+		gd.Spec.Template.Spec.Containers,
+		defaults.WorkloadMainContainerName,
 	); err != nil {
-		return nil, errors.Wrap(err, "injecting hostport annotations")
+		return nil, errors.Wrap(err, "injecting hostport")
 	}
 
 	// Inject BSCP configuration management artifacts (initContainer, sidecar, volume, etc.)

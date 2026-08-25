@@ -20,23 +20,32 @@ package hostport
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// InjectPodAnnotationsFromStore loads declared HostPort mappings and merges BCS
-// random HostPort webhook annotations into pod template metadata.
+// InjectFromStore loads declared HostPort mappings and, for federated environments:
+//  1. merges BCS random HostPort webhook annotations into pod template metadata
+//  2. upserts matching containerPorts on the main container
+//
+// The webhook only allocates HostPort / injects BCS_RANDHOSTPORT_* when the
+// container declares the corresponding containerPort (same idea as the former
+// Polaris health-check port injection).
 //
 // Non-federated environments are a no-op.
-func InjectPodAnnotationsFromStore(
+func InjectFromStore(
 	ctx context.Context,
 	store HostPortStore,
 	appID string,
 	isFederation bool,
 	meta *metav1.ObjectMeta,
+	containers []corev1.Container,
+	mainContainerName string,
 ) error {
-	if !isFederation || meta == nil {
+	if !isFederation {
 		return nil
 	}
 
@@ -44,11 +53,47 @@ func InjectPodAnnotationsFromStore(
 	if err != nil {
 		return errors.Wrap(err, "listing hostport mappings")
 	}
-	for k, v := range BuildPodAnnotations(ports) {
-		if meta.Annotations == nil {
-			meta.Annotations = make(map[string]string)
+	if len(ports) == 0 {
+		return nil
+	}
+
+	if meta != nil {
+		for k, v := range BuildPodAnnotations(ports) {
+			if meta.Annotations == nil {
+				meta.Annotations = make(map[string]string)
+			}
+			meta.Annotations[k] = v
 		}
-		meta.Annotations[k] = v
+	}
+
+	for i := range containers {
+		if containers[i].Name != mainContainerName {
+			continue
+		}
+		injectContainerPorts(ports, &containers[i])
+		break
 	}
 	return nil
+}
+
+// injectContainerPorts upserts HostPort-declared ports onto the container,
+// mirroring the former Polaris injectContainerPorts merge-by-ContainerPort behavior.
+func injectContainerPorts(ports []int32, container *corev1.Container) {
+	for _, port := range NormalizePorts(ports) {
+		upsertContainerPort(&container.Ports, corev1.ContainerPort{
+			Name:          fmt.Sprintf("hostport-%d", port),
+			ContainerPort: port,
+			Protocol:      corev1.ProtocolTCP,
+		})
+	}
+}
+
+func upsertContainerPort(items *[]corev1.ContainerPort, value corev1.ContainerPort) {
+	for idx := range *items {
+		if (*items)[idx].ContainerPort == value.ContainerPort {
+			(*items)[idx] = value
+			return
+		}
+	}
+	*items = append(*items, value)
 }
