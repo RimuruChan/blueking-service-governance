@@ -19,23 +19,7 @@
 // Package hostport manages app-level random HostPort port mappings for federated clusters.
 package hostport
 
-import (
-	"slices"
-	"strconv"
-	"strings"
-	"time"
-
-	"github.com/samber/lo"
-)
-
-const (
-	// AnnotationEnabledKey enables BCS random HostPort webhook injection.
-	AnnotationEnabledKey = "randhostport.webhook.bkbcs.tencent.com"
-	// AnnotationEnabledVal is the value that enables the webhook.
-	AnnotationEnabledVal = "true"
-	// AnnotationPortsKey declares container ports that need random HostPort mapping.
-	AnnotationPortsKey = "ports.randhostport.webhook.bkbcs.tencent.com"
-)
+import "time"
 
 // HostPortConfig is the app-level HostPort mapping document (1:1 with app).
 type HostPortConfig struct {
@@ -63,92 +47,4 @@ type EnvStateView struct {
 type HostPorts struct {
 	Ports     []int32
 	EnvStates map[string]EnvStateView
-}
-
-// NormalizePorts returns a sorted unique copy of ports.
-func NormalizePorts(ports []int32) []int32 {
-	if len(ports) == 0 {
-		return []int32{}
-	}
-	uniq := lo.Uniq(ports)
-	slices.Sort(uniq)
-	return uniq
-}
-
-// ValidateContainerPort checks that port is in [1, 65535].
-func ValidateContainerPort(port int32) bool {
-	return port >= 1 && port <= 65535
-}
-
-// DiffPorts returns ports in desired but not applied (add) and in applied but not desired (remove).
-func DiffPorts(desired, applied []int32) (add, remove []int32) {
-	desiredSet := lo.SliceToMap(NormalizePorts(desired), func(p int32) (int32, struct{}) {
-		return p, struct{}{}
-	})
-	appliedSet := lo.SliceToMap(NormalizePorts(applied), func(p int32) (int32, struct{}) {
-		return p, struct{}{}
-	})
-
-	for p := range desiredSet {
-		if _, ok := appliedSet[p]; !ok {
-			add = append(add, p)
-		}
-	}
-	for p := range appliedSet {
-		if _, ok := desiredSet[p]; !ok {
-			remove = append(remove, p)
-		}
-	}
-	return NormalizePorts(add), NormalizePorts(remove)
-}
-
-// ComputeEnvState builds the pending-deploy view for one env.
-// state == nil means the env has never been reconciled after a HostPort-aware deploy.
-func ComputeEnvState(desired []int32, state *HostPortEnvState) EnvStateView {
-	desired = NormalizePorts(desired)
-	if state == nil {
-		if len(desired) == 0 {
-			return EnvStateView{
-				AppliedPorts:       []int32{},
-				PendingAddPorts:    []int32{},
-				PendingRemovePorts: []int32{},
-			}
-		}
-		return EnvStateView{
-			AppliedPorts:       []int32{},
-			PendingAddPorts:    desired,
-			PendingRemovePorts: []int32{},
-		}
-	}
-
-	applied := NormalizePorts(state.AppliedPorts)
-	add, remove := DiffPorts(desired, applied)
-	return EnvStateView{
-		AppliedPorts:       applied,
-		PendingAddPorts:    add,
-		PendingRemovePorts: remove,
-	}
-}
-
-// FormatPortsAnnotationValue joins ports as a comma-separated ascending string.
-func FormatPortsAnnotationValue(ports []int32) string {
-	ports = NormalizePorts(ports)
-	parts := make([]string, 0, len(ports))
-	for _, p := range ports {
-		parts = append(parts, strconv.FormatInt(int64(p), 10))
-	}
-	return strings.Join(parts, ",")
-}
-
-// BuildPodAnnotations returns HostPort webhook annotations for the given ports.
-// Returns nil when ports is empty.
-func BuildPodAnnotations(ports []int32) map[string]string {
-	ports = NormalizePorts(ports)
-	if len(ports) == 0 {
-		return nil
-	}
-	return map[string]string{
-		AnnotationEnabledKey: AnnotationEnabledVal,
-		AnnotationPortsKey:   FormatPortsAnnotationValue(ports),
-	}
 }

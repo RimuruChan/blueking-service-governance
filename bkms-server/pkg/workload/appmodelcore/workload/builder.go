@@ -283,17 +283,19 @@ func (b *Builder) Build(
 
 	// Inject BCS random HostPort webhook annotations and main-container ports
 	// for federated environments (containerPort is required for the webhook to work).
-	hostPortAppliedPorts, err := hostport.InjectFromStore(
-		ctx,
-		b.hostPortStore,
-		b.app.ID,
-		env.Cluster.IsFederation,
-		&gd.Spec.Template.ObjectMeta,
-		gd.Spec.Template.Spec.Containers,
-		defaults.WorkloadMainContainerName,
-	)
-	if err != nil {
-		return nil, errors.Wrap(err, "injecting hostport")
+	var hostPortAppliedPorts []int32
+	if env.Cluster.IsFederation {
+		hostPortAppliedPorts, err = hostport.InjectFromStore(
+			ctx,
+			b.hostPortStore,
+			b.app.ID,
+			&gd.Spec.Template.ObjectMeta,
+			gd.Spec.Template.Spec.Containers,
+			defaults.WorkloadMainContainerName,
+		)
+		if err != nil {
+			return nil, errors.Wrap(err, "injecting hostport")
+		}
 	}
 
 	// Inject BSCP configuration management artifacts (initContainer, sidecar, volume, etc.)

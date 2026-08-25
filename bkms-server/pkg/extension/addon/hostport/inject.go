@@ -20,7 +20,6 @@ package hostport
 
 import (
 	"context"
-	"fmt"
 	"maps"
 
 	"github.com/pkg/errors"
@@ -28,7 +27,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// InjectFromStore loads declared HostPort mappings and, for federated environments:
+// InjectFromStore loads declared HostPort mappings and:
 //  1. merges BCS random HostPort webhook annotations into pod template metadata
 //  2. upserts matching containerPorts on the main container
 //
@@ -36,23 +35,17 @@ import (
 // container declares the corresponding containerPort (same idea as the former
 // Polaris health-check port injection).
 //
-// Returns the ports snapshot used for this inject (empty when none / non-federation),
+// Callers decide whether injection applies (e.g. only for federation envs).
+// Returns the ports snapshot used for this inject (empty when none),
 // so deploy reconcile can record the same applied set without a second ListPorts.
-//
-// Non-federated environments are a no-op.
 func InjectFromStore(
 	ctx context.Context,
 	store HostPortStore,
 	appID string,
-	isFederation bool,
 	meta *metav1.ObjectMeta,
 	containers []corev1.Container,
 	mainContainerName string,
 ) ([]int32, error) {
-	if !isFederation {
-		return nil, nil
-	}
-
 	ports, err := store.ListPorts(ctx, appID)
 	if err != nil {
 		return nil, errors.Wrap(err, "listing hostport mappings")
@@ -79,24 +72,19 @@ func InjectFromStore(
 	return ports, nil
 }
 
-// injectContainerPorts upserts HostPort-declared ports onto the container,
-// mirroring the former Polaris injectContainerPorts merge-by-ContainerPort behavior.
+// injectContainerPorts ensures HostPort-declared ports exist on the container.
+// Existing entries with the same ContainerPort are left unchanged.
 func injectContainerPorts(ports []int32, container *corev1.Container) {
 	for _, port := range NormalizePorts(ports) {
-		upsertContainerPort(&container.Ports, corev1.ContainerPort{
-			Name:          fmt.Sprintf("hostport-%d", port),
-			ContainerPort: port,
-			Protocol:      corev1.ProtocolTCP,
-		})
+		ensureContainerPort(&container.Ports, port)
 	}
 }
 
-func upsertContainerPort(items *[]corev1.ContainerPort, value corev1.ContainerPort) {
+func ensureContainerPort(items *[]corev1.ContainerPort, port int32) {
 	for idx := range *items {
-		if (*items)[idx].ContainerPort == value.ContainerPort {
-			(*items)[idx] = value
+		if (*items)[idx].ContainerPort == port {
 			return
 		}
 	}
-	*items = append(*items, value)
+	*items = append(*items, corev1.ContainerPort{ContainerPort: port})
 }

@@ -96,16 +96,29 @@ var _ = Describe("Service", func() {
 		})
 	})
 
-	Describe("AddPort / RemovePort", func() {
-		It("adds and removes ports through the service layer", func() {
-			ports, err := svc.AddPort(ctx, app.ID, 80)
+	Describe("ReplacePorts", func() {
+		It("replaces ports through the service layer", func() {
+			ports, err := svc.ReplacePorts(ctx, app.ID, []int32{8080, 80})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ports).To(Equal([]int32{80}))
+			Expect(ports).To(Equal([]int32{80, 8080}))
 
-			Expect(svc.RemovePort(ctx, app.ID, 80)).To(Succeed())
-			ports, err = svc.ListPorts(ctx, app.ID)
+			ports, err = svc.ReplacePorts(ctx, app.ID, []int32{})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(ports).To(Equal([]int32{}))
+		})
+	})
+
+	Describe("GetHostPorts", func() {
+		It("returns ports with federated env states only", func() {
+			_, err := svc.ReplacePorts(ctx, app.ID, []int32{8080, 80})
+			Expect(err).NotTo(HaveOccurred())
+
+			result, err := svc.GetHostPorts(ctx, app)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.Ports).To(Equal([]int32{80, 8080}))
+			Expect(result.EnvStates).To(HaveKey(fedEnv.Name))
+			Expect(result.EnvStates).NotTo(HaveKey(nonFedEnv.Name))
+			Expect(result.EnvStates[fedEnv.Name].PendingAddPorts).To(Equal([]int32{80, 8080}))
 		})
 	})
 
@@ -121,7 +134,7 @@ var _ = Describe("Service", func() {
 		})
 
 		It("marks newly declared ports as pending add until deploy reconcile", func() {
-			_, err := svc.AddPort(ctx, app.ID, 8080)
+			_, err := svc.ReplacePorts(ctx, app.ID, []int32{8080})
 			Expect(err).NotTo(HaveOccurred())
 
 			views, err := svc.ListFederatedEnvStates(ctx, app)
@@ -131,13 +144,12 @@ var _ = Describe("Service", func() {
 		})
 
 		It("computes pending add and remove against applied snapshot", func() {
-			_, err := svc.AddPort(ctx, app.ID, 80)
+			_, err := svc.ReplacePorts(ctx, app.ID, []int32{80})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(manager.ReconcileAfterDeploy(ctx, app, fedEnv, []int32{80})).To(Succeed())
 
-			_, err = svc.AddPort(ctx, app.ID, 443)
+			_, err = svc.ReplacePorts(ctx, app.ID, []int32{443})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(svc.RemovePort(ctx, app.ID, 80)).To(Succeed())
 
 			views, err := svc.ListFederatedEnvStates(ctx, app)
 			Expect(err).NotTo(HaveOccurred())

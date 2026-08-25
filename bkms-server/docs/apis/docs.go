@@ -10303,7 +10303,7 @@ const docTemplate = `{
                     }
                 }
             },
-            "post": {
+            "put": {
                 "security": [
                     {
                         "BkUserInfo": []
@@ -10321,8 +10321,8 @@ const docTemplate = `{
                 "tags": [
                     "hostport"
                 ],
-                "summary": "新增应用 HostPort",
-                "operationId": "CreateHostPort",
+                "summary": "全量保存应用 HostPort 端口列表",
+                "operationId": "PutHostPorts",
                 "parameters": [
                     {
                         "type": "string",
@@ -10337,58 +10337,8 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/serializer.CreateHostPortInput"
+                            "$ref": "#/definitions/serializer.PutHostPortsInput"
                         }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Created",
-                        "schema": {
-                            "$ref": "#/definitions/serializer.HostPortsOutput"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
-                        }
-                    }
-                }
-            }
-        },
-        "/apps/{appID}/hostports/{containerPort}": {
-            "delete": {
-                "security": [
-                    {
-                        "BkUserInfo": []
-                    },
-                    {
-                        "BkUserCredential": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "hostport"
-                ],
-                "summary": "删除应用 HostPort",
-                "operationId": "DeleteHostPort",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "应用 ID",
-                        "name": "appID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "容器端口",
-                        "name": "containerPort",
-                        "in": "path",
-                        "required": true
                     }
                 ],
                 "responses": {
@@ -22603,17 +22553,6 @@ const docTemplate = `{
                 }
             }
         },
-        "serializer.CreateHostPortInput": {
-            "type": "object",
-            "required": [
-                "containerPort"
-            ],
-            "properties": {
-                "containerPort": {
-                    "type": "integer"
-                }
-            }
-        },
         "serializer.CreatePortPoolInput": {
             "type": "object",
             "required": [
@@ -28329,6 +28268,20 @@ const docTemplate = `{
                             "$ref": "#/definitions/serializer.PolarisConfigOutputObj"
                         }
                     ]
+                }
+            }
+        },
+        "serializer.PutHostPortsInput": {
+            "type": "object",
+            "required": [
+                "ports"
+            ],
+            "properties": {
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
                 }
             }
         },

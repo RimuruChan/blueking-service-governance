@@ -69,63 +69,38 @@ var _ = Describe("HostPortStore", func() {
 		})
 	})
 
-	Describe("AddPort", func() {
-		It("lazily creates config and appends the port", func() {
-			config, err := store.AddPort(ctx, testAppID, 8080)
+	Describe("ReplacePorts", func() {
+		It("lazily creates config and stores sorted unique ports", func() {
+			config, err := store.ReplacePorts(ctx, testAppID, []int32{8080, 80, 80})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(config.Ports).To(Equal([]int32{8080}))
+			Expect(config.Ports).To(Equal([]int32{80, 8080}))
 
 			ports, err := store.ListPorts(ctx, testAppID)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(ports).To(Equal([]int32{8080}))
+			Expect(ports).To(Equal([]int32{80, 8080}))
 		})
 
-		It("keeps ports sorted and unique across adds", func() {
-			_, err := store.AddPort(ctx, testAppID, 8080)
+		It("replaces the full ports list", func() {
+			_, err := store.ReplacePorts(ctx, testAppID, []int32{80, 8080})
 			Expect(err).NotTo(HaveOccurred())
-			config, err := store.AddPort(ctx, testAppID, 80)
+
+			config, err := store.ReplacePorts(ctx, testAppID, []int32{443})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(config.Ports).To(Equal([]int32{80, 8080}))
+			Expect(config.Ports).To(Equal([]int32{443}))
 		})
 
-		It("is idempotent when adding the same port twice", func() {
-			_, err := store.AddPort(ctx, testAppID, 80)
+		It("clears ports with an empty list", func() {
+			_, err := store.ReplacePorts(ctx, testAppID, []int32{80})
 			Expect(err).NotTo(HaveOccurred())
-			config, err := store.AddPort(ctx, testAppID, 80)
+
+			config, err := store.ReplacePorts(ctx, testAppID, []int32{})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(config.Ports).To(Equal([]int32{80}))
+			Expect(config.Ports).To(Equal([]int32{}))
 		})
 
 		It("rejects invalid ports", func() {
-			_, err := store.AddPort(ctx, testAppID, 0)
+			_, err := store.ReplacePorts(ctx, testAppID, []int32{80, 0})
 			Expect(err).To(MatchError(hostport.ErrInvalidPort))
-		})
-	})
-
-	Describe("RemovePort", func() {
-		It("removes an existing port", func() {
-			_, err := store.AddPort(ctx, testAppID, 80)
-			Expect(err).NotTo(HaveOccurred())
-			_, err = store.AddPort(ctx, testAppID, 8080)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(store.RemovePort(ctx, testAppID, 80)).To(Succeed())
-			ports, err := store.ListPorts(ctx, testAppID)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(ports).To(Equal([]int32{8080}))
-		})
-
-		It("is idempotent when config is missing", func() {
-			Expect(store.RemovePort(ctx, testAppID, 80)).To(Succeed())
-		})
-
-		It("is idempotent when port is not declared", func() {
-			_, err := store.AddPort(ctx, testAppID, 80)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(store.RemovePort(ctx, testAppID, 443)).To(Succeed())
-			ports, err := store.ListPorts(ctx, testAppID)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(ports).To(Equal([]int32{80}))
 		})
 	})
 

@@ -26,15 +26,9 @@ type AppURIInput struct {
 	AppID string `uri:"appID" binding:"required"`
 }
 
-// DeleteHostPortURIInput binds appID and containerPort path parameters.
-type DeleteHostPortURIInput struct {
-	AppID         string `uri:"appID" binding:"required"`
-	ContainerPort int32  `uri:"containerPort" binding:"required"`
-}
-
-// CreateHostPortInput is the request body for adding a hostport.
-type CreateHostPortInput struct {
-	ContainerPort int32 `json:"containerPort" binding:"required"`
+// PutHostPortsInput is the request body for replacing hostport declarations.
+type PutHostPortsInput struct {
+	Ports []int32 `json:"ports" binding:"required"`
 }
 
 // HostPortEnvStateOutput is one federated environment's HostPort status.
@@ -54,7 +48,7 @@ func (o *HostPortEnvStateOutput) FromModel(view hostport.EnvStateView) *HostPort
 	return o
 }
 
-// HostPortsOutput is the response for listing hostports (ports + federated env states).
+// HostPortsOutput is the response for listing / replacing hostports.
 type HostPortsOutput struct {
 	Ports     []int32                           `json:"ports"`
 	EnvStates map[string]HostPortEnvStateOutput `json:"envStates"`

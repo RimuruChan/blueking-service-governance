@@ -25,6 +25,17 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/hostport"
 )
 
+var _ = Describe("NormalizePorts", func() {
+	It("returns empty slice for nil or empty input", func() {
+		Expect(hostport.NormalizePorts(nil)).To(Equal([]int32{}))
+		Expect(hostport.NormalizePorts([]int32{})).To(Equal([]int32{}))
+	})
+
+	It("deduplicates and sorts ports ascending", func() {
+		Expect(hostport.NormalizePorts([]int32{8080, 80, 80, 443})).To(Equal([]int32{80, 443, 8080}))
+	})
+})
+
 var _ = Describe("DiffPorts", func() {
 	It("returns empty diffs when sets are equal", func() {
 		add, remove := hostport.DiffPorts([]int32{80, 8080}, []int32{8080, 80})
@@ -76,6 +87,16 @@ var _ = Describe("BuildPodAnnotations", func() {
 	})
 })
 
+var _ = Describe("FormatPortsAnnotationValue", func() {
+	It("joins sorted unique ports as comma-separated string", func() {
+		Expect(hostport.FormatPortsAnnotationValue([]int32{8080, 80, 80})).To(Equal("80,8080"))
+	})
+
+	It("returns empty string for empty ports", func() {
+		Expect(hostport.FormatPortsAnnotationValue(nil)).To(Equal(""))
+	})
+})
+
 var _ = Describe("ValidateContainerPort", func() {
 	It("accepts ports in 1-65535", func() {
 		Expect(hostport.ValidateContainerPort(1)).To(BeTrue())
@@ -85,5 +106,25 @@ var _ = Describe("ValidateContainerPort", func() {
 	It("rejects out-of-range ports", func() {
 		Expect(hostport.ValidateContainerPort(0)).To(BeFalse())
 		Expect(hostport.ValidateContainerPort(65536)).To(BeFalse())
+	})
+})
+
+var _ = Describe("FirstInvalidContainerPort", func() {
+	It("returns false when all ports are valid", func() {
+		port, ok := hostport.FirstInvalidContainerPort([]int32{1, 80, 65535})
+		Expect(ok).To(BeFalse())
+		Expect(port).To(Equal(int32(0)))
+	})
+
+	It("returns the first invalid port", func() {
+		port, ok := hostport.FirstInvalidContainerPort([]int32{80, 0, 65536})
+		Expect(ok).To(BeTrue())
+		Expect(port).To(Equal(int32(0)))
+	})
+
+	It("returns false for empty input", func() {
+		port, ok := hostport.FirstInvalidContainerPort(nil)
+		Expect(ok).To(BeFalse())
+		Expect(port).To(Equal(int32(0)))
 	})
 })

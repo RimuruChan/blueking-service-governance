@@ -56,18 +56,13 @@ func (s *Service) ListPorts(ctx context.Context, appID string) ([]int32, error) 
 	return s.store.ListPorts(ctx, appID)
 }
 
-// AddPort adds a container port mapping.
-func (s *Service) AddPort(ctx context.Context, appID string, port int32) ([]int32, error) {
-	config, err := s.store.AddPort(ctx, appID, port)
+// ReplacePorts replaces the declared container ports for an app.
+func (s *Service) ReplacePorts(ctx context.Context, appID string, ports []int32) ([]int32, error) {
+	config, err := s.store.ReplacePorts(ctx, appID, ports)
 	if err != nil {
 		return nil, err
 	}
 	return NormalizePorts(config.Ports), nil
-}
-
-// RemovePort removes a container port mapping.
-func (s *Service) RemovePort(ctx context.Context, appID string, port int32) error {
-	return s.store.RemovePort(ctx, appID, port)
 }
 
 // ListFederatedEnvStates returns HostPort pending-deploy status for federated envs only.

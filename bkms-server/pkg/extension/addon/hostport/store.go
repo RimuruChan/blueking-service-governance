@@ -42,8 +42,7 @@ var (
 type HostPortStore interface {
 	Get(ctx context.Context, appID string) (*HostPortConfig, error)
 	ListPorts(ctx context.Context, appID string) ([]int32, error)
-	AddPort(ctx context.Context, appID string, port int32) (*HostPortConfig, error)
-	RemovePort(ctx context.Context, appID string, port int32) error
+	ReplacePorts(ctx context.Context, appID string, ports []int32) (*HostPortConfig, error)
 	UpsertEnvState(ctx context.Context, appID, envName string, appliedPorts []int32) error
 	RemoveEnvState(ctx context.Context, appID, envName string) error
 	DeleteByApp(ctx context.Context, appID string) error
@@ -88,16 +87,20 @@ func (s *HostPortStoreMongo) ListPorts(ctx context.Context, appID string) ([]int
 	return config.Ports, nil
 }
 
-// AddPort idempotently ensures a container port is present (single upsert).
-func (s *HostPortStoreMongo) AddPort(ctx context.Context, appID string, port int32) (*HostPortConfig, error) {
-	if !ValidateContainerPort(port) {
+// ReplacePorts replaces the declared container ports for an app (upsert).
+// Ports are normalized (unique, sorted). Empty slice clears the declaration.
+func (s *HostPortStoreMongo) ReplacePorts(ctx context.Context, appID string, ports []int32) (*HostPortConfig, error) {
+	ports = NormalizePorts(ports)
+	if _, ok := FirstInvalidContainerPort(ports); ok {
 		return nil, ErrInvalidPort
 	}
 
 	now := time.Now()
 	update := bson.M{
-		"$addToSet": bson.M{"ports": port},
-		"$set":      bson.M{"updatedAt": now},
+		"$set": bson.M{
+			"ports":     ports,
+			"updatedAt": now,
+		},
 		"$setOnInsert": bson.M{
 			"appID":     appID,
 			"envStates": bson.M{},
@@ -108,30 +111,10 @@ func (s *HostPortStoreMongo) AddPort(ctx context.Context, appID string, port int
 
 	var config HostPortConfig
 	if err := s.collection.FindOneAndUpdate(ctx, bson.M{"appID": appID}, update, opts).Decode(&config); err != nil {
-		return nil, errors.Wrap(err, "add hostport mapping")
+		return nil, errors.Wrap(err, "replace hostport mappings")
 	}
 	normalizeConfig(&config)
 	return &config, nil
-}
-
-// RemovePort idempotently ensures a container port is absent (single update).
-func (s *HostPortStoreMongo) RemovePort(ctx context.Context, appID string, port int32) error {
-	if !ValidateContainerPort(port) {
-		return ErrInvalidPort
-	}
-
-	_, err := s.collection.UpdateOne(
-		ctx,
-		bson.M{"appID": appID},
-		bson.M{
-			"$pull": bson.M{"ports": port},
-			"$set":  bson.M{"updatedAt": time.Now()},
-		},
-	)
-	if err != nil {
-		return errors.Wrap(err, "remove hostport mapping")
-	}
-	return nil
 }
 
 // UpsertEnvState records applied ports for an environment in one upsert round-trip.

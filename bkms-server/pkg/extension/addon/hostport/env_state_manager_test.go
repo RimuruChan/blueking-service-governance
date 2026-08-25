@@ -112,10 +112,10 @@ var _ = Describe("EnvStateManager", func() {
 		})
 
 		It("does not re-list declared ports (avoids mid-deploy race)", func() {
-			_, err := store.AddPort(ctx, app.ID, 80)
+			_, err := store.ReplacePorts(ctx, app.ID, []int32{80})
 			Expect(err).NotTo(HaveOccurred())
 			// Snapshot at build/inject time was only 80; declared ports changed after inject.
-			_, err = store.AddPort(ctx, app.ID, 443)
+			_, err = store.ReplacePorts(ctx, app.ID, []int32{80, 443})
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(manager.ReconcileAfterDeploy(ctx, app, federation, []int32{80})).To(Succeed())

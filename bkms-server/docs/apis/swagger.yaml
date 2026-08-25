@@ -3121,13 +3121,6 @@ definitions:
     - imageTag
     - valuesFileID
     type: object
-  serializer.CreateHostPortInput:
-    properties:
-      containerPort:
-        type: integer
-    required:
-    - containerPort
-    type: object
   serializer.CreatePortPoolInput:
     properties:
       name:
@@ -7013,6 +7006,15 @@ definitions:
         allOf:
         - $ref: '#/definitions/serializer.PolarisConfigOutputObj'
         description: 更新后的北极星配置
+    type: object
+  serializer.PutHostPortsInput:
+    properties:
+      ports:
+        items:
+          type: integer
+        type: array
+    required:
+    - ports
     type: object
   serializer.RecoverConditionInput:
     properties:
@@ -15553,10 +15555,10 @@ paths:
       summary: 获取应用 HostPort 列表及联邦环境待部署状态
       tags:
       - hostport
-    post:
+    put:
       consumes:
       - application/json
-      operationId: CreateHostPort
+      operationId: PutHostPorts
       parameters:
       - description: 应用 ID
         in: path
@@ -15568,38 +15570,7 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/serializer.CreateHostPortInput'
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            $ref: '#/definitions/serializer.HostPortsOutput'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/bkerrs.GinErrorOutput'
-      security:
-      - BkUserInfo: []
-      - BkUserCredential: []
-      summary: 新增应用 HostPort
-      tags:
-      - hostport
-  /apps/{appID}/hostports/{containerPort}:
-    delete:
-      operationId: DeleteHostPort
-      parameters:
-      - description: 应用 ID
-        in: path
-        name: appID
-        required: true
-        type: string
-      - description: 容器端口
-        in: path
-        name: containerPort
-        required: true
-        type: integer
+          $ref: '#/definitions/serializer.PutHostPortsInput'
       produces:
       - application/json
       responses:
@@ -15614,7 +15585,7 @@ paths:
       security:
       - BkUserInfo: []
       - BkUserCredential: []
-      summary: 删除应用 HostPort
+      summary: 全量保存应用 HostPort 端口列表
       tags:
       - hostport
   /apps/{appID}/images:

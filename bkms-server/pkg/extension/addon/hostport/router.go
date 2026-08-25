@@ -23,13 +23,13 @@ import "github.com/gin-gonic/gin"
 // Handler contains views required by hostport Gin routes.
 type Handler interface {
 	ListHostPorts(c *gin.Context)
-	CreateHostPort(c *gin.Context)
-	DeleteHostPort(c *gin.Context)
+	PutHostPorts(c *gin.Context)
 }
 
 // Register registers Gin hostport routes.
 func Register(rg *gin.RouterGroup, h Handler) {
+	// 获取应用的 HostPort 端口列表
 	rg.GET("/apps/:appID/hostports", h.ListHostPorts)
-	rg.POST("/apps/:appID/hostports", h.CreateHostPort)
-	rg.DELETE("/apps/:appID/hostports/:containerPort", h.DeleteHostPort)
+	// 覆盖应用 HostPort 端口列表
+	rg.PUT("/apps/:appID/hostports", h.PutHostPorts)
 }

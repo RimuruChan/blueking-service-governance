@@ -58,23 +58,8 @@ var _ = Describe("InjectFromStore", func() {
 		diApp.RequireStop()
 	})
 
-	It("is a no-op for non-federation environments", func() {
-		_, err := store.AddPort(ctx, testAppID, 80)
-		Expect(err).NotTo(HaveOccurred())
-
-		meta := &metav1.ObjectMeta{}
-		containers := []corev1.Container{{Name: mainContainerName}}
-		ports, err := hostport.InjectFromStore(ctx, store, testAppID, false, meta, containers, mainContainerName)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(ports).To(BeNil())
-		Expect(meta.Annotations).To(BeNil())
-		Expect(containers[0].Ports).To(BeEmpty())
-	})
-
-	It("merges webhook annotations and containerPorts for federation environments", func() {
-		_, err := store.AddPort(ctx, testAppID, 8080)
-		Expect(err).NotTo(HaveOccurred())
-		_, err = store.AddPort(ctx, testAppID, 80)
+	It("merges webhook annotations and containerPorts", func() {
+		_, err := store.ReplacePorts(ctx, testAppID, []int32{8080, 80})
 		Expect(err).NotTo(HaveOccurred())
 
 		meta := &metav1.ObjectMeta{Annotations: map[string]string{"keep": "1"}}
@@ -89,7 +74,7 @@ var _ = Describe("InjectFromStore", func() {
 				}},
 			},
 		}
-		ports, err := hostport.InjectFromStore(ctx, store, testAppID, true, meta, containers, mainContainerName)
+		ports, err := hostport.InjectFromStore(ctx, store, testAppID, meta, containers, mainContainerName)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(ports).To(Equal([]int32{80, 8080}))
 		Expect(meta.Annotations).To(Equal(map[string]string{
@@ -99,15 +84,15 @@ var _ = Describe("InjectFromStore", func() {
 		}))
 		Expect(containers[0].Ports).To(BeEmpty())
 		Expect(containers[1].Ports).To(Equal([]corev1.ContainerPort{
-			{Name: "hostport-80", ContainerPort: 80, Protocol: corev1.ProtocolTCP},
-			{Name: "hostport-8080", ContainerPort: 8080, Protocol: corev1.ProtocolTCP},
+			{Name: "existing", ContainerPort: 80, Protocol: corev1.ProtocolUDP},
+			{ContainerPort: 8080},
 		}))
 	})
 
-	It("writes nothing when federation env has no declared ports", func() {
+	It("writes nothing when there are no declared ports", func() {
 		meta := &metav1.ObjectMeta{}
 		containers := []corev1.Container{{Name: mainContainerName}}
-		ports, err := hostport.InjectFromStore(ctx, store, testAppID, true, meta, containers, mainContainerName)
+		ports, err := hostport.InjectFromStore(ctx, store, testAppID, meta, containers, mainContainerName)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(ports).To(Equal([]int32{}))
 		Expect(meta.Annotations).To(BeNil())

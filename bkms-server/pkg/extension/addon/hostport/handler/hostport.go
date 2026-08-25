@@ -80,23 +80,23 @@ func (h *Handler) ListHostPorts(c *gin.Context) {
 	ginutils.OK(c, new(serializer.HostPortsOutput).FromModel(result))
 }
 
-// CreateHostPort 新增应用 HostPort。
+// PutHostPorts 全量保存应用 HostPort 端口列表。
 //
-//	@ID			CreateHostPort
-//	@Summary	新增应用 HostPort
+//	@ID			PutHostPorts
+//	@Summary	全量保存应用 HostPort 端口列表
 //	@Tags		hostport
 //	@Accept		json
 //	@Produce	json
 //	@Security	BkUserInfo
 //	@Security	BkUserCredential
 //	@Param		appID	path		string							true	"应用 ID"
-//	@Param		body	body		serializer.CreateHostPortInput	true	"请求体"
-//	@Success	201		{object}	serializer.HostPortsOutput
+//	@Param		body	body		serializer.PutHostPortsInput	true	"请求体"
+//	@Success	200		{object}	serializer.HostPortsOutput
 //	@Failure	400		{object}	bkerrs.GinErrorOutput
-//	@Router		/apps/{appID}/hostports [post]
-func (h *Handler) CreateHostPort(c *gin.Context) {
+//	@Router		/apps/{appID}/hostports [put]
+func (h *Handler) PutHostPorts(c *gin.Context) {
 	var uriInput serializer.AppURIInput
-	var input serializer.CreateHostPortInput
+	var input serializer.PutHostPortsInput
 	if err := ginutils.BindURIJSON(c, &uriInput, &input); err != nil {
 		bkerrs.AbortWithErr(c, err)
 		return
@@ -109,61 +109,20 @@ func (h *Handler) CreateHostPort(c *gin.Context) {
 		return
 	}
 
-	if _, err = h.service().AddPort(ctx, app.ID, input.ContainerPort); err != nil {
+	if invalid, ok := hostport.FirstInvalidContainerPort(input.Ports); ok {
+		bkerrs.AbortWithErr(
+			c,
+			bkerrs.Errorf(bkerrs.ErrCodeInvalidRequest, "invalid container port: %d", invalid),
+		)
+		return
+	}
+
+	if _, err = h.service().ReplacePorts(ctx, app.ID, input.Ports); err != nil {
 		if errors.Is(err, hostport.ErrInvalidPort) {
-			bkerrs.AbortWithErr(
-				c,
-				bkerrs.Errorf(bkerrs.ErrCodeInvalidRequest, "invalid container port: %d", input.ContainerPort),
-			)
+			bkerrs.AbortWithErr(c, bkerrs.Errorf(bkerrs.ErrCodeInvalidRequest, "invalid container port"))
 			return
 		}
-		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "create hostport"))
-		return
-	}
-	result, err := h.service().GetHostPorts(ctx, app)
-	if err != nil {
-		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "get hostports"))
-		return
-	}
-	ginutils.Created(c, new(serializer.HostPortsOutput).FromModel(result))
-}
-
-// DeleteHostPort 删除应用 HostPort。
-//
-//	@ID			DeleteHostPort
-//	@Summary	删除应用 HostPort
-//	@Tags		hostport
-//	@Produce	json
-//	@Security	BkUserInfo
-//	@Security	BkUserCredential
-//	@Param		appID			path		string	true	"应用 ID"
-//	@Param		containerPort	path		int		true	"容器端口"
-//	@Success	200				{object}	serializer.HostPortsOutput
-//	@Failure	400				{object}	bkerrs.GinErrorOutput
-//	@Router		/apps/{appID}/hostports/{containerPort} [delete]
-func (h *Handler) DeleteHostPort(c *gin.Context) {
-	var uriInput serializer.DeleteHostPortURIInput
-	if err := ginutils.BindURI(c, &uriInput); err != nil {
-		bkerrs.AbortWithErr(c, err)
-		return
-	}
-
-	ctx := c.Request.Context()
-	app, err := perm.ValidateAppByID(ctx, h.registry, uriInput.AppID, perm.TypeEdit)
-	if err != nil {
-		bkerrs.AbortWithErr(c, err)
-		return
-	}
-
-	if err = h.service().RemovePort(ctx, app.ID, uriInput.ContainerPort); err != nil {
-		if errors.Is(err, hostport.ErrInvalidPort) {
-			bkerrs.AbortWithErr(
-				c,
-				bkerrs.Errorf(bkerrs.ErrCodeInvalidRequest, "invalid container port: %d", uriInput.ContainerPort),
-			)
-			return
-		}
-		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "delete hostport"))
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "put hostports"))
 		return
 	}
 	result, err := h.service().GetHostPorts(ctx, app)
