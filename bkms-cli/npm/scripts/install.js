@@ -20,20 +20,22 @@
 //
 // 流程大致是：看当前系统是 mac/linux/windows、cpu 是 amd64 还是 arm64，再结合
 // package.json 的 version，拼出要下的压缩包名字；下载地址来自 bkmsCli.releaseUrl
-//（里面的 {version}、{archive} 会被替换）。下完后解压，把二进制拷到 npm 包的
-// bin/ 目录，并 chmod 成可执行。最后再调一下 apply-endpoints.js，如果 package.json
-// 里配了默认地址就写进本地配置。
+//（里面的 {version}、{archive} 会被替换）。下完后先对照同目录的 checksums.txt
+// 做 SHA-256 校验，再解压，把二进制拷到 npm 包的 bin/ 目录，并 chmod 成可执行。
+// 最后再调一下 apply-endpoints.js，如果 package.json 里配了默认地址就写进本地配置。
 //
-// 下载依赖本机 curl；解压用 tar。失败时会提示检查代理 / 网络。
+// 下载依赖本机 curl；解压用 tar / Expand-Archive。失败时会提示检查代理 / 网络。
 
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
+const { execFileSync } = require("child_process");
 const os = require("os");
 
 const pkg = require("../package.json");
 const VERSION = pkg.version;
 const NAME = "bkms-cli";
+const CHECKSUMS_NAME = "checksums.txt";
 
 const PLATFORM_MAP = {
   darwin: "darwin",
@@ -61,14 +63,14 @@ const ext = isWindows ? ".zip" : ".tar.gz";
 // Git tag is bkms-cli/vX.Y.Z; GoReleaser archive names use VERSION without "v".
 const archiveName = `${NAME}_${VERSION}_${platform}_${arch}${ext}`;
 
-function resolveReleaseURL() {
+function resolveReleaseURL(assetName) {
   const template = String((pkg.bkmsCli && pkg.bkmsCli.releaseUrl) || "").trim();
   if (!template) {
     throw new Error("bkmsCli.releaseUrl is required in package.json");
   }
   return template
     .replaceAll("{version}", VERSION)
-    .replaceAll("{archive}", archiveName);
+    .replaceAll("{archive}", assetName);
 }
 
 const binDir = path.join(__dirname, "..", "bin");
@@ -79,30 +81,94 @@ fs.mkdirSync(binDir, { recursive: true });
 function download(url, destPath) {
   // --ssl-revoke-best-effort: on Windows (Schannel), avoid CRYPT_E_REVOCATION_OFFLINE
   // errors when the certificate revocation list server is unreachable
-  const sslFlag = isWindows ? "--ssl-revoke-best-effort " : "";
-  execSync(
-    `curl ${sslFlag}--fail --location --silent --show-error --connect-timeout 10 --max-time 120 --output "${destPath}" "${url}"`,
-    { stdio: ["ignore", "ignore", "pipe"] }
-  );
+  const args = [
+    "--fail",
+    "--location",
+    "--silent",
+    "--show-error",
+    "--connect-timeout",
+    "10",
+    "--max-time",
+    "120",
+    "--output",
+    destPath,
+    url,
+  ];
+  if (isWindows) {
+    args.unshift("--ssl-revoke-best-effort");
+  }
+  execFileSync("curl", args, { stdio: ["ignore", "ignore", "pipe"] });
+}
+
+function expectedSHA256(checksumsText, filename) {
+  for (const line of checksumsText.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+    const parts = trimmed.split(/\s+/);
+    if (parts.length < 2) {
+      continue;
+    }
+    const hash = parts[0].toLowerCase();
+    const name = parts[parts.length - 1].replace(/^\*/, "");
+    if (name === filename) {
+      return hash;
+    }
+  }
+  throw new Error(`checksum not found for ${filename} in ${CHECKSUMS_NAME}`);
+}
+
+function verifySHA256(filePath, expected) {
+  const actual = crypto
+    .createHash("sha256")
+    .update(fs.readFileSync(filePath))
+    .digest("hex");
+  if (actual !== expected.toLowerCase()) {
+    throw new Error(
+      `checksum mismatch for ${path.basename(filePath)}: expected ${expected}, got ${actual}`
+    );
+  }
+}
+
+function extractArchive(archivePath, tmpDir) {
+  if (isWindows) {
+    execFileSync(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-Command",
+        "Expand-Archive -LiteralPath $env:BKMS_CLI_ARCHIVE -DestinationPath $env:BKMS_CLI_DEST -Force",
+      ],
+      {
+        env: {
+          ...process.env,
+          BKMS_CLI_ARCHIVE: archivePath,
+          BKMS_CLI_DEST: tmpDir,
+        },
+        stdio: "ignore",
+      }
+    );
+    return;
+  }
+  execFileSync("tar", ["-xzf", archivePath, "-C", tmpDir], { stdio: "ignore" });
 }
 
 function install() {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "bkms-cli-"));
   const archivePath = path.join(tmpDir, archiveName);
+  const checksumsPath = path.join(tmpDir, CHECKSUMS_NAME);
 
   try {
-    download(resolveReleaseURL(), archivePath);
+    download(resolveReleaseURL(archiveName), archivePath);
+    download(resolveReleaseURL(CHECKSUMS_NAME), checksumsPath);
+    verifySHA256(
+      archivePath,
+      expectedSHA256(fs.readFileSync(checksumsPath, "utf8"), archiveName)
+    );
 
-    if (isWindows) {
-      execSync(
-        `powershell -Command "Expand-Archive -Path '${archivePath}' -DestinationPath '${tmpDir}'"`,
-        { stdio: "ignore" }
-      );
-    } else {
-      execSync(`tar -xzf "${archivePath}" -C "${tmpDir}"`, {
-        stdio: "ignore",
-      });
-    }
+    extractArchive(archivePath, tmpDir);
 
     const binaryName = NAME + (isWindows ? ".exe" : "");
     const extractedBinary = path.join(tmpDir, binaryName);
