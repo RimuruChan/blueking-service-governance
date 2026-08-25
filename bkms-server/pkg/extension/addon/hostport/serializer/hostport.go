@@ -16,6 +16,7 @@
  * to the current version of the project delivered to anyone in the future.
  */
 
+// Package serializer defines Gin input and output serializers for HostPort APIs.
 package serializer
 
 import "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/hostport"
@@ -43,38 +44,38 @@ type HostPortEnvStateOutput struct {
 	PendingRemovePorts []int32 `json:"pendingRemovePorts"`
 }
 
+// FromModel fills output fields from an EnvStateView domain model.
+func (o *HostPortEnvStateOutput) FromModel(view hostport.EnvStateView) *HostPortEnvStateOutput {
+	*o = HostPortEnvStateOutput{
+		AppliedPorts:       nonNilPorts(view.AppliedPorts),
+		PendingAddPorts:    nonNilPorts(view.PendingAddPorts),
+		PendingRemovePorts: nonNilPorts(view.PendingRemovePorts),
+	}
+	return o
+}
+
 // HostPortsOutput is the response for listing hostports (ports + federated env states).
 type HostPortsOutput struct {
 	Ports     []int32                           `json:"ports"`
 	EnvStates map[string]HostPortEnvStateOutput `json:"envStates"`
 }
 
-// FromPorts builds HostPortsOutput with ports only (envStates empty).
-func (o *HostPortsOutput) FromPorts(ports []int32) *HostPortsOutput {
-	if ports == nil {
-		ports = []int32{}
+// FromModel fills output fields from a HostPorts domain aggregate.
+func (o *HostPortsOutput) FromModel(m *hostport.HostPorts) *HostPortsOutput {
+	ports := []int32{}
+	if m != nil && m.Ports != nil {
+		ports = m.Ports
 	}
-	o.Ports = ports
-	o.EnvStates = map[string]HostPortEnvStateOutput{}
-	return o
-}
-
-// FromPortsAndViews builds HostPortsOutput with ports and env states.
-func (o *HostPortsOutput) FromPortsAndViews(
-	ports []int32,
-	views map[string]hostport.EnvStateView,
-) *HostPortsOutput {
-	if ports == nil {
-		ports = []int32{}
-	}
-	o.Ports = ports
-	o.EnvStates = make(map[string]HostPortEnvStateOutput, len(views))
-	for name, view := range views {
-		o.EnvStates[name] = HostPortEnvStateOutput{
-			AppliedPorts:       nonNilPorts(view.AppliedPorts),
-			PendingAddPorts:    nonNilPorts(view.PendingAddPorts),
-			PendingRemovePorts: nonNilPorts(view.PendingRemovePorts),
+	envStates := map[string]HostPortEnvStateOutput{}
+	if m != nil {
+		envStates = make(map[string]HostPortEnvStateOutput, len(m.EnvStates))
+		for name, view := range m.EnvStates {
+			envStates[name] = *new(HostPortEnvStateOutput).FromModel(view)
 		}
+	}
+	*o = HostPortsOutput{
+		Ports:     ports,
+		EnvStates: envStates,
 	}
 	return o
 }

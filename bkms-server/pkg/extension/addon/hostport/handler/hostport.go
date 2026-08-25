@@ -72,18 +72,12 @@ func (h *Handler) ListHostPorts(c *gin.Context) {
 		return
 	}
 
-	svc := h.service()
-	ports, err := svc.ListPorts(ctx, app.ID)
+	result, err := h.service().GetHostPorts(ctx, app)
 	if err != nil {
-		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "list hostports"))
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "get hostports"))
 		return
 	}
-	views, err := svc.ListFederatedEnvStates(ctx, app)
-	if err != nil {
-		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "list hostport env states"))
-		return
-	}
-	ginutils.OK(c, new(serializer.HostPortsOutput).FromPortsAndViews(ports, views))
+	ginutils.OK(c, new(serializer.HostPortsOutput).FromModel(result))
 }
 
 // CreateHostPort 新增应用 HostPort。
@@ -115,8 +109,7 @@ func (h *Handler) CreateHostPort(c *gin.Context) {
 		return
 	}
 
-	ports, err := h.service().AddPort(ctx, app.ID, input.ContainerPort)
-	if err != nil {
+	if _, err = h.service().AddPort(ctx, app.ID, input.ContainerPort); err != nil {
 		if errors.Is(err, hostport.ErrInvalidPort) {
 			bkerrs.AbortWithErr(
 				c,
@@ -127,7 +120,12 @@ func (h *Handler) CreateHostPort(c *gin.Context) {
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "create hostport"))
 		return
 	}
-	ginutils.Created(c, new(serializer.HostPortsOutput).FromPorts(ports))
+	result, err := h.service().GetHostPorts(ctx, app)
+	if err != nil {
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "get hostports"))
+		return
+	}
+	ginutils.Created(c, new(serializer.HostPortsOutput).FromModel(result))
 }
 
 // DeleteHostPort 删除应用 HostPort。
@@ -138,10 +136,10 @@ func (h *Handler) CreateHostPort(c *gin.Context) {
 //	@Produce	json
 //	@Security	BkUserInfo
 //	@Security	BkUserCredential
-//	@Param		appID			path	string	true	"应用 ID"
-//	@Param		containerPort	path	int		true	"容器端口"
-//	@Success	204
-//	@Failure	400	{object}	bkerrs.GinErrorOutput
+//	@Param		appID			path		string	true	"应用 ID"
+//	@Param		containerPort	path		int		true	"容器端口"
+//	@Success	200				{object}	serializer.HostPortsOutput
+//	@Failure	400				{object}	bkerrs.GinErrorOutput
 //	@Router		/apps/{appID}/hostports/{containerPort} [delete]
 func (h *Handler) DeleteHostPort(c *gin.Context) {
 	var uriInput serializer.DeleteHostPortURIInput
@@ -168,5 +166,10 @@ func (h *Handler) DeleteHostPort(c *gin.Context) {
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "delete hostport"))
 		return
 	}
-	ginutils.NoContent(c)
+	result, err := h.service().GetHostPorts(ctx, app)
+	if err != nil {
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "get hostports"))
+		return
+	}
+	ginutils.OK(c, new(serializer.HostPortsOutput).FromModel(result))
 }

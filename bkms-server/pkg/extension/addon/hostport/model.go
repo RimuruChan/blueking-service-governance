@@ -59,6 +59,12 @@ type EnvStateView struct {
 	PendingRemovePorts []int32
 }
 
+// HostPorts is the API-facing aggregate of declared ports and federated env pending state.
+type HostPorts struct {
+	Ports     []int32
+	EnvStates map[string]EnvStateView
+}
+
 // NormalizePorts returns a sorted unique copy of ports.
 func NormalizePorts(ports []int32) []int32 {
 	if len(ports) == 0 {

@@ -38,6 +38,19 @@ func NewService(store HostPortStore, envStore envmodel.EnvironmentStore) *Servic
 	return &Service{store: store, envStore: envStore}
 }
 
+// GetHostPorts returns declared ports and federated env pending-deploy views.
+func (s *Service) GetHostPorts(ctx context.Context, app *bkmsapp.Application) (*HostPorts, error) {
+	ports, err := s.ListPorts(ctx, app.ID)
+	if err != nil {
+		return nil, err
+	}
+	envStates, err := s.ListFederatedEnvStates(ctx, app)
+	if err != nil {
+		return nil, err
+	}
+	return &HostPorts{Ports: ports, EnvStates: envStates}, nil
+}
+
 // ListPorts returns declared container ports for an app.
 func (s *Service) ListPorts(ctx context.Context, appID string) ([]int32, error) {
 	return s.store.ListPorts(ctx, appID)
