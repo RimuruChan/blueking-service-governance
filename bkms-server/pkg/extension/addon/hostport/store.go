@@ -59,7 +59,7 @@ type HostPortStoreMongo struct {
 // NewHostPortStoreMongo creates a HostPortStore backed by MongoDB.
 func NewHostPortStoreMongo(client *mongo.Client, dbName string) (HostPortStore, error) {
 	coll := client.Database(dbName).Collection(collectionName)
-	// Index (managed by golang-migrate): unique appID
+	// unique appID index deferred: see db/migrations-deferred/000010_hostport_configs_idx
 	return &HostPortStoreMongo{collection: coll}, nil
 }
 
