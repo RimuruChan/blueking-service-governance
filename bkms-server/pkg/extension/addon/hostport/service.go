@@ -67,14 +67,14 @@ func (s *Service) ListFederatedEnvStates(
 		return nil, errors.Wrap(err, "list app envs")
 	}
 
-	desired, err := s.store.ListPorts(ctx, app.ID)
-	if err != nil {
-		return nil, errors.Wrap(err, "list hostport ports")
-	}
-
 	config, err := s.store.Get(ctx, app.ID)
 	if err != nil && !errors.Is(err, ErrConfigNotFound) {
 		return nil, errors.Wrap(err, "get hostport config")
+	}
+
+	desired := []int32{}
+	if config != nil {
+		desired = config.Ports
 	}
 
 	result := make(map[string]EnvStateView)

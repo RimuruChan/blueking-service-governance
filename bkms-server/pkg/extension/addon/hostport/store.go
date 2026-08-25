@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 const collectionName = "hostport_configs"
@@ -33,10 +34,6 @@ const collectionName = "hostport_configs"
 var (
 	// ErrConfigNotFound is returned when the app has no HostPort config document.
 	ErrConfigNotFound = errors.New("hostport config not found")
-	// ErrPortExists is returned when adding a duplicate container port.
-	ErrPortExists = errors.New("hostport container port already exists")
-	// ErrPortNotFound is returned when deleting a port that is not declared.
-	ErrPortNotFound = errors.New("hostport container port not found")
 	// ErrInvalidPort is returned when the container port is out of range.
 	ErrInvalidPort = errors.New("hostport container port is invalid")
 )
@@ -44,7 +41,6 @@ var (
 // HostPortStore persists HostPortConfig documents.
 type HostPortStore interface {
 	Get(ctx context.Context, appID string) (*HostPortConfig, error)
-	Ensure(ctx context.Context, appID string) (*HostPortConfig, error)
 	ListPorts(ctx context.Context, appID string) ([]int32, error)
 	AddPort(ctx context.Context, appID string, port int32) (*HostPortConfig, error)
 	RemovePort(ctx context.Context, appID string, port int32) error
@@ -77,41 +73,8 @@ func (s *HostPortStoreMongo) Get(ctx context.Context, appID string) (*HostPortCo
 		}
 		return nil, errors.Wrap(err, "find hostport config")
 	}
-	if config.Ports == nil {
-		config.Ports = []int32{}
-	}
-	if config.EnvStates == nil {
-		config.EnvStates = map[string]HostPortEnvState{}
-	}
+	normalizeConfig(&config)
 	return &config, nil
-}
-
-// Ensure returns the existing config or creates an empty one.
-func (s *HostPortStoreMongo) Ensure(ctx context.Context, appID string) (*HostPortConfig, error) {
-	config, err := s.Get(ctx, appID)
-	if err == nil {
-		return config, nil
-	}
-	if !errors.Is(err, ErrConfigNotFound) {
-		return nil, err
-	}
-
-	now := time.Now()
-	config = &HostPortConfig{
-		AppID:     appID,
-		Ports:     []int32{},
-		EnvStates: map[string]HostPortEnvState{},
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-	_, err = s.collection.InsertOne(ctx, config)
-	if err != nil {
-		if mongo.IsDuplicateKeyError(err) {
-			return s.Get(ctx, appID)
-		}
-		return nil, errors.Wrap(err, "insert hostport config")
-	}
-	return config, nil
 }
 
 // ListPorts returns declared container ports; missing config yields an empty slice.
@@ -123,110 +86,84 @@ func (s *HostPortStoreMongo) ListPorts(ctx context.Context, appID string) ([]int
 		}
 		return nil, err
 	}
-	return NormalizePorts(config.Ports), nil
+	return config.Ports, nil
 }
 
-// AddPort appends a container port to the app mapping (lazy-creates the document).
+// AddPort idempotently ensures a container port is present (single upsert).
 func (s *HostPortStoreMongo) AddPort(ctx context.Context, appID string, port int32) (*HostPortConfig, error) {
 	if !ValidateContainerPort(port) {
 		return nil, ErrInvalidPort
 	}
 
-	config, err := s.Ensure(ctx, appID)
-	if err != nil {
-		return nil, err
-	}
-	for _, existing := range config.Ports {
-		if existing == port {
-			return nil, ErrPortExists
-		}
-	}
-
-	ports := NormalizePorts(append(append([]int32{}, config.Ports...), port))
 	now := time.Now()
-	result, err := s.collection.UpdateOne(
-		ctx,
-		bson.M{"appID": appID},
-		bson.M{"$set": bson.M{"ports": ports, "updatedAt": now}},
-	)
-	if err != nil {
+	update := bson.M{
+		"$addToSet": bson.M{"ports": port},
+		"$set":      bson.M{"updatedAt": now},
+		"$setOnInsert": bson.M{
+			"appID":     appID,
+			"envStates": bson.M{},
+			"createdAt": now,
+		},
+	}
+	opts := options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)
+
+	var config HostPortConfig
+	if err := s.collection.FindOneAndUpdate(ctx, bson.M{"appID": appID}, update, opts).Decode(&config); err != nil {
 		return nil, errors.Wrap(err, "add hostport mapping")
 	}
-	if result.MatchedCount == 0 {
-		return nil, ErrConfigNotFound
-	}
-	config.Ports = ports
-	config.UpdatedAt = now
-	return config, nil
+	normalizeConfig(&config)
+	return &config, nil
 }
 
-// RemovePort deletes a container port from the app mapping.
+// RemovePort idempotently ensures a container port is absent (single update).
 func (s *HostPortStoreMongo) RemovePort(ctx context.Context, appID string, port int32) error {
 	if !ValidateContainerPort(port) {
 		return ErrInvalidPort
 	}
 
-	config, err := s.Get(ctx, appID)
-	if err != nil {
-		if errors.Is(err, ErrConfigNotFound) {
-			return ErrPortNotFound
-		}
-		return err
-	}
-
-	found := false
-	remaining := make([]int32, 0, len(config.Ports))
-	for _, existing := range config.Ports {
-		if existing == port {
-			found = true
-			continue
-		}
-		remaining = append(remaining, existing)
-	}
-	if !found {
-		return ErrPortNotFound
-	}
-
-	remaining = NormalizePorts(remaining)
-	result, err := s.collection.UpdateOne(
+	_, err := s.collection.UpdateOne(
 		ctx,
 		bson.M{"appID": appID},
-		bson.M{"$set": bson.M{"ports": remaining, "updatedAt": time.Now()}},
+		bson.M{
+			"$pull": bson.M{"ports": port},
+			"$set":  bson.M{"updatedAt": time.Now()},
+		},
 	)
 	if err != nil {
 		return errors.Wrap(err, "remove hostport mapping")
 	}
-	if result.MatchedCount == 0 {
-		return ErrConfigNotFound
-	}
 	return nil
 }
 
-// UpsertEnvState records applied ports for an environment (ensures document exists).
+// UpsertEnvState records applied ports for an environment in one upsert round-trip.
 func (s *HostPortStoreMongo) UpsertEnvState(
 	ctx context.Context,
 	appID, envName string,
 	appliedPorts []int32,
 ) error {
-	if _, err := s.Ensure(ctx, appID); err != nil {
-		return err
-	}
 	fieldPrefix, err := envFieldPrefix("envStates", envName)
 	if err != nil {
 		return err
 	}
+
+	now := time.Now()
 	appliedPorts = NormalizePorts(appliedPorts)
-	setFields := bson.M{
-		fieldPrefix + ".appliedPorts": appliedPorts,
-		fieldPrefix + ".updatedAt":    time.Now(),
-		"updatedAt":                   time.Now(),
+	update := bson.M{
+		"$set": bson.M{
+			fieldPrefix + ".appliedPorts": appliedPorts,
+			fieldPrefix + ".updatedAt":    now,
+			"updatedAt":                   now,
+		},
+		"$setOnInsert": bson.M{
+			"appID":     appID,
+			"ports":     []int32{},
+			"createdAt": now,
+		},
 	}
-	result, err := s.collection.UpdateOne(ctx, bson.M{"appID": appID}, bson.M{"$set": setFields})
+	opts := options.UpdateOne().SetUpsert(true)
+	_, err = s.collection.UpdateOne(ctx, bson.M{"appID": appID}, update, opts)
 	if err != nil {
 		return errors.Wrap(err, "upsert hostport env state")
-	}
-	if result.MatchedCount == 0 {
-		return ErrConfigNotFound
 	}
 	return nil
 }
@@ -237,7 +174,7 @@ func (s *HostPortStoreMongo) RemoveEnvState(ctx context.Context, appID, envName 
 	if err != nil {
 		return err
 	}
-	result, err := s.collection.UpdateOne(
+	_, err = s.collection.UpdateOne(
 		ctx,
 		bson.M{"appID": appID},
 		bson.M{
@@ -247,10 +184,6 @@ func (s *HostPortStoreMongo) RemoveEnvState(ctx context.Context, appID, envName 
 	)
 	if err != nil {
 		return errors.Wrap(err, "remove hostport env state")
-	}
-	if result.MatchedCount == 0 {
-		// No config yet — nothing to clean.
-		return nil
 	}
 	return nil
 }
@@ -262,6 +195,13 @@ func (s *HostPortStoreMongo) DeleteByApp(ctx context.Context, appID string) erro
 		return errors.Wrap(err, "delete hostport config by app")
 	}
 	return nil
+}
+
+func normalizeConfig(config *HostPortConfig) {
+	config.Ports = NormalizePorts(config.Ports)
+	if config.EnvStates == nil {
+		config.EnvStates = map[string]HostPortEnvState{}
+	}
 }
 
 func envFieldPrefix(root, envName string) (string, error) {

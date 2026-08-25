@@ -117,20 +117,14 @@ func (h *Handler) CreateHostPort(c *gin.Context) {
 
 	ports, err := h.service().AddPort(ctx, app.ID, input.ContainerPort)
 	if err != nil {
-		switch {
-		case errors.Is(err, hostport.ErrInvalidPort):
+		if errors.Is(err, hostport.ErrInvalidPort) {
 			bkerrs.AbortWithErr(
 				c,
 				bkerrs.Errorf(bkerrs.ErrCodeInvalidRequest, "invalid container port: %d", input.ContainerPort),
 			)
-		case errors.Is(err, hostport.ErrPortExists):
-			bkerrs.AbortWithErr(
-				c,
-				bkerrs.Errorf(bkerrs.ErrCodeInvalidRequest, "container port %d already exists", input.ContainerPort),
-			)
-		default:
-			bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "create hostport"))
+			return
 		}
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "create hostport"))
 		return
 	}
 	ginutils.Created(c, new(serializer.HostPortsOutput).FromPorts(ports))
@@ -164,20 +158,14 @@ func (h *Handler) DeleteHostPort(c *gin.Context) {
 	}
 
 	if err = h.service().RemovePort(ctx, app.ID, uriInput.ContainerPort); err != nil {
-		switch {
-		case errors.Is(err, hostport.ErrInvalidPort):
+		if errors.Is(err, hostport.ErrInvalidPort) {
 			bkerrs.AbortWithErr(
 				c,
 				bkerrs.Errorf(bkerrs.ErrCodeInvalidRequest, "invalid container port: %d", uriInput.ContainerPort),
 			)
-		case errors.Is(err, hostport.ErrPortNotFound):
-			bkerrs.AbortWithErr(
-				c,
-				bkerrs.Errorf(bkerrs.ErrCodeNotFound, "container port %d not found", uriInput.ContainerPort),
-			)
-		default:
-			bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "delete hostport"))
+			return
 		}
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "delete hostport"))
 		return
 	}
 	ginutils.NoContent(c)
