@@ -3,6 +3,7 @@ package types
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 )
 
 var _ = Describe("EnvVariableList", func() {
@@ -25,6 +26,21 @@ var _ = Describe("EnvVariableList", func() {
 				{Key: "ENV_ONLY_KEY", Value: "env-only-value"},
 				{Key: "SHARED_KEY", Value: "app-value"},
 				{Key: "APP_ONLY_KEY", Value: "app-only-value"},
+			}))
+		})
+	})
+
+	Describe("ToKubeObjs", func() {
+		It("should emit unique names with last-wins values", func() {
+			vars := EnvVariableList{
+				{Key: "BKMS_APP_NAME", Value: "builtin-name"},
+				{Key: "APP_ONLY", Value: "app-only"},
+				{Key: "BKMS_APP_NAME", Value: "app-override"},
+			}
+
+			Expect(vars.ToKubeObjs()).To(Equal([]corev1.EnvVar{
+				{Name: "APP_ONLY", Value: "app-only"},
+				{Name: "BKMS_APP_NAME", Value: "app-override"},
 			}))
 		})
 	})

@@ -94,9 +94,14 @@ func DeduplicateByKey[T any](items []T, key func(T) string) []T {
 	return result
 }
 
-// ToKubeObjs converts the EnvVariableList to a list of Kubernetes corev1.EnvVar objects.
+// ToKubeObjs converts the EnvVariableList to Kubernetes corev1.EnvVar objects for Pod/Deployment.
+//
+// Callers (e.g. UnifiedEnvVarsReader.ListVars) return vars ordered by EnvVarSourcePriority
+// ascending (builtin < scoped < deps/polaris < app). Duplicate keys are resolved here by
+// keeping the last occurrence (highest priority), same as ToMap / ToDeduplicatedList, so
+// the container env list never contains the same name twice.
 func (varList EnvVariableList) ToKubeObjs() []corev1.EnvVar {
-	return lo.Map(varList, func(varObj EnvVariableObj, _ int) corev1.EnvVar {
+	return lo.Map(varList.ToDeduplicatedList(), func(varObj EnvVariableObj, _ int) corev1.EnvVar {
 		return varObj.ToKubeObj()
 	})
 }
@@ -117,7 +122,10 @@ func (varList EnvVariableList) ToMap() map[string]string {
 }
 
 // ToDeduplicatedList returns the effective env var list with duplicate keys removed.
-// Later items have higher priority, so only the last item for the same key is kept.
+//
+// Prerequisite: varList is already ordered by EnvVarSourcePriority from low to high
+// (see ListVars / ListAppBgVars). Later items therefore win, preserving the higher-priority
+// source for each key while keeping relative order of survivors.
 func (varList EnvVariableList) ToDeduplicatedList() EnvVariableList {
 	return DeduplicateByKey(varList, func(item EnvVariableObj) string {
 		return item.Key

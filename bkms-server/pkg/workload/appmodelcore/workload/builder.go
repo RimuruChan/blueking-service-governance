@@ -353,7 +353,10 @@ func (b *Builder) Build(
 
 func buildSensitiveEnvVarValues(appEnvVars envvartypes.EnvVariableList) map[string]string {
 	sensitiveValues := make(map[string]string)
-	for _, item := range appEnvVars {
+	// Deduplicate with the same priority rule as ToKubeObjs (list is low→high priority;
+	// last wins). Otherwise an earlier sensitive source could remain after a later
+	// non-sensitive override became the effective value.
+	for _, item := range appEnvVars.ToDeduplicatedList() {
 		if !item.IsSensitive {
 			continue
 		}
