@@ -32,6 +32,14 @@ jobs:
           ver="${GITHUB_REF_NAME##*/}"
           echo "VERSION=${ver#v}" >> "$GITHUB_ENV"
 
+      - name: Verify npm package version matches tag
+        run: |
+          pkg_ver="$(node -p "require('./bkms-cli/npm/package.json').version")"
+          if [ "${pkg_ver}" != "${VERSION}" ]; then
+            echo "package.json version (${pkg_ver}) does not match tag (${VERSION})" >&2
+            exit 1
+          fi
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:
@@ -41,3 +49,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           UPDATE_SOURCE: ${{ github.repository }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: https://registry.npmjs.org
+
+      - name: Publish npm package
+        working-directory: bkms-cli/npm
+        run: npm ci && npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -74,8 +74,10 @@ require("@blueking/bkms-cli/scripts/bkms-cli.js");
 
 ## 发布
 
-1. 先打 GitHub tag `bkms-cli/vX.Y.Z` 并完成 Release 资产上传
-2. 将本目录 `package.json` 的 `version` 设为 `X.Y.Z`（不带 `v`）
-3. `npm publish --access public`
+1. 将本目录 `package.json` 的 `version` 设为 `X.Y.Z`（不带 `v`），合并到 `master`
+2. 推送 Git tag `bkms-cli/vX.Y.Z`
+3. GitHub Actions 会校验 `package.json` 与 tag 版本一致，执行 `goreleaser release` 上传 GitHub Release 资产，并自动 `npm publish`
+
+需要在仓库 Secrets 中配置 `NPM_TOKEN`（npm access token，具备 `@blueking` scope 发布权限）。
 
 资产名约定：`bkms-cli_{version}_{os}_{arch}.tar.gz`（Windows 为 `.zip`）。

@@ -77,7 +77,7 @@ make build
 make build-all
 ```
 
-> 正式发版：推送 `bkms-cli/v*` tag 后由 GitHub Actions 执行 `goreleaser release`。
+> 正式发版：先将 `npm/package.json` 的 `version` 更新为 `X.Y.Z`，再推送 `bkms-cli/vX.Y.Z` tag；GitHub Actions 会执行 `goreleaser release` 并自动发布 `@blueking/bkms-cli` 到 npm。
 >
 > API 地址不在编译期注入：由安装侧（npm 的 `bkmsCli` / `config set`，或安装脚本）写入 `~/.bkms/config.yaml`。
 
