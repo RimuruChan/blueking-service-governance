@@ -1,6 +1,6 @@
 {
   "name": "@blueking/bkms-cli",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "BlueKing Service Governance CLI (downloads platform binary from GitHub Releases)",
   "license": "MIT",
   "repository": {
