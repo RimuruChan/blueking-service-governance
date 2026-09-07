@@ -71,40 +71,7 @@ func NewRootCmd() *cobra.Command {
 				console.Info("Hello %s, welcome to use bkms-cli, use `bkms-cli -h` for help", config.G.Username)
 			}
 		},
-		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			// 静态参数错误优先于配置加载和认证，避免用法错误触发网络请求。
-			if err := cmd.ValidateRequiredFlags(); err != nil {
-				return clierr.Usage(err)
-			}
-			if err := cmd.ValidateFlagGroups(); err != nil {
-				return clierr.Usage(err)
-			}
-			// 加载全局配置（若配置文件不存在，会自动创建默认配置）
-			if _, err := config.G.Load(); err != nil {
-				return errors.Wrapf(err, "load config")
-			}
-			if err := logx.SetLevel(logLevel); err != nil {
-				return clierr.Usage(errors.Wrap(err, "set log level"))
-			}
-			// login 与需鉴权命令都会请求 bkms；先保证 bkmsBaseUrl 已配置，
-			// 避免空地址落到 ValidateAccessToken / 业务请求。
-			if cmd.Name() == "login" || cmdutil.IsAuthRequired(cmd) {
-				if err := config.G.RequireBkmsBaseURL(); err != nil {
-					return err
-				}
-			}
-			// 如果某命令不需要用户认证，直接返回
-			if !cmdutil.IsAuthRequired(cmd) {
-				return nil
-			}
-			// 用户认证
-			user, err := client.New().ValidateAccessToken(config.G.AccessToken)
-			if err != nil {
-				return errors.Wrapf(err, "user unauthorized, please use `bkms-cli login` to login")
-			}
-			config.G.Username = user
-			return nil
-		},
+		PersistentPreRunE: persistentPreRunE(&logLevel),
 	}
 
 	// 用户登录
@@ -130,6 +97,41 @@ func NewRootCmd() *cobra.Command {
 	rootCmd.PersistentFlags().StringVar(&logLevel, "log-level", "info", "log level: debug, info, warn, error")
 
 	return rootCmd
+}
+
+func persistentPreRunE(logLevel *string) func(cmd *cobra.Command, args []string) error {
+	return func(cmd *cobra.Command, _ []string) error {
+		// 静态参数错误优先于配置加载和认证，避免用法错误触发网络请求。
+		if err := cmd.ValidateRequiredFlags(); err != nil {
+			return clierr.Usage(err)
+		}
+		if err := cmd.ValidateFlagGroups(); err != nil {
+			return clierr.Usage(err)
+		}
+		// 加载全局配置（若配置文件不存在，会自动创建默认配置）
+		if _, err := config.G.Load(); err != nil {
+			return errors.Wrapf(err, "load config")
+		}
+		if err := logx.SetLevel(*logLevel); err != nil {
+			return clierr.Usage(errors.Wrap(err, "set log level"))
+		}
+		// login 与需鉴权命令都会请求 bkms；先保证 bkmsBaseUrl 已配置，
+		// 避免空地址落到 ValidateAccessToken / 业务请求。
+		if cmd.Name() == "login" || cmdutil.IsAuthRequired(cmd) {
+			if err := config.G.RequireBkmsBaseURL(); err != nil {
+				return err
+			}
+		}
+		if !cmdutil.IsAuthRequired(cmd) {
+			return nil
+		}
+		user, err := client.New().ValidateAccessToken(config.G.AccessToken)
+		if err != nil {
+			return errors.Wrapf(err, "user unauthorized, please use `bkms-cli login` to login")
+		}
+		config.G.Username = user
+		return nil
+	}
 }
 
 // ExecuteContext bkms-cli command with context

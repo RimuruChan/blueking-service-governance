@@ -188,23 +188,8 @@ func (s *Service) Deploy(ctx context.Context, app *bkmsapp.Application, params D
 		return "", errors.Wrap(err, "get env")
 	}
 
-	// 检查 tRPC/TAF 必选集群组件是否已安装
-	if err = s.checkRequiredClusterAddons(ctx, app, env); err != nil {
-		return "", errors.Wrap(err, "check required cluster addons")
-	}
-
-	// 执行部署前置检查
-	if err = deploy.NewPreDeployChecker(
-		s.envStore, s.promotionStore, s.snapshotService,
-	).Do(ctx, &deploy.PreDeployCheckParams{
-		WorkspaceID:     app.WorkspaceID,
-		EnvName:         params.EnvName,
-		TrafficLaneName: params.TrafficLaneName,
-		AppType:         app.Type,
-		AppID:           app.ID,
-		ImageTag:        params.ImageTag,
-	}); err != nil {
-		return "", errors.Wrap(err, "pre deploy check")
+	if err = s.runPreDeployChecks(ctx, app, env, params); err != nil {
+		return "", err
 	}
 
 	appModel, err := s.appModelStore.GetAppModel(ctx, app.ID)
@@ -265,6 +250,30 @@ func (s *Service) Deploy(ctx context.Context, app *bkmsapp.Application, params D
 	}
 
 	return deployID, nil
+}
+
+func (s *Service) runPreDeployChecks(
+	ctx context.Context,
+	app *bkmsapp.Application,
+	env *envmodel.Environment,
+	params DeployParams,
+) error {
+	if err := s.checkRequiredClusterAddons(ctx, app, env); err != nil {
+		return errors.Wrap(err, "check required cluster addons")
+	}
+	if err := deploy.NewPreDeployChecker(
+		s.envStore, s.promotionStore, s.snapshotService,
+	).Do(ctx, &deploy.PreDeployCheckParams{
+		WorkspaceID:     app.WorkspaceID,
+		EnvName:         params.EnvName,
+		TrafficLaneName: params.TrafficLaneName,
+		AppType:         app.Type,
+		AppID:           app.ID,
+		ImageTag:        params.ImageTag,
+	}); err != nil {
+		return errors.Wrap(err, "pre deploy check")
+	}
+	return nil
 }
 
 func (s *Service) checkRequiredClusterAddons(
