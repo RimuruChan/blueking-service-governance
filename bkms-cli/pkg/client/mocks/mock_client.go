@@ -4736,12 +4736,12 @@ func (_c *MockClient_PatchAppPolarisConfig_Call) RunAndReturn(run func(ctx conte
 	return _c
 }
 
-// PreCheckTafDeployEnvVars provides a mock function for the type MockClient
-func (_mock *MockClient) PreCheckTafDeployEnvVars(ctx context.Context, appID string, envName string) (*client.DeployPrecheckResult, error) {
+// PreCheckTafDeploy provides a mock function for the type MockClient
+func (_mock *MockClient) PreCheckTafDeploy(ctx context.Context, appID string, envName string) (*client.DeployPrecheckResult, error) {
 	ret := _mock.Called(ctx, appID, envName)
 
 	if len(ret) == 0 {
-		panic("no return value specified for PreCheckTafDeployEnvVars")
+		panic("no return value specified for PreCheckTafDeploy")
 	}
 
 	var r0 *client.DeployPrecheckResult
@@ -4764,20 +4764,20 @@ func (_mock *MockClient) PreCheckTafDeployEnvVars(ctx context.Context, appID str
 	return r0, r1
 }
 
-// MockClient_PreCheckTafDeployEnvVars_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PreCheckTafDeployEnvVars'
-type MockClient_PreCheckTafDeployEnvVars_Call struct {
+// MockClient_PreCheckTafDeploy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PreCheckTafDeploy'
+type MockClient_PreCheckTafDeploy_Call struct {
 	*mock.Call
 }
 
-// PreCheckTafDeployEnvVars is a helper method to define mock.On call
+// PreCheckTafDeploy is a helper method to define mock.On call
 //   - ctx context.Context
 //   - appID string
 //   - envName string
-func (_e *MockClient_Expecter) PreCheckTafDeployEnvVars(ctx any, appID any, envName any) *MockClient_PreCheckTafDeployEnvVars_Call {
-	return &MockClient_PreCheckTafDeployEnvVars_Call{Call: _e.mock.On("PreCheckTafDeployEnvVars", ctx, appID, envName)}
+func (_e *MockClient_Expecter) PreCheckTafDeploy(ctx any, appID any, envName any) *MockClient_PreCheckTafDeploy_Call {
+	return &MockClient_PreCheckTafDeploy_Call{Call: _e.mock.On("PreCheckTafDeploy", ctx, appID, envName)}
 }
 
-func (_c *MockClient_PreCheckTafDeployEnvVars_Call) Run(run func(ctx context.Context, appID string, envName string)) *MockClient_PreCheckTafDeployEnvVars_Call {
+func (_c *MockClient_PreCheckTafDeploy_Call) Run(run func(ctx context.Context, appID string, envName string)) *MockClient_PreCheckTafDeploy_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -4800,22 +4800,22 @@ func (_c *MockClient_PreCheckTafDeployEnvVars_Call) Run(run func(ctx context.Con
 	return _c
 }
 
-func (_c *MockClient_PreCheckTafDeployEnvVars_Call) Return(deployPrecheckResult *client.DeployPrecheckResult, err error) *MockClient_PreCheckTafDeployEnvVars_Call {
+func (_c *MockClient_PreCheckTafDeploy_Call) Return(deployPrecheckResult *client.DeployPrecheckResult, err error) *MockClient_PreCheckTafDeploy_Call {
 	_c.Call.Return(deployPrecheckResult, err)
 	return _c
 }
 
-func (_c *MockClient_PreCheckTafDeployEnvVars_Call) RunAndReturn(run func(ctx context.Context, appID string, envName string) (*client.DeployPrecheckResult, error)) *MockClient_PreCheckTafDeployEnvVars_Call {
+func (_c *MockClient_PreCheckTafDeploy_Call) RunAndReturn(run func(ctx context.Context, appID string, envName string) (*client.DeployPrecheckResult, error)) *MockClient_PreCheckTafDeploy_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// PreCheckTrpcDeployEnvVars provides a mock function for the type MockClient
-func (_mock *MockClient) PreCheckTrpcDeployEnvVars(ctx context.Context, appID string, envName string) (*client.DeployPrecheckResult, error) {
+// PreCheckTrpcDeploy provides a mock function for the type MockClient
+func (_mock *MockClient) PreCheckTrpcDeploy(ctx context.Context, appID string, envName string) (*client.DeployPrecheckResult, error) {
 	ret := _mock.Called(ctx, appID, envName)
 
 	if len(ret) == 0 {
-		panic("no return value specified for PreCheckTrpcDeployEnvVars")
+		panic("no return value specified for PreCheckTrpcDeploy")
 	}
 
 	var r0 *client.DeployPrecheckResult
@@ -4838,20 +4838,20 @@ func (_mock *MockClient) PreCheckTrpcDeployEnvVars(ctx context.Context, appID st
 	return r0, r1
 }
 
-// MockClient_PreCheckTrpcDeployEnvVars_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PreCheckTrpcDeployEnvVars'
-type MockClient_PreCheckTrpcDeployEnvVars_Call struct {
+// MockClient_PreCheckTrpcDeploy_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PreCheckTrpcDeploy'
+type MockClient_PreCheckTrpcDeploy_Call struct {
 	*mock.Call
 }
 
-// PreCheckTrpcDeployEnvVars is a helper method to define mock.On call
+// PreCheckTrpcDeploy is a helper method to define mock.On call
 //   - ctx context.Context
 //   - appID string
 //   - envName string
-func (_e *MockClient_Expecter) PreCheckTrpcDeployEnvVars(ctx any, appID any, envName any) *MockClient_PreCheckTrpcDeployEnvVars_Call {
-	return &MockClient_PreCheckTrpcDeployEnvVars_Call{Call: _e.mock.On("PreCheckTrpcDeployEnvVars", ctx, appID, envName)}
+func (_e *MockClient_Expecter) PreCheckTrpcDeploy(ctx any, appID any, envName any) *MockClient_PreCheckTrpcDeploy_Call {
+	return &MockClient_PreCheckTrpcDeploy_Call{Call: _e.mock.On("PreCheckTrpcDeploy", ctx, appID, envName)}
 }
 
-func (_c *MockClient_PreCheckTrpcDeployEnvVars_Call) Run(run func(ctx context.Context, appID string, envName string)) *MockClient_PreCheckTrpcDeployEnvVars_Call {
+func (_c *MockClient_PreCheckTrpcDeploy_Call) Run(run func(ctx context.Context, appID string, envName string)) *MockClient_PreCheckTrpcDeploy_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -4874,12 +4874,12 @@ func (_c *MockClient_PreCheckTrpcDeployEnvVars_Call) Run(run func(ctx context.Co
 	return _c
 }
 
-func (_c *MockClient_PreCheckTrpcDeployEnvVars_Call) Return(deployPrecheckResult *client.DeployPrecheckResult, err error) *MockClient_PreCheckTrpcDeployEnvVars_Call {
+func (_c *MockClient_PreCheckTrpcDeploy_Call) Return(deployPrecheckResult *client.DeployPrecheckResult, err error) *MockClient_PreCheckTrpcDeploy_Call {
 	_c.Call.Return(deployPrecheckResult, err)
 	return _c
 }
 
-func (_c *MockClient_PreCheckTrpcDeployEnvVars_Call) RunAndReturn(run func(ctx context.Context, appID string, envName string) (*client.DeployPrecheckResult, error)) *MockClient_PreCheckTrpcDeployEnvVars_Call {
+func (_c *MockClient_PreCheckTrpcDeploy_Call) RunAndReturn(run func(ctx context.Context, appID string, envName string) (*client.DeployPrecheckResult, error)) *MockClient_PreCheckTrpcDeploy_Call {
 	_c.Call.Return(run)
 	return _c
 }

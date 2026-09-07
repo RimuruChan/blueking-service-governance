@@ -21,8 +21,10 @@ package deploy
 import (
 	"context"
 
+	"github.com/bytedance/mockey"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
@@ -31,6 +33,7 @@ import (
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
 	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
@@ -38,6 +41,8 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component"
 	depenvvars "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/envvars"
 	depmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/helm"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/envvarrefs"
@@ -65,8 +70,10 @@ func newTestPolarisConfig(
 	}
 }
 
-var _ = Describe("EnvVarPreChecker Check", func() {
+var _ = Describe("DeployPreChecker Check", func() {
 	var (
+		statusMock                *mockey.Mocker
+		clusterAddonDefStore      clusteraddon.ClusterAddonDefStore
 		ctx                       context.Context
 		fxApp                     *fxtest.App
 		appStore                  bkmsapp.ApplicationStore
@@ -79,7 +86,7 @@ var _ = Describe("EnvVarPreChecker Check", func() {
 		buildConfigStore          build.ConfigStore
 		workspaceCompsStore       workspace.WorkspaceCompsStore
 		envService                *env.EnvService
-		checker                   *EnvVarPreChecker
+		checker                   *DeployPreChecker
 		newApp                    func(*dbfactory.TrpcApplicationOpts) (*bkmsapp.Application, *envmodel.Environment)
 	)
 
@@ -101,7 +108,10 @@ var _ = Describe("EnvVarPreChecker Check", func() {
 			depmodel.FxModule,
 			depenvvars.FxModule,
 			workload.FxModule,
-			fx.Provide(NewEnvVarPreChecker),
+			fx.Provide(func() (clusteraddon.ClusterAddonDefStore, error) {
+				return clusteraddon.NewClusterAddonDefStoreMongo(database.Client(), database.Name())
+			}),
+			fx.Provide(NewDeployPreChecker),
 			fx.Populate(
 				&appStore,
 				&appModelStore,
@@ -114,10 +124,12 @@ var _ = Describe("EnvVarPreChecker Check", func() {
 				&workspaceCompsStore,
 				&envService,
 				&checker,
+				&clusterAddonDefStore,
 			),
 		)
 		fxApp.RequireStart()
 		workload.InitPlugin(appConfigFileStore, appConfigFileDefStore, polarisConfigStore)
+		statusMock = mockey.Mock(clusteraddon.QueryAddonStatus).Return(helm.StatusDeployed, nil).Build()
 
 		newApp = func(opts *dbfactory.TrpcApplicationOpts) (*bkmsapp.Application, *envmodel.Environment) {
 			app, _ := dbfactory.TrpcApplication(ctx, &dbfactory.TrpcApplicationStores{
@@ -133,6 +145,7 @@ var _ = Describe("EnvVarPreChecker Check", func() {
 	})
 
 	AfterEach(func() {
+		statusMock.UnPatch()
 		fxApp.RequireStop()
 	})
 
@@ -185,22 +198,25 @@ ignored: ${LEGACY}
 		result, err := checker.Check(ctx, app, appEnv)
 
 		Expect(err).NotTo(HaveOccurred())
-		Expect(result).To(Equal(&EnvVarPreCheckResult{UndefinedVars: []envvarrefs.UndefinedEnvVar{
-			{
-				Key: "SHARED",
-				Sources: []envvarrefs.Source{
-					{Type: envvarrefs.SourceAppConfigFile, Name: appcfg.DefaultAppConfigFileName},
-					{Type: envvarrefs.SourceComponent, Name: comp.Name},
-					{Type: envvarrefs.SourcePolaris, Name: "polaris-main"},
+		Expect(result).To(Equal(&DeployPreCheckResult{
+			UndefinedVars: []envvarrefs.UndefinedEnvVar{
+				{
+					Key: "SHARED",
+					Sources: []envvarrefs.Source{
+						{Type: envvarrefs.SourceAppConfigFile, Name: appcfg.DefaultAppConfigFileName},
+						{Type: envvarrefs.SourceComponent, Name: comp.Name},
+						{Type: envvarrefs.SourcePolaris, Name: "polaris-main"},
+					},
+				},
+				{
+					Key: "ZED",
+					Sources: []envvarrefs.Source{
+						{Type: envvarrefs.SourceAppConfigFile, Name: appcfg.DefaultAppConfigFileName},
+					},
 				},
 			},
-			{
-				Key: "ZED",
-				Sources: []envvarrefs.Source{
-					{Type: envvarrefs.SourceAppConfigFile, Name: appcfg.DefaultAppConfigFileName},
-				},
-			},
-		}}))
+			MissingRequiredClusterAddons: nil,
+		}))
 	})
 
 	It("treats empty and sensitive env vars as defined", func() {
@@ -478,6 +494,37 @@ ignored: ${LEGACY}
 			_, err := checker.Check(ctx, app, appEnv)
 
 			Expect(err).To(MatchError(ContainSubstring("get build config")))
+		})
+	})
+
+	Context("required cluster addons", func() {
+		var addon *clusteraddon.ClusterAddonDef
+		BeforeEach(func() {
+			addon = &clusteraddon.ClusterAddonDef{
+				Name: "precheck-test-addon", DisplayName: "Test operator",
+				RequiredForAppTypes: []string{bkmsapp.AppTypeTRPC},
+			}
+			Expect(clusterAddonDefStore.Create(ctx, addon)).To(Succeed())
+		})
+		AfterEach(func() {
+			_, err := clusterAddonDefStore.Delete(ctx, addon.Name)
+			Expect(err).NotTo(HaveOccurred())
+		})
+		It("returns missing addon identities", func() {
+			app, appEnv := newApp(nil)
+			statusMock.Return(helm.StatusNotFound, nil)
+			result, err := checker.Check(ctx, app, appEnv)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.MissingRequiredClusterAddons).To(ContainElement(clusteraddon.AddonReference{
+				Name: addon.Name, DisplayName: addon.DisplayName,
+			}))
+		})
+		It("preserves status query failures", func() {
+			app, appEnv := newApp(nil)
+			cause := errors.New("cluster unavailable")
+			statusMock.Return(helm.StatusUnknown, cause)
+			_, err := checker.Check(ctx, app, appEnv)
+			Expect(errors.Is(err, cause)).To(BeTrue())
 		})
 	})
 })

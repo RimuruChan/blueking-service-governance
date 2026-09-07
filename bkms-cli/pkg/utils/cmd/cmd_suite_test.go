@@ -16,27 +16,16 @@
  * to the current version of the project delivered to anyone in the future.
  */
 
-package bkerrs
+package cmd_test
 
 import (
-	"fmt"
-	"strings"
+	"testing"
 
-	"github.com/samber/lo"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-// WrapComponentsNotInstalled 包装多个组件缺失的错误，每个组件生成独立的详情。
-func WrapComponentsNotInstalled(err error, components []string, clusterID string) error {
-	wrappedErr := Wrapf(err, ErrCodeNotFound,
-		"component %s not installed in cluster: %s", strings.Join(components, ", "), clusterID)
-	details := lo.Map(components, func(component string, _ int) Detail {
-		return NewDetail(
-			ErrDetailCodeComponentNotInstalled,
-			fmt.Sprintf("component %s is not installed in cluster %s, "+
-				"please install it before using this feature", component, clusterID),
-			WithSystem("bkms"),
-			WithModule(component),
-		)
-	})
-	return wrappedErr.SetDetails(details...)
+func TestCmd(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Command Execution Suite")
 }

@@ -1,0 +1,24 @@
+name: bcs-hook-operator
+displayName: Hook-Operator
+description: Hook-Operator 支持优雅删除/更新的 hook 检查
+chartInfo:
+  chartName: bcs-hook-operator
+  releaseName: bcs-hook-operator
+  defaultNamespace: bcs-system
+  exampleValues: |
+    command:
+      - ./bcs-hook-operator
+      - --concurrent-hook-syncs=1
+    DeleteProtectEnable: true
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 1
+        memory: 512Mi
+requiredForAppTypes:
+  - trpc
+  - taf
+optionalForAppTypes: []
+unsupportedOnFederation: true

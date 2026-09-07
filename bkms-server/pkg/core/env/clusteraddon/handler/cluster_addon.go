@@ -92,7 +92,13 @@ func (h *Handler) ListClusterAddons(c *gin.Context) {
 		return
 	}
 
-	addons := clusteraddon.BuildAddonInfoList(ctx, addonDefs, queryInput.Namespace, clusterID, repoIndex)
+	addons := clusteraddon.BuildAddonInfoList(
+		ctx,
+		addonDefs,
+		env,
+		queryInput.Namespace,
+		repoIndex,
+	)
 
 	ginutils.OK(c, &serializer.ListClusterAddonsOutput{
 		Addons: lo.Map(addons, func(addon *clusteraddon.ClusterAddonInfo, _ int) *serializer.ClusterAddonInfoOutput {
@@ -163,8 +169,12 @@ func (h *Handler) UpsertClusterAddon(c *gin.Context) {
 	defer installLock.Release(ctx)
 
 	if err = clusteraddon.InstallOrUpgradeClusterAddon(
-		ctx, addonDef, clusterID, namespace, jsonInput.ChartVersion, jsonInput.Values,
+		ctx, addonDef, env, namespace, jsonInput.ChartVersion, jsonInput.Values,
 	); err != nil {
+		if errors.Is(err, clusteraddon.ErrAddonNotApplicable) {
+			bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidRequest, "deploy cluster addon"))
+			return
+		}
 		bkerrs.AbortWithErr(c, bkerrs.Wrapf(err, bkerrs.ErrCodeInternalServerError,
 			"deploy cluster addon %s", uriInput.AddonName))
 		return

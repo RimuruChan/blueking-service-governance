@@ -26,6 +26,7 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	instancehandler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/instance"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/params"
@@ -84,7 +85,7 @@ func runInstancePolaris(
 	isolate, weightSet, isolateSet bool,
 ) error {
 	if !weightSet && !isolateSet {
-		return errors.New("at least one of --weight or --isolate must be specified")
+		return clierr.Usage(errors.New("at least one of --weight or --isolate must be specified"))
 	}
 
 	instanceIDs := params.NormalizeInstIDs(instanceIDsStr, ",")

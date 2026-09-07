@@ -31,10 +31,35 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil"
 	clusteraddon "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
+	helmdeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/helm"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/helm"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
 )
+
+var _ = Describe("InstallOrUpgradeClusterAddon applicability", func() {
+	DescribeTable("checks applicability before pulling the chart",
+		func(unsupported, isFederation, rejected bool) {
+			pullErr := errors.New("chart pull stopped for test")
+			pullMock := mockey.Mock(helmdeploy.PullChart).Return(nil, nil, pullErr).Build()
+			defer pullMock.UnPatch()
+			def := &clusteraddon.ClusterAddonDef{Name: "test-addon", UnsupportedOnFederation: unsupported}
+			err := clusteraddon.InstallOrUpgradeClusterAddon(
+				context.Background(), def, addonEnvironment("cluster", isFederation), "namespace", "1.0.0", nil,
+			)
+			if rejected {
+				Expect(errors.Is(err, clusteraddon.ErrAddonNotApplicable)).To(BeTrue())
+				Expect(pullMock.Times()).To(BeZero())
+			} else {
+				Expect(errors.Is(err, pullErr)).To(BeTrue())
+				Expect(pullMock.Times()).To(Equal(1))
+			}
+		},
+		Entry("rejects unsupported addons on federation clusters", true, true, true),
+		Entry("allows those addons on regular clusters", true, false, false),
+		Entry("allows supported addons on federation clusters", false, true, false),
+	)
+})
 
 var _ = Describe("Deploy", func() {
 	var (
@@ -113,7 +138,11 @@ var _ = Describe("Deploy", func() {
 		// buildAndFindAddon 使用 DB 中的 addon 定义构建信息列表并返回匹配的 addon
 		buildAndFindAddon := func() *clusteraddon.ClusterAddonInfo {
 			addons := clusteraddon.BuildAddonInfoList(
-				ctx, []*clusteraddon.ClusterAddonDef{addonDef}, namespace, clusterID, repoIndex,
+				ctx,
+				[]*clusteraddon.ClusterAddonDef{addonDef},
+				addonEnvironment(clusterID, false),
+				namespace,
+				repoIndex,
 			)
 			Expect(addons).To(HaveLen(1))
 			return addons[0]
@@ -131,7 +160,7 @@ var _ = Describe("Deploy", func() {
 
 			By("2. 安装 addon")
 			err := clusteraddon.InstallOrUpgradeClusterAddon(
-				ctx, addonDef, clusterID, namespace, chartVersion,
+				ctx, addonDef, addonEnvironment(clusterID, false), namespace, chartVersion,
 				map[string]any{"initialKey": "initialValue"},
 			)
 			Expect(err).NotTo(HaveOccurred())
@@ -146,7 +175,7 @@ var _ = Describe("Deploy", func() {
 
 			By("4. 更新 addon（变更 values）")
 			err = clusteraddon.InstallOrUpgradeClusterAddon(
-				ctx, addonDef, clusterID, namespace, chartVersion,
+				ctx, addonDef, addonEnvironment(clusterID, false), namespace, chartVersion,
 				map[string]any{"updatedKey": "updatedValue"},
 			)
 			Expect(err).NotTo(HaveOccurred())

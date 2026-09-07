@@ -23,10 +23,12 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/storage/driver"
 
 	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/helm"
 )
 
@@ -110,18 +112,80 @@ func (info *ClusterAddonInfo) FillClusterStatus(ctx context.Context, clusterID s
 func BuildAddonInfoList(
 	ctx context.Context,
 	addonDefs []*ClusterAddonDef,
+	env *envmodel.Environment,
 	namespace string,
-	clusterID string,
 	repoIndex *RepoIndex,
 ) []*ClusterAddonInfo {
 	var addons []*ClusterAddonInfo
-	for _, addonDef := range addonDefs {
+	for _, addonDef := range ApplicableAddonDefs(addonDefs, env) {
 		ns := addonDef.GetNamespace(namespace)
 		info := NewAddonInfoFromDef(addonDef, ns)
 		info.ChartInfo.FillAvailableVersions(repoIndex)
-		info.FillClusterStatus(ctx, clusterID, addonDef)
+		info.FillClusterStatus(ctx, env.Cluster.ClusterID, addonDef)
 		addons = append(addons, info)
 	}
 
 	return addons
+}
+
+// QueryAddonStatus 仅查询组件 Release 状态，不读取 Values 或填充展示信息。
+func QueryAddonStatus(ctx context.Context, clusterID, namespace string, def *ClusterAddonDef) (AddonStatus, error) {
+	releaseName := GenerateReleaseName(def)
+	debugLog := helm.NewHelmDebugLogger(ctx, releaseName, "query-addon-status")
+	cfg, err := helm.NewActionConfiguration(clusterID, namespace, debugLog)
+	if err != nil {
+		return helm.StatusUnknown, errors.Wrapf(err, "init helm configuration for addon %s in cluster %s namespace %s",
+			def.Name, clusterID, namespace)
+	}
+	release, err := helm.GetReleaseStatus(cfg, releaseName)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		return helm.StatusNotFound, nil
+	}
+	if err != nil {
+		return helm.StatusUnknown, errors.Wrapf(
+			err,
+			"query addon %s status in cluster %s namespace %s",
+			def.Name,
+			clusterID,
+			namespace,
+		)
+	}
+	if release.DeployResult.Status == helm.StatusUnknown {
+		return helm.StatusUnknown, errors.Errorf(
+			"addon %s release status is unknown in cluster %s namespace %s", def.Name, clusterID, namespace,
+		)
+	}
+	return release.DeployResult.Status, nil
+}
+
+// ApplicableAddonDefs 返回适用于环境集群的组件定义，供列表展示和部署检查共用。
+func ApplicableAddonDefs(defs []*ClusterAddonDef, env *envmodel.Environment) []*ClusterAddonDef {
+	return lo.Filter(defs, func(def *ClusterAddonDef, _ int) bool {
+		return def.IsApplicableToEnv(env)
+	})
+}
+
+// InspectRequiredAddons 查询必选组件状态。缺失作为检查结果，查询失败作为错误返回。
+func InspectRequiredAddons(
+	ctx context.Context,
+	defs []*ClusterAddonDef,
+	appType string,
+	env *envmodel.Environment,
+	namespace string,
+) ([]AddonReference, error) {
+	var missing []AddonReference
+	for _, def := range ApplicableAddonDefs(defs, env) {
+		if !lo.Contains(def.RequiredForAppTypes, appType) {
+			continue
+		}
+		addon := AddonReference{Name: def.Name, DisplayName: def.DisplayName}
+		status, err := QueryAddonStatus(ctx, env.Cluster.ClusterID, def.GetNamespace(namespace), def)
+		if err != nil {
+			return nil, errors.Wrap(err, "inspect required cluster addons")
+		}
+		if status != helm.StatusDeployed {
+			missing = append(missing, addon)
+		}
+	}
+	return missing, nil
 }

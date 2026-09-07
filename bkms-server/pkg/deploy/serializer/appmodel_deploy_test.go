@@ -27,6 +27,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/autodeploy"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
 	deploypkg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy"
 	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/serializer"
@@ -34,9 +35,9 @@ import (
 )
 
 var _ = Describe("AppModel deploy serializers", func() {
-	Describe("EnvVarPreCheckOutput", func() {
+	Describe("DeployPreCheckOutput", func() {
 		It("converts undefined vars and their sources", func() {
-			output := new(serializer.EnvVarPreCheckOutput).FromModel(&deploypkg.EnvVarPreCheckResult{
+			output := new(serializer.DeployPreCheckOutput).FromModel(&deploypkg.DeployPreCheckResult{
 				UndefinedVars: []envvarrefs.UndefinedEnvVar{
 					{
 						Key: "DB_HOST",
@@ -48,7 +49,7 @@ var _ = Describe("AppModel deploy serializers", func() {
 				},
 			})
 
-			Expect(output).To(Equal(&serializer.EnvVarPreCheckOutput{
+			Expect(output).To(Equal(&serializer.DeployPreCheckOutput{
 				UndefinedVars: []serializer.UndefinedEnvVarOutput{
 					{
 						Key: "DB_HOST",
@@ -58,17 +59,37 @@ var _ = Describe("AppModel deploy serializers", func() {
 						},
 					},
 				},
+				MissingRequiredClusterAddons: []string{},
 			}))
 		})
 
+		It("converts missing required cluster addon names", func() {
+			output := new(serializer.DeployPreCheckOutput).FromModel(&deploypkg.DeployPreCheckResult{
+				MissingRequiredClusterAddons: []clusteraddon.AddonReference{
+					{Name: "game", DisplayName: "Gamedeploy"},
+					{Name: "hook", DisplayName: "Hook-operator"},
+				},
+			})
+			Expect(output.MissingRequiredClusterAddons).To(Equal([]string{"Gamedeploy", "Hook-operator"}))
+		})
+
+		It("falls back to the addon name when the display name is empty", func() {
+			output := new(serializer.DeployPreCheckOutput).FromModel(&deploypkg.DeployPreCheckResult{
+				MissingRequiredClusterAddons: []clusteraddon.AddonReference{{Name: "bcs-hook-operator"}},
+			})
+			Expect(output.MissingRequiredClusterAddons).To(Equal([]string{"bcs-hook-operator"}))
+		})
+
 		It("serializes empty undefined vars as an empty array", func() {
-			output := new(serializer.EnvVarPreCheckOutput).FromModel(&deploypkg.EnvVarPreCheckResult{})
+			output := new(serializer.DeployPreCheckOutput).FromModel(&deploypkg.DeployPreCheckResult{})
 
 			Expect(output.UndefinedVars).To(BeEmpty())
 			Expect(output.UndefinedVars).NotTo(BeNil())
+			Expect(output.MissingRequiredClusterAddons).To(BeEmpty())
+			Expect(output.MissingRequiredClusterAddons).NotTo(BeNil())
 			payload, err := json.Marshal(output)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(payload).To(MatchJSON(`{"undefinedVars":[]}`))
+			Expect(payload).To(MatchJSON(`{"undefinedVars":[],"missingRequiredClusterAddons":[]}`))
 		})
 	})
 

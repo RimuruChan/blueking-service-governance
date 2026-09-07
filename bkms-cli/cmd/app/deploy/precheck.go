@@ -19,6 +19,7 @@
 package deploy
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -28,6 +29,7 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	deployhandler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/deploy"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/output"
@@ -39,12 +41,13 @@ func NewPrecheckCmd() *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:   "precheck",
-		Short: "Check if all environment variables are defined before deployment",
-		Long: `Pre-deployment check: verifies that all environment variables referenced in
-config files and start commands are defined.
+		Short: "Run pre-deployment checks",
+		Long: `Check that environment variables referenced in application config files,
+component properties, and Polaris service labels are defined, and that required
+cluster addons are installed in the specified environment.
 
-Exit code 0 means all variables are defined (safe to deploy).
-Exit code 1 means there are undefined variables that must be resolved first.
+Exit code 0 means both checks passed.
+Exit code 1 means a check failed or could not be completed.
 
 Only supported for trpc and taf application types.`,
 		Example: `  # Check before deploying to prod
@@ -69,47 +72,79 @@ Only supported for trpc and taf application types.`,
 }
 
 func runDeployPrecheck(cmd *cobra.Command, appID, envName, outputFormat string) error {
-	result, err := deployhandler.PrecheckEnvVars(cmd.Context(), appID, envName)
+	result, err := deployhandler.Precheck(cmd.Context(), appID, envName)
 	if err != nil {
-		return errors.Wrap(err, "precheck deploy env vars")
+		return err
 	}
 
-	if outputFormat != "" {
+	if outputFormat != "" && outputFormat != string(output.FormatTable) {
 		formatted, fmtErr := output.FormatData(cmd.Context(), result, outputFormat)
 		if fmtErr != nil {
 			return errors.Wrap(fmtErr, "format output")
 		}
 		console.Info("%s", formatted)
 		if !result.Passed {
-			return errors.New("precheck failed")
+			return clierr.Reported(errors.New("precheck failed"))
 		}
 		return nil
 	}
 
 	if result.Passed {
-		console.Info("✓ Pre-check passed: all environment variables are defined for app %s in env %s",
-			appID, envName)
+		console.Info("✓ Pre-check passed for app %s in env %s", appID, envName)
 		return nil
 	}
 
-	printPrecheckFailure(result)
-	return errors.New("precheck failed: undefined environment variables found")
+	if err := printPrecheckFailure(cmd.Context(), result); err != nil {
+		return errors.Wrap(err, "print precheck findings")
+	}
+	return clierr.Reported(errors.New("precheck failed"))
 }
 
-func printPrecheckFailure(result *client.DeployPrecheckResult) {
-	console.Warn("✗ Pre-check FAILED: %d undefined environment variable(s) found", len(result.UndefinedVars))
-	console.Info("")
-	console.Info("  %-30s %s", "KEY", "REFERENCED BY")
-	console.Info("  %-30s %s", strings.Repeat("-", 30), strings.Repeat("-", 40))
-	for _, v := range result.UndefinedVars {
-		refs := lo.Map(v.Sources, func(s client.EnvVarSource, _ int) string {
-			if s.Name != "" {
-				return fmt.Sprintf("%s:%s", s.Type, s.Name)
-			}
-			return s.Type
-		})
-		console.Info("  %-30s %s", v.Key, strings.Join(refs, ", "))
+func printPrecheckFailure(ctx context.Context, result *client.DeployPrecheckResult) error {
+	parts := make([]string, 0, 2)
+	if n := len(result.UndefinedVars); n > 0 {
+		parts = append(parts, fmt.Sprintf("%d undefined environment variable(s)", n))
 	}
-	console.Info("")
-	console.Tips("Fix: use 'bkms-cli envvar create' to define missing variables, then re-run precheck.")
+	if n := len(result.MissingRequiredClusterAddons); n > 0 {
+		parts = append(parts, fmt.Sprintf("%d missing required cluster addon(s)", n))
+	}
+	console.Warn("✗ Pre-check FAILED: %s found", strings.Join(parts, ", "))
+
+	if len(result.UndefinedVars) > 0 {
+		type envVarRow struct {
+			Key          string
+			ReferencedBy string
+		}
+		rows := lo.Map(result.UndefinedVars, func(v client.UndefinedEnvVar, _ int) envVarRow {
+			refs := lo.Map(v.Sources, func(s client.EnvVarSource, _ int) string {
+				if s.Name != "" {
+					return fmt.Sprintf("%s:%s", s.Type, s.Name)
+				}
+				return s.Type
+			})
+			return envVarRow{Key: v.Key, ReferencedBy: strings.Join(refs, ", ")}
+		})
+		table, err := output.FormatData(ctx, rows, string(output.FormatTable))
+		if err != nil {
+			return errors.Wrap(err, "format undefined variables")
+		}
+		console.Info("\n%s", table)
+		console.Tips("Fix: use 'bkms-cli envvar create' to define missing variables, then re-run precheck.")
+	}
+
+	if len(result.MissingRequiredClusterAddons) > 0 {
+		type addonRow struct {
+			MissingClusterAddons string
+		}
+		rows := lo.Map(result.MissingRequiredClusterAddons, func(name string, _ int) addonRow {
+			return addonRow{MissingClusterAddons: name}
+		})
+		table, err := output.FormatData(ctx, rows, string(output.FormatTable))
+		if err != nil {
+			return errors.Wrap(err, "format missing cluster addons")
+		}
+		console.Info("\n%s", table)
+		console.Tips("Fix: install the missing cluster addons from the environment page, then re-run precheck.")
+	}
+	return nil
 }

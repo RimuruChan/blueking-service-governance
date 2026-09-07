@@ -29,6 +29,7 @@ import (
 	build "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
 	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy"
@@ -80,6 +81,7 @@ type Service struct {
 	appModelDeployRecordStore           deployappmodel.RecordStore
 	appModelDeployResourceSnapshotStore deployappmodel.ResourceSnapshotStore
 	appConfigFileStore                  appcfg.AppConfigFileStore
+	clusterAddonDefStore                clusteraddon.ClusterAddonDefStore
 }
 
 // ServiceDeps 部署服务所需依赖
@@ -104,6 +106,7 @@ type ServiceDeps struct {
 	AppModelDeployRecordStore           deployappmodel.RecordStore           `validate:"required"`
 	AppModelDeployResourceSnapshotStore deployappmodel.ResourceSnapshotStore `validate:"required"`
 	AppConfigFileStore                  appcfg.AppConfigFileStore            `validate:"required"`
+	ClusterAddonDefStore                clusteraddon.ClusterAddonDefStore    `validate:"required"`
 }
 
 var validate = validator.New(validator.WithRequiredStructEnabled())
@@ -134,6 +137,7 @@ func NewService(deps ServiceDeps) (*Service, error) {
 		appModelDeployRecordStore:           deps.AppModelDeployRecordStore,
 		appModelDeployResourceSnapshotStore: deps.AppModelDeployResourceSnapshotStore,
 		appConfigFileStore:                  deps.AppConfigFileStore,
+		clusterAddonDefStore:                deps.ClusterAddonDefStore,
 	}, nil
 }
 
@@ -168,6 +172,7 @@ func NewServiceFromRegistry(reg *storereg.Registry) (*Service, error) {
 		AppModelDeployRecordStore:           reg.AppModelDeployRecordStore,
 		AppModelDeployResourceSnapshotStore: reg.AppModelDeployResourceSnapshotStore,
 		AppConfigFileStore:                  reg.AppConfigFileStore,
+		ClusterAddonDefStore:                reg.ClusterAddonDefStore,
 	})
 }
 
@@ -181,6 +186,11 @@ func (s *Service) Deploy(ctx context.Context, app *bkmsapp.Application, params D
 	env, err := s.envStore.GetByName(ctx, app.WorkspaceID, app.ID, params.EnvName)
 	if err != nil {
 		return "", errors.Wrap(err, "get env")
+	}
+
+	// 检查 tRPC/TAF 必选集群组件是否已安装
+	if err = s.checkRequiredClusterAddons(ctx, app, env); err != nil {
+		return "", errors.Wrap(err, "check required cluster addons")
 	}
 
 	// 执行部署前置检查
@@ -255,6 +265,27 @@ func (s *Service) Deploy(ctx context.Context, app *bkmsapp.Application, params D
 	}
 
 	return deployID, nil
+}
+
+func (s *Service) checkRequiredClusterAddons(
+	ctx context.Context,
+	app *bkmsapp.Application,
+	env *envmodel.Environment,
+) error {
+	defs, err := s.clusterAddonDefStore.List(ctx)
+	if err != nil {
+		return errors.Wrap(err, "list cluster addon defs")
+	}
+	missing, err := clusteraddon.InspectRequiredAddons(
+		ctx, defs, app.Type, env, "",
+	)
+	if err != nil {
+		return errors.Wrap(err, "inspect required cluster addons")
+	}
+	if len(missing) > 0 {
+		return &clusteraddon.RequiredAddonsNotInstalledError{Missing: missing}
+	}
+	return nil
 }
 
 // DeployByAppID 通过 appID 装载应用后执行部署

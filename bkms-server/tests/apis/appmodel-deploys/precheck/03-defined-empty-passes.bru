@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{serviceURL}}/apps/{{envVarPrecheckDefinedAppID}}/envs/{{envVarPrecheckEnvName}}/trpc-deploys/env-var-precheck
+  url: {{serviceURL}}/apps/{{envVarPrecheckDefinedAppID}}/envs/{{envVarPrecheckEnvName}}/trpc-deploys/precheck
   body: none
   auth: inherit
 }
@@ -17,7 +17,8 @@ assert {
 
 tests {
   test("should treat an empty defined value as present", () => {
-    expect(res.body).to.deep.equal({undefinedVars: []});
+    expect(res.body.undefinedVars).to.deep.equal([]);
+    expect(res.body.missingRequiredClusterAddons).to.be.an("array");
   });
 }
 

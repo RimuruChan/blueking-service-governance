@@ -31,6 +31,7 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/constant"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 )
 
 // updateMode 更新模式
@@ -142,7 +143,9 @@ func UpdateDeploy(ctx context.Context, workspaceID, appID, envName, updateSpecFi
 		}
 
 		if len(errs) > 0 {
-			return errors.Errorf("deploy update failed for some envs:\n  %s", strings.Join(errs, "\n  "))
+			return clierr.Reported(
+				errors.Errorf("deploy update failed for some envs:\n  %s", strings.Join(errs, "\n  ")),
+			)
 		}
 		return nil
 

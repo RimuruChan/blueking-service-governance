@@ -56,7 +56,7 @@ func abortWithGPAApplyError(c *gin.Context, clusterID string, err error) {
 	case errors.Is(err, gpa.ErrFederationNotSupported):
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidRequest, "apply gpa CR"))
 	case errors.Is(err, gpa.ErrComponentNotInstalled):
-		bkerrs.AbortWithErr(c, bkerrs.WrapComponentNotInstalled(err, gpa.ClusterAddonName, clusterID))
+		bkerrs.AbortWithErr(c, bkerrs.WrapComponentsNotInstalled(err, []string{gpa.ClusterAddonName}, clusterID))
 	default:
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "apply gpa CR"))
 	}

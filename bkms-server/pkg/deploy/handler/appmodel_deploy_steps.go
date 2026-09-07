@@ -90,8 +90,8 @@ func (h *Handler) listAppModelDeployRecords(c *gin.Context) {
 	})
 }
 
-// preCheckDeployEnvVars 检查 AppModel 部署中引用但未定义的环境变量
-func (h *Handler) preCheckDeployEnvVars(c *gin.Context, expectedAppType string) {
+// preCheckDeploy runs tRPC / TAF deployment pre-checks (undefined env vars and required cluster addons).
+func (h *Handler) preCheckDeploy(c *gin.Context, expectedAppType string) {
 	var uriInput serializer.AppEnvURIInput
 	if err := ginutils.BindURI(c, &uriInput); err != nil {
 		bkerrs.AbortWithErr(c, err)
@@ -114,16 +114,16 @@ func (h *Handler) preCheckDeployEnvVars(c *gin.Context, expectedAppType string) 
 		return
 	}
 
-	checker := h.newEnvVarPreChecker()
+	checker := h.newDeployPreChecker()
 	result, err := checker.Check(ctx, app, environment)
 	if err != nil {
-		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "pre-check deployment env vars"))
+		abortWithAppModelDeployError(c, err, environment.Cluster.ClusterID, "pre-check deployment")
 		return
 	}
-	ginutils.OK(c, new(serializer.EnvVarPreCheckOutput).FromModel(result))
+	ginutils.OK(c, new(serializer.DeployPreCheckOutput).FromModel(result))
 }
 
-func (h *Handler) newEnvVarPreChecker() *deploypkg.EnvVarPreChecker {
+func (h *Handler) newDeployPreChecker() *deploypkg.DeployPreChecker {
 	builderService := workload.NewBuilderService(
 		h.registry.ScopedEnvVarStore,
 		h.registry.AppDepsVarReader,
@@ -136,9 +136,10 @@ func (h *Handler) newEnvVarPreChecker() *deploypkg.EnvVarPreChecker {
 		h.registry.AppSpecStore,
 		h.registry.BuildConfigStore,
 	)
-	return deploypkg.NewEnvVarPreChecker(
+	return deploypkg.NewDeployPreChecker(
 		h.registry.AppModelStore,
 		builderService,
+		h.registry.ClusterAddonDefStore,
 	)
 }
 
@@ -153,7 +154,7 @@ func (h *Handler) createAppModelDeploy(c *gin.Context) {
 
 	// 参数 & 权限校验
 	ctx := c.Request.Context()
-	app, _, err := h.validateAppModelDeployAppEnv(ctx, uriInput.AppID, uriInput.EnvName, perm.TypeEdit, true)
+	app, environment, err := h.validateAppModelDeployAppEnv(ctx, uriInput.AppID, uriInput.EnvName, perm.TypeEdit, true)
 	if err != nil {
 		bkerrs.AbortWithErr(c, err)
 		return
@@ -173,9 +174,7 @@ func (h *Handler) createAppModelDeploy(c *gin.Context) {
 	})
 	if err != nil {
 		deployInfo := genDeployInfo(app.WorkspaceID, app.ID, uriInput.EnvName, input.TrafficLaneName)
-		bkerrs.AbortWithErr(c, bkerrs.Wrapf(
-			err, bkerrs.ErrCodeInternalServerError, "deploy app model app: %s", deployInfo,
-		))
+		abortWithAppModelDeployError(c, err, environment.Cluster.ClusterID, "deploy app model app: "+deployInfo)
 		return
 	}
 	// 轮询部署状态 & 更新部署记录
@@ -460,6 +459,7 @@ func (h *Handler) newAppModelDeployService() (*appmodeldeploysvc.Service, error)
 		AppModelDeployRecordStore:           reg.AppModelDeployRecordStore,
 		AppModelDeployResourceSnapshotStore: reg.AppModelDeployResourceSnapshotStore,
 		AppConfigFileStore:                  reg.AppConfigFileStore,
+		ClusterAddonDefStore:                reg.ClusterAddonDefStore,
 	})
 }
 

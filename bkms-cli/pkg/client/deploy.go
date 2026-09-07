@@ -146,10 +146,23 @@ type AppModelDeployRecordsResp struct {
 
 // DeployPrecheckResult 部署前检查结果
 type DeployPrecheckResult struct {
-	// Passed 是否通过，由 UndefinedVars 是否为空推导
+	// Passed 是否通过，由 UndefinedVars 与 MissingRequiredClusterAddons 是否为空推导
 	Passed bool `json:"-" yaml:"passed"`
 	// UndefinedVars 未定义的环境变量列表
 	UndefinedVars []UndefinedEnvVar `json:"undefinedVars" yaml:"undefinedVars"`
+	// MissingRequiredClusterAddons 缺失的必选集群组件展示名
+	MissingRequiredClusterAddons []string `json:"missingRequiredClusterAddons" yaml:"missingRequiredClusterAddons"`
+}
+
+// Normalize 统一空列表的输出格式，并根据检查结果更新 Passed。
+func (r *DeployPrecheckResult) Normalize() {
+	if r.UndefinedVars == nil {
+		r.UndefinedVars = []UndefinedEnvVar{}
+	}
+	if r.MissingRequiredClusterAddons == nil {
+		r.MissingRequiredClusterAddons = []string{}
+	}
+	r.Passed = len(r.UndefinedVars) == 0 && len(r.MissingRequiredClusterAddons) == 0
 }
 
 // UndefinedEnvVar 未定义的环境变量

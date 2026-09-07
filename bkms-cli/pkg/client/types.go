@@ -135,8 +135,8 @@ type Client interface {
 	) ([]AppModelDeployRecord, error)
 	// DeleteTrpcDeploy 删除 Trpc 部署
 	DeleteTrpcDeploy(ctx context.Context, appID, envName string) error
-	// PreCheckTrpcDeployEnvVars 部署前检查 Trpc 应用环境变量
-	PreCheckTrpcDeployEnvVars(ctx context.Context, appID, envName string) (*DeployPrecheckResult, error)
+	// PreCheckTrpcDeploy 部署前检查 Trpc 应用
+	PreCheckTrpcDeploy(ctx context.Context, appID, envName string) (*DeployPrecheckResult, error)
 
 	// --- TAF ---
 	// CreateAppTafDeploy 执行 TAF 应用部署
@@ -147,8 +147,8 @@ type Client interface {
 	) ([]AppModelDeployRecord, error)
 	// DeleteTafDeploy 删除 TAF 部署
 	DeleteTafDeploy(ctx context.Context, appID, envName string) error
-	// PreCheckTafDeployEnvVars 部署前检查 TAF 应用环境变量
-	PreCheckTafDeployEnvVars(ctx context.Context, appID, envName string) (*DeployPrecheckResult, error)
+	// PreCheckTafDeploy 部署前检查 TAF 应用
+	PreCheckTafDeploy(ctx context.Context, appID, envName string) (*DeployPrecheckResult, error)
 
 	// --- 通用 ---
 	// GrayscaleUpdateInstance 灰度更新 AppModel 实例

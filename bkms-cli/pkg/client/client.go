@@ -1061,23 +1061,34 @@ func (c *SvcBasedClient) DeleteTrpcDeploy(ctx context.Context, appID, envName st
 	return nil
 }
 
-// PreCheckTrpcDeployEnvVars 部署前检查 Trpc 应用环境变量
-func (c *SvcBasedClient) PreCheckTrpcDeployEnvVars(
+// PreCheckTrpcDeploy 部署前检查 Trpc 应用
+func (c *SvcBasedClient) PreCheckTrpcDeploy(
 	ctx context.Context,
 	appID, envName string,
 ) (*DeployPrecheckResult, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/trpc-deploys/env-var-precheck", appID, envName)
+	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/trpc-deploys/precheck", appID, envName)
+	return c.preCheckDeploy(ctx, url, "precheck trpc deploy")
+}
 
+// PreCheckTafDeploy 部署前检查 TAF 应用
+func (c *SvcBasedClient) PreCheckTafDeploy(
+	ctx context.Context,
+	appID, envName string,
+) (*DeployPrecheckResult, error) {
+	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/taf-deploys/precheck", appID, envName)
+	return c.preCheckDeploy(ctx, url, "precheck taf deploy")
+}
+
+func (c *SvcBasedClient) preCheckDeploy(ctx context.Context, url, op string) (*DeployPrecheckResult, error) {
 	var respData DeployPrecheckResult
 	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode() != http.StatusOK {
-		return nil, errors.Errorf("precheck trpc deploy env vars failed: [%d] -> %s", resp.StatusCode(), resp.Body())
+		return nil, errors.Errorf("%s failed: [%d] -> %s", op, resp.StatusCode(), resp.Body())
 	}
-
-	respData.Passed = len(respData.UndefinedVars) == 0
+	respData.Normalize()
 	return &respData, nil
 }
 
@@ -1094,26 +1105,6 @@ func (c *SvcBasedClient) DeleteTafDeploy(ctx context.Context, appID, envName str
 	}
 
 	return nil
-}
-
-// PreCheckTafDeployEnvVars 部署前检查 TAF 应用环境变量
-func (c *SvcBasedClient) PreCheckTafDeployEnvVars(
-	ctx context.Context,
-	appID, envName string,
-) (*DeployPrecheckResult, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/taf-deploys/env-var-precheck", appID, envName)
-
-	var respData DeployPrecheckResult
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode() != http.StatusOK {
-		return nil, errors.Errorf("precheck taf deploy env vars failed: [%d] -> %s", resp.StatusCode(), resp.Body())
-	}
-
-	respData.Passed = len(respData.UndefinedVars) == 0
-	return &respData, nil
 }
 
 // --- AppSpec method implementations ---
