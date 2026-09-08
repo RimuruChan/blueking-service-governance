@@ -34,6 +34,7 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/config"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
 )
@@ -51,7 +52,7 @@ func NewLoginCmd() *cobra.Command {
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if useAccessToken && useBkTicket {
-				return errors.New("cannot use both access-token and bk-ticket at the same time")
+				return clierr.Usage(errors.New("cannot use both access-token and bk-ticket at the same time"))
 			}
 			if useBkTicket {
 				// 交互式登录

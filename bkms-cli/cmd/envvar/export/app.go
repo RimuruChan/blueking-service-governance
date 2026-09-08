@@ -24,6 +24,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 )
 
@@ -62,7 +63,7 @@ Use -f to write it to a file.`,
 		PreRunE: cmdutil.ResolveAppPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if scope == exportScopeEffectiveByEnv && envName == "" {
-				return errors.New("--env is required when --scope is effectiveByEnv")
+				return clierr.Usage(errors.New("--env is required when --scope is effectiveByEnv"))
 			}
 
 			content, err := client.New().ExportAppEnvVars(cmd.Context(), appID, client.ExportAppEnvVarsOptions{

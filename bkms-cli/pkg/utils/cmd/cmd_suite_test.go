@@ -16,33 +16,16 @@
  * to the current version of the project delivered to anyone in the future.
  */
 
-package deploy
+package cmd_test
 
 import (
-	"context"
+	"testing"
 
-	"github.com/pkg/errors"
-
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/constant"
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-// Precheck 根据应用类型路由到对应的部署前检查接口。
-// helm 类型不支持预检，返回错误；trpc/taf 返回检查结果。
-func Precheck(ctx context.Context, appID, envName string) (*client.DeployPrecheckResult, error) {
-	cli := client.New()
-
-	app, err := cli.GetApp(ctx, appID)
-	if err != nil {
-		return nil, errors.Wrap(err, "get app")
-	}
-
-	switch app.Type {
-	case constant.AppTypeTrpc:
-		return cli.PreCheckTrpcDeploy(ctx, appID, envName)
-	case constant.AppTypeTaf:
-		return cli.PreCheckTafDeploy(ctx, appID, envName)
-	default:
-		return nil, errors.Errorf("precheck is not supported for app type '%s' (only trpc/taf)", app.Type)
-	}
+func TestCmd(t *testing.T) {
+	RegisterFailHandler(Fail)
+	RunSpecs(t, "Command Execution Suite")
 }
