@@ -8737,7 +8737,10 @@ definitions:
         minLength: 1
         type: string
       namespace:
-        description: 命名空间（可选，默认为插件定义中的 defaultNamespace）
+        default: bcs-system
+        description: 命名空间（可选，仅支持 bcs-system，省略时使用默认值）
+        enum:
+        - bcs-system
         type: string
       values:
         additionalProperties: {}
@@ -17196,7 +17199,10 @@ paths:
         name: envID
         required: true
         type: string
-      - description: 命名空间
+      - default: bcs-system
+        description: 命名空间，仅支持 bcs-system
+        enum:
+        - bcs-system
         in: query
         name: namespace
         type: string
@@ -17231,7 +17237,10 @@ paths:
         name: addonName
         required: true
         type: string
-      - description: 命名空间
+      - default: bcs-system
+        description: 命名空间，仅支持 bcs-system
+        enum:
+        - bcs-system
         in: query
         name: namespace
         type: string

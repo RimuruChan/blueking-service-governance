@@ -53,7 +53,7 @@ func New(registry *storereg.Registry) *Handler {
 //	@Security	BkUserInfo
 //	@Security	BkUserCredential
 //	@Param		envID		path		string	true	"环境 ID"
-//	@Param		namespace	query		string	false	"命名空间"
+//	@Param		namespace	query		string	false	"命名空间，仅支持 bcs-system" Enums(bcs-system) default(bcs-system)
 //	@Success	200			{object}	serializer.ListClusterAddonsOutput
 //	@Failure	400			{object}	bkerrs.GinErrorOutput
 //	@Router		/envs/{envID}/cluster-addons [get]
@@ -206,7 +206,7 @@ func (h *Handler) UpsertClusterAddon(c *gin.Context) {
 //	@Security	BkUserCredential
 //	@Param		envID		path		string	true	"环境 ID"
 //	@Param		addonName	path		string	true	"插件名称"
-//	@Param		namespace	query		string	false	"命名空间"
+//	@Param		namespace	query		string	false	"命名空间，仅支持 bcs-system" Enums(bcs-system) default(bcs-system)
 //	@Success	200			{object}	serializer.DeleteClusterAddonOutput
 //	@Failure	400			{object}	bkerrs.GinErrorOutput
 //	@Router		/envs/{envID}/cluster-addons/{addonName} [delete]

@@ -47,8 +47,8 @@ type EnvAddonURIInput struct {
 
 // ListClusterAddonsQueryInput is the query input for listing cluster addons.
 type ListClusterAddonsQueryInput struct {
-	// 命名空间（可选，默认为 bcs-system）
-	Namespace string `form:"namespace"`
+	// 命名空间（可选，仅支持 bcs-system，省略时使用默认值）
+	Namespace string `form:"namespace" binding:"omitempty,oneof=bcs-system" enums:"bcs-system" default:"bcs-system"`
 }
 
 // ListClusterAddonsOutput is the JSON response for listing cluster addons.
@@ -139,8 +139,8 @@ func (o *ClusterAddonInfoOutput) FromModel(info clusteraddon.ClusterAddonInfo) *
 
 // UpsertClusterAddonInput is the JSON input for deploying/updating a cluster addon.
 type UpsertClusterAddonInput struct {
-	// 命名空间（可选，默认为插件定义中的 defaultNamespace）
-	Namespace string `json:"namespace"`
+	// 命名空间（可选，仅支持 bcs-system，省略时使用默认值）
+	Namespace string `json:"namespace" binding:"omitempty,oneof=bcs-system" enums:"bcs-system" default:"bcs-system"`
 	// Chart 版本
 	ChartVersion string `json:"chartVersion" binding:"required,min=1"`
 	// Helm values 参数（JSON 格式）
@@ -153,8 +153,8 @@ type UpsertClusterAddonInput struct {
 
 // DeleteClusterAddonQueryInput is the query input for deleting a cluster addon.
 type DeleteClusterAddonQueryInput struct {
-	// 命名空间（可选，默认为插件定义中的 defaultNamespace）
-	Namespace string `form:"namespace"`
+	// 命名空间（可选，仅支持 bcs-system，省略时使用默认值）
+	Namespace string `form:"namespace" binding:"omitempty,oneof=bcs-system" enums:"bcs-system" default:"bcs-system"`
 }
 
 // DeleteClusterAddonOutput is the JSON response for deleting a cluster addon.

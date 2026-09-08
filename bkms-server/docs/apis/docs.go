@@ -12787,8 +12787,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
+                        "enum": [
+                            "bcs-system"
+                        ],
                         "type": "string",
-                        "description": "命名空间",
+                        "default": "bcs-system",
+                        "description": "命名空间，仅支持 bcs-system",
                         "name": "namespace",
                         "in": "query"
                     }
@@ -12900,8 +12904,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
+                        "enum": [
+                            "bcs-system"
+                        ],
                         "type": "string",
-                        "description": "命名空间",
+                        "default": "bcs-system",
+                        "description": "命名空间，仅支持 bcs-system",
                         "name": "namespace",
                         "in": "query"
                     }
@@ -30841,8 +30849,12 @@ const docTemplate = `{
                     "minLength": 1
                 },
                 "namespace": {
-                    "description": "命名空间（可选，默认为插件定义中的 defaultNamespace）",
-                    "type": "string"
+                    "description": "命名空间（可选，仅支持 bcs-system，省略时使用默认值）",
+                    "type": "string",
+                    "default": "bcs-system",
+                    "enum": [
+                        "bcs-system"
+                    ]
                 },
                 "values": {
                     "description": "Helm values 参数（JSON 格式）",
