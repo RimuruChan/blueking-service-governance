@@ -25,7 +25,6 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/config"
 	apphandler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 )
 
 // SkipAuthAnnotationKey 允许在 cmd 注解中设置为 "true" 以跳过认证
@@ -66,9 +65,6 @@ func GetWorkspaceID(flagValue string) string {
 // 通过 cmd.Flags().Set 回写，StringVar 绑定的变量自动更新； 无 app 参数时仅做 workspace 检查。
 func ResolveAppPreRunE(cmd *cobra.Command, _ []string) error {
 	requireWorkspace(cmd)
-	if err := cmd.ValidateRequiredFlags(); err != nil {
-		return clierr.Usage(err)
-	}
 	appFlag := cmd.Flags().Lookup("app")
 	if appFlag == nil || appFlag.Value.String() == "" {
 		return nil

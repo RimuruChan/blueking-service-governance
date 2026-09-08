@@ -24,7 +24,6 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	envhandler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/env"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
 )
@@ -62,7 +61,7 @@ have been removed before deleting.`,
 				return errors.Wrap(confirmErr, "read confirmation")
 			}
 			if !confirmed {
-				return clierr.ErrCancelled
+				return errors.New("deletion cancelled")
 			}
 
 			if err = client.New().DeleteEnv(cmd.Context(), env.ID); err != nil {

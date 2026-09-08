@@ -24,7 +24,6 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/config"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
 )
 
@@ -44,7 +43,7 @@ Example:
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// 使用第一个参数作为 workspaceID
 			if len(args) != 1 {
-				return clierr.Usage(errors.New("should provide workspaceID in args"))
+				return errors.New("should provide workspaceID in args")
 			}
 			workspaceID := args[0]
 

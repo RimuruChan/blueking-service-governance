@@ -29,7 +29,6 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	deployhandler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/deploy"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/output"
@@ -74,7 +73,7 @@ Only supported for trpc and taf application types.`,
 func runDeployPrecheck(cmd *cobra.Command, appID, envName, outputFormat string) error {
 	result, err := deployhandler.Precheck(cmd.Context(), appID, envName)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "precheck deploy")
 	}
 
 	if outputFormat != "" && outputFormat != string(output.FormatTable) {
@@ -84,7 +83,7 @@ func runDeployPrecheck(cmd *cobra.Command, appID, envName, outputFormat string) 
 		}
 		console.Info("%s", formatted)
 		if !result.Passed {
-			return clierr.Reported(errors.New("precheck failed"))
+			return errors.New("precheck failed")
 		}
 		return nil
 	}
@@ -97,7 +96,7 @@ func runDeployPrecheck(cmd *cobra.Command, appID, envName, outputFormat string) 
 	if err := printPrecheckFailure(cmd.Context(), result); err != nil {
 		return errors.Wrap(err, "print precheck findings")
 	}
-	return clierr.Reported(errors.New("precheck failed"))
+	return errors.New("precheck failed")
 }
 
 func printPrecheckFailure(ctx context.Context, result *client.DeployPrecheckResult) error {

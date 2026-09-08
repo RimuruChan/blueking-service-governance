@@ -26,7 +26,6 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/appspec"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 )
 
@@ -56,7 +55,7 @@ When --env is provided, this command edits the resource config for that specific
 		PreRunE: cmdutil.ResolveAppPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if specFile == "" {
-				return clierr.Usage(errors.New("-f is required for edit"))
+				return errors.New("-f is required for edit")
 			}
 
 			if err := appspec.EditHandler(cmd.Context(), appID, envName, specFile, client.AppSpecSectionResources); err != nil {

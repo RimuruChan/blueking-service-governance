@@ -26,7 +26,6 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/appspec"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 )
 
@@ -46,7 +45,7 @@ the default application-level lifecycle hooks. The --env flag is required.`,
 		PreRunE: cmdutil.ResolveAppPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if envName == "" {
-				return clierr.Usage(errors.New("reset requires --env to be specified"))
+				return errors.New("reset requires --env to be specified")
 			}
 
 			if err := appspec.ResetHandler(cmd.Context(), appID, envName, client.AppSpecSectionLifecycle); err != nil {

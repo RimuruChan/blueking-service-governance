@@ -26,7 +26,6 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	instancehandler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/instance"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/params"
@@ -85,7 +84,7 @@ func runInstanceDelete(cmd *cobra.Command, appID, envName, instanceIDsStr string
 		return errors.Wrap(confirmErr, "read confirmation")
 	}
 	if !confirmed {
-		return clierr.ErrCancelled
+		return errors.New("deletion cancelled")
 	}
 
 	if err = instancehandler.DeleteInstances(cmd.Context(), cli, appID, envName, instanceIDs); err != nil {

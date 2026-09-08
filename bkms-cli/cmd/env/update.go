@@ -24,7 +24,6 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	envhandler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/env"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 )
 
@@ -49,7 +48,7 @@ Valid types: development | test | staging | production`,
 			workspaceID = cmdutil.GetWorkspaceID(workspaceID)
 
 			if displayName == "" && envType == "" {
-				return clierr.Usage(errors.New("at least one of --display-name or --type must be specified"))
+				return errors.New("at least one of --display-name or --type must be specified")
 			}
 
 			body := client.UpdateEnvBasicInfoBody{

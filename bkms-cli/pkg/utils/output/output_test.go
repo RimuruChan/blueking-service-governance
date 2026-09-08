@@ -20,13 +20,11 @@ package output_test
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/output"
 )
 
@@ -176,8 +174,6 @@ var _ = Describe("Output Package", func() {
 				_, err := output.FormatData(context.Background(), user, "invalid")
 
 				Expect(err).To(MatchError("unsupported output format: invalid"))
-				var usageErr *clierr.UsageError
-				Expect(errors.As(err, &usageErr)).To(BeTrue())
 			})
 		})
 
@@ -221,8 +217,6 @@ var _ = Describe("Output Package", func() {
 				_, err := output.FormatData(context.Background(), user, "jq=.name &")
 
 				Expect(err).To(MatchError(ContainSubstring("parse jq expression")))
-				var usageErr *clierr.UsageError
-				Expect(errors.As(err, &usageErr)).To(BeTrue())
 			})
 
 			It("should return an error when expression is empty", func() {
@@ -231,8 +225,6 @@ var _ = Describe("Output Package", func() {
 				_, err := output.FormatData(context.Background(), user, "jq=")
 
 				Expect(err).To(MatchError("jq expression cannot be empty"))
-				var usageErr *clierr.UsageError
-				Expect(errors.As(err, &usageErr)).To(BeTrue())
 			})
 		})
 

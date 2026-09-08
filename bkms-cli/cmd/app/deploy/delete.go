@@ -25,7 +25,6 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/constant"
 	deployhandler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/deploy"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
 )
@@ -58,9 +57,7 @@ For trpc and taf applications, the entire environment deployment is removed.`,
 			}
 
 			if app.Type == constant.AppTypeHelm && deployID == "" {
-				return clierr.Usage(
-					errors.New("--deploy-id is required for helm applications (see 'app deploy list')"),
-				)
+				return errors.New("--deploy-id is required for helm applications (see 'app deploy list')")
 			}
 
 			printDeployDeleteConfirmInfo(app, envName, deployID)
@@ -70,7 +67,7 @@ For trpc and taf applications, the entire environment deployment is removed.`,
 				return errors.Wrap(confirmErr, "read confirmation")
 			}
 			if !confirmed {
-				return clierr.ErrCancelled
+				return errors.New("deletion cancelled")
 			}
 
 			return deployhandler.DeleteDeploy(cmd.Context(), app.Type, appID, envName, deployID)

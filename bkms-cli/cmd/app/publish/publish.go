@@ -25,7 +25,6 @@ import (
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/publish"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/params"
 )
@@ -57,10 +56,10 @@ bkms-cli app publish --app myapp --env stage -f /path/to/binary --all`,
 			specifiedInstanceIDs := params.NormalizeInstIDs(instances, ",")
 
 			if publishAll && len(specifiedInstanceIDs) > 0 {
-				return clierr.Usage(errors.New("--all and --instance-ids cannot be used together"))
+				return errors.New("--all and --instance-ids cannot be used together")
 			}
 			if !publishAll && len(specifiedInstanceIDs) == 0 {
-				return clierr.Usage(errors.New("instance-ids is required unless --all is specified"))
+				return errors.New("instance-ids is required unless --all is specified")
 			}
 
 			// 发布二进制到线上实例

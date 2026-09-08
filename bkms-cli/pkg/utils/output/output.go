@@ -29,8 +29,6 @@ import (
 	"github.com/itchyny/gojq"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
-
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 )
 
 // Format 定义支持的数据序列化输出格式
@@ -78,7 +76,7 @@ type formatter interface {
 func FormatData(ctx context.Context, data any, format string) (string, error) {
 	parsed, err := parseFormat(format)
 	if err != nil {
-		return "", clierr.Usage(err)
+		return "", err
 	}
 
 	selectedFormatter, err := resolveFormatter(data, parsed)
@@ -190,7 +188,7 @@ type jqFormatter struct {
 
 func (f jqFormatter) Format(ctx context.Context, data any) (string, error) {
 	if strings.TrimSpace(f.expr) == "" {
-		return "", clierr.Usage(errors.New("jq expression cannot be empty"))
+		return "", errors.Errorf("jq expression cannot be empty")
 	}
 	input, err := f.toInput(data)
 	if err != nil {
@@ -199,7 +197,7 @@ func (f jqFormatter) Format(ctx context.Context, data any) (string, error) {
 
 	query, err := gojq.Parse(f.expr)
 	if err != nil {
-		return "", clierr.Usage(errors.Wrap(err, "parse jq expression"))
+		return "", errors.Wrap(err, "parse jq expression")
 	}
 
 	iter := query.RunWithContext(ctx, input)

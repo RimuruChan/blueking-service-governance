@@ -39,9 +39,11 @@ func Precheck(ctx context.Context, appID, envName string) (*client.DeployPrechec
 
 	switch app.Type {
 	case constant.AppTypeTrpc:
-		return cli.PreCheckTrpcDeploy(ctx, appID, envName)
+		result, err := cli.PreCheckTrpcDeploy(ctx, appID, envName)
+		return result, errors.Wrap(err, "precheck trpc deploy")
 	case constant.AppTypeTaf:
-		return cli.PreCheckTafDeploy(ctx, appID, envName)
+		result, err := cli.PreCheckTafDeploy(ctx, appID, envName)
+		return result, errors.Wrap(err, "precheck taf deploy")
 	default:
 		return nil, errors.Errorf("precheck is not supported for app type '%s' (only trpc/taf)", app.Type)
 	}
