@@ -65,9 +65,6 @@ func (c *DeployPreChecker) Check(
 	app *bkmsapp.Application,
 	env *envmodel.Environment,
 ) (*DeployPreCheckResult, error) {
-	if app == nil || env == nil {
-		return nil, errors.New("app and environment are required")
-	}
 	appModel, err := c.appModelStore.GetAppModel(ctx, app.ID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "get app %s model", app.ID)

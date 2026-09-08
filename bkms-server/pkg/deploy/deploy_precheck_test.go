@@ -149,16 +149,6 @@ var _ = Describe("DeployPreChecker Check", func() {
 		fxApp.RequireStop()
 	})
 
-	DescribeTable("rejects nil inputs",
-		func(app *bkmsapp.Application, appEnv *envmodel.Environment) {
-			_, err := checker.Check(ctx, app, appEnv)
-
-			Expect(err).To(MatchError("app and environment are required"))
-		},
-		Entry("when the app is nil", nil, &envmodel.Environment{}),
-		Entry("when the environment is nil", &bkmsapp.Application{}, nil),
-	)
-
 	It("returns an error when the app model does not exist", func() {
 		app := dbfactory.Application(ctx, appStore)
 		appEnv := dbfactory.Env(ctx, envService, app.WorkspaceID)

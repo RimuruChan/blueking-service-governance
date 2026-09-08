@@ -50,6 +50,8 @@ func Execute(ctx context.Context, root *cobra.Command, args []string) int {
 
 	command.PrintErrln("Error:", err)
 	var usage *clierr.UsageError
+	// 补充识别未包装为 UsageError 的 Cobra 原生用法错误，决定是否显示 usage。
+	// 这里只查找命令并校验当前 flag 状态，不会重新执行命令或业务请求。
 	_, _, findErr := root.Find(args)
 	if errors.As(err, &usage) || findErr != nil ||
 		command.ValidateRequiredFlags() != nil || command.ValidateFlagGroups() != nil {
