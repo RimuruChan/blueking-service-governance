@@ -109,7 +109,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, onMounted, ref, shallowRef, watch } from 'vue';
+  import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue';
 
   import { useIntervalFn } from '@vueuse/core';
   import { Exception, ResizeLayout } from 'bkui-vue';
@@ -174,22 +174,67 @@
   const selectedNodeIds = ref<string[]>([]);
   const focusedNodeId = ref('');
 
-  // 获取资源拓扑数据
-  async function handleGetResourceTopology() {
-    if (!appDetail.appID || !props.envName) return;
+  /** 递增的请求序号，只有最新一次请求的结果允许写入 resourceData */
+  let latestRequestId = 0;
+  /** 进行中的请求控制器，用于环境/应用切换时取消旧请求 */
+  let pendingController: AbortController | null = null;
 
-    resourceData.value = await ApiServerService.GetResourceTopology({
-      appID: appDetail.appID,
-      envName: props.envName,
-      trafficLaneName: '',
-    });
-    // 使用 mock 数据（开发调试用）
-    // resourceData.value = generateMockTopologyData(5000, {
-    //   appID: appDetail.appID,
-    //   envName: props.envName,
-    //   namespace: props.envName,
-    // }) as TopologyData;
-    hasLoaded.value = true;
+  /** 取消进行中的请求（同步清空句柄，保证可以立即发起新请求） */
+  function abortPendingRequest() {
+    pendingController?.abort();
+    pendingController = null;
+  }
+
+  /**
+   * 获取资源拓扑数据
+   * @param refresh 是否强制重新请求（环境/应用切换时取消进行中的旧请求）
+   */
+  async function handleGetResourceTopology(refresh = false) {
+    const appID = appDetail.appID;
+    const envName = props.envName;
+    if (!appID || !envName) return;
+
+    if (pendingController) {
+      // 轮询：上一次请求仍未结束时跳过本次，避免请求叠加
+      if (!refresh) return;
+      // 环境/应用切换：取消旧请求，避免旧环境的响应回填到新环境
+      abortPendingRequest();
+    }
+
+    const requestId = ++latestRequestId;
+    const controller = new AbortController();
+    pendingController = controller;
+    /** 判断本次请求是否已过期：已有更新的请求，或应用/环境已切换 */
+    const isStale = () => requestId !== latestRequestId || appID !== appDetail.appID || envName !== props.envName;
+
+    try {
+      const data = await ApiServerService.GetResourceTopology(
+        {
+          appID,
+          envName,
+          trafficLaneName: '',
+        },
+        { signal: controller.signal },
+      );
+      // 使用 mock 数据（开发调试用）
+      // resourceData.value = generateMockTopologyData(5000, {
+      //   appID: appDetail.appID,
+      //   envName: props.envName,
+      //   namespace: props.envName,
+      // }) as TopologyData;
+      // 响应已过期时丢弃，避免旧响应覆盖当前环境的拓扑数据
+      if (isStale()) return;
+      resourceData.value = data as TopologyData;
+      hasLoaded.value = true;
+    } catch (error) {
+      // 主动取消或已过期的请求静默处理，最终状态由最新一次请求决定
+      const isAborted = error instanceof DOMException && error.name === 'AbortError';
+      if (isAborted || isStale()) return;
+      throw error;
+    } finally {
+      // 仅清理自身句柄，避免误清新请求的状态
+      if (pendingController === controller) pendingController = null;
+    }
   }
 
   function handleLocateNode(nodeId: string) {
@@ -233,9 +278,14 @@
   }
 
   watch([() => props.envName, () => appDetail.appID], async () => {
+    // 切换环境/应用时取消进行中的请求（含轮询），再重新拉取，避免旧响应用新环境的状态
+    abortPendingRequest();
     reset();
-    await handleGetResourceTopology();
+    await handleGetResourceTopology(true);
   });
+
+  // 组件卸载后不再需要响应，取消进行中的请求
+  onBeforeUnmount(abortPendingRequest);
 
   onMounted(async () => {
     await handleGetResourceTopology();

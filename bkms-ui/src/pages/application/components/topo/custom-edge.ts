@@ -358,6 +358,9 @@ class ShowAuxiliaryEdgesOnHover extends BaseBehavior<ShowAuxiliaryEdgesOptions> 
   private onNodeClick = (event: IElementEvent) => {
     const nodeId = (event.target as unknown as { id?: string })?.id;
     if (!nodeId) return;
+    // 点击根节点时，提前return，避免选中根节点，导致hover其他节点时，辅助边没有显示
+    const { graph } = this.context;
+    if (graph?.getNodeData(nodeId)?.data?.kind === 'App') return;
     this.addAuxiliaryEdges(nodeId);
     // 上面方法是异步的，这里调用添加边逻辑后再更新选中节点ID
     selectedNodeId = selectedNodeId === nodeId ? null : nodeId;
