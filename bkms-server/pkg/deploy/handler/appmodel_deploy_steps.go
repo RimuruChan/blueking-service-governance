@@ -27,11 +27,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/hibiken/asynq"
+	"github.com/samber/lo"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/autodeploy"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
 	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
 	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	deploypkg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy"
 	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
@@ -117,7 +119,7 @@ func (h *Handler) preCheckDeploy(c *gin.Context, expectedAppType string) {
 	checker := h.newDeployPreChecker()
 	result, err := checker.Check(ctx, app, environment)
 	if err != nil {
-		abortWithAppModelDeployError(c, err, environment.Cluster.ClusterID, "pre-check deployment")
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "pre-check deployment"))
 		return
 	}
 	ginutils.OK(c, new(serializer.DeployPreCheckOutput).FromModel(result))
@@ -173,8 +175,19 @@ func (h *Handler) createAppModelDeploy(c *gin.Context) {
 		Replicas:        input.Replicas,
 	})
 	if err != nil {
+		var checkErr *clusteraddon.RequiredAddonsNotInstalledError
+		if errors.As(err, &checkErr) {
+			components := lo.Map(checkErr.Missing, func(addon clusteraddon.AddonReference, _ int) string {
+				return addon.Name
+			})
+			bkerrs.AbortWithErr(c, bkerrs.WrapComponentsNotInstalled(err, components, environment.Cluster.ClusterID))
+			return
+		}
 		deployInfo := genDeployInfo(app.WorkspaceID, app.ID, uriInput.EnvName, input.TrafficLaneName)
-		abortWithAppModelDeployError(c, err, environment.Cluster.ClusterID, "deploy app model app: "+deployInfo)
+		bkerrs.AbortWithErr(
+			c,
+			bkerrs.Wrapf(err, bkerrs.ErrCodeInternalServerError, "deploy app model app: %s", deployInfo),
+		)
 		return
 	}
 	// 轮询部署状态 & 更新部署记录

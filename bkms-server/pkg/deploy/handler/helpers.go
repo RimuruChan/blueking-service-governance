@@ -24,33 +24,15 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
-	"github.com/pkg/errors"
-	"github.com/samber/lo"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
 	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/perm"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
 	ginperm "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
 )
-
-// abortWithAppModelDeployError 处理 AppModel 部署及预检错误，并终止当前请求。
-func abortWithAppModelDeployError(c *gin.Context, err error, clusterID, operation string) {
-	var checkErr *clusteraddon.RequiredAddonsNotInstalledError
-	var apiErr error
-	if errors.As(err, &checkErr) {
-		components := lo.Map(checkErr.Missing, func(addon clusteraddon.AddonReference, _ int) string {
-			return addon.Name
-		})
-		apiErr = bkerrs.WrapComponentsNotInstalled(err, components, clusterID)
-	} else {
-		apiErr = bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, operation)
-	}
-	bkerrs.AbortWithErr(c, apiErr)
-}
 
 // validateHelmDeployAppEnv 校验 appID、envName 和应用权限，并返回部署环境信息
 func (h *Handler) validateHelmDeployAppEnv(
