@@ -6,29 +6,33 @@
 
 ## precheck
 
-部署前检查：验证应用在指定环境下的所有环境变量（在配置文件和启动命令中引用的）是否已定义。仅支持 trpc 和 taf 应用。
+部署前检查：验证指定环境下应用配置文件、组件属性及 Polaris 服务标签中引用的环境变量是否已定义，以及所需集群组件是否已安装。仅支持 trpc 和 taf 应用。
 
-命令退出码：0 = 全部变量已定义（可安全部署），1 = 存在未定义变量。
+命令退出码：0 = 两项检查通过；1 = 检查未通过或执行失败。
 
 ```bash
-# 检查 prod 环境的环境变量是否齐全
+# 检查 prod 环境部署前置条件
 bkms-cli app deploy precheck --app myapp --env prod
 
 # 以 JSON 格式输出（便于脚本处理）
 bkms-cli app deploy precheck --app myapp --env prod -o json
 
 # 检查通过示例输出：
-# ✓ Pre-check passed: all environment variables are defined for app myapp in env prod
+# ✓ Pre-check passed for app myapp in env prod
 
 # 检查失败示例输出（表格）：
-# ✗ Pre-check FAILED: 2 undefined environment variable(s) found
+# ✗ Pre-check FAILED: 2 undefined environment variable(s), 1 missing required cluster addon(s) found
 #
 #   KEY                            REFERENCED BY
-#   ------------------------------  ----------------------------------------
-#   UPSTREAM_HOST                  configFile:trpc_go.yaml
-#   APP_CONFIG                     configFile:trpc_go.yaml, startCommand
+#   APP_CONFIG                     appConfigFile:prod, component:app-config
+#   UPSTREAM_HOST                  appConfigFile:prod
 #
 # Fix: use 'bkms-cli envvar create' to define missing variables, then re-run precheck.
+#
+#   MISSING CLUSTER ADDONS
+#   Gamedeploy
+#
+# Fix: install the missing cluster addons from the environment page, then re-run precheck.
 ```
 
 ### 参数说明

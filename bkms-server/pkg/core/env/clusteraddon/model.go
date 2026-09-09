@@ -21,10 +21,15 @@ package clusteraddon
 
 import (
 	"cmp"
+	"fmt"
+	"strings"
 	"time"
 
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	helmrelease "helm.sh/helm/v3/pkg/release"
+
+	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 )
 
 // ClusterAddonDef 集群 Addon 定义
@@ -45,6 +50,8 @@ type ClusterAddonDef struct {
 	RequiredForAppTypes []string `bson:"requiredForAppTypes" yaml:"requiredForAppTypes"`
 	// OptionalForAppTypes 可选安装该 Addon 的应用类型列表
 	OptionalForAppTypes []string `bson:"optionalForAppTypes" yaml:"optionalForAppTypes"`
+	// UnsupportedOnFederation 为 true 时，该 Addon 不适用于联邦环境
+	UnsupportedOnFederation bool `bson:"unsupportedOnFederation" yaml:"unsupportedOnFederation"`
 	// Creator 创建人
 	Creator string `bson:"creator" yaml:"-"`
 	// CreatedAt 创建时间
@@ -55,6 +62,12 @@ type ClusterAddonDef struct {
 
 // DefaultNamespaceValue 默认命名空间
 const DefaultNamespaceValue = "bcs-system"
+
+// IsApplicableToEnv 判断组件是否适用于目标环境，供列表、预检和安装共用。
+func (d *ClusterAddonDef) IsApplicableToEnv(env *envmodel.Environment) bool {
+	unsupported := d.UnsupportedOnFederation && env.Cluster.IsFederation
+	return !unsupported
+}
 
 // GetNamespace 获取命名空间，如果为空则返回默认值
 func (d *ClusterAddonDef) GetNamespace(ns string) string {
@@ -130,4 +143,20 @@ func NewAddonInfoFromDef(def *ClusterAddonDef, namespace string) *ClusterAddonIn
 			Namespace: namespace,
 		},
 	}
+}
+
+// AddonReference 保留组件标识和展示名，展示文本由调用方生成。
+type AddonReference struct {
+	Name        string
+	DisplayName string
+}
+
+// RequiredAddonsNotInstalledError 表示必选集群组件尚未安装。
+type RequiredAddonsNotInstalledError struct {
+	Missing []AddonReference
+}
+
+func (e *RequiredAddonsNotInstalledError) Error() string {
+	names := lo.Map(e.Missing, func(addon AddonReference, _ int) string { return addon.Name })
+	return fmt.Sprintf("required cluster addons not installed: %s", strings.Join(names, ", "))
 }

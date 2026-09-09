@@ -24,46 +24,47 @@ import (
 	"github.com/pkg/errors"
 
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
 	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/envvarrefs"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/workload"
 )
 
-const envVarPreCheckImage = "precheck.invalid/bkms:latest"
+const deployPreCheckImage = "precheck.invalid/bkms:latest"
 
-// EnvVarPreCheckResult contains all referenced but undefined env vars.
-type EnvVarPreCheckResult struct {
-	UndefinedVars []envvarrefs.UndefinedEnvVar
+// DeployPreCheckResult contains deployment pre-check findings.
+type DeployPreCheckResult struct {
+	UndefinedVars                []envvarrefs.UndefinedEnvVar
+	MissingRequiredClusterAddons []clusteraddon.AddonReference
 }
 
-// EnvVarPreChecker checks env var references against variables available to an app deployment.
-type EnvVarPreChecker struct {
-	appModelStore  appmodel.AppModelStore
-	builderService *workload.BuilderService
+// DeployPreChecker collects deployment pre-check findings for an app and environment.
+type DeployPreChecker struct {
+	appModelStore        appmodel.AppModelStore
+	builderService       *workload.BuilderService
+	clusterAddonDefStore clusteraddon.ClusterAddonDefStore
 }
 
-// NewEnvVarPreChecker creates an EnvVarPreChecker.
-func NewEnvVarPreChecker(
+// NewDeployPreChecker creates a DeployPreChecker.
+func NewDeployPreChecker(
 	appModelStore appmodel.AppModelStore,
 	builderService *workload.BuilderService,
-) *EnvVarPreChecker {
-	return &EnvVarPreChecker{
-		appModelStore:  appModelStore,
-		builderService: builderService,
+	clusterAddonDefStore clusteraddon.ClusterAddonDefStore,
+) *DeployPreChecker {
+	return &DeployPreChecker{
+		appModelStore:        appModelStore,
+		builderService:       builderService,
+		clusterAddonDefStore: clusterAddonDefStore,
 	}
 }
 
-// Check checks the effective application configuration for undefined env var references.
-// It performs a complete in-memory workload build and returns its undefined-variable report.
-func (c *EnvVarPreChecker) Check(
+// Check reports undefined env vars and missing required cluster addons.
+func (c *DeployPreChecker) Check(
 	ctx context.Context,
 	app *bkmsapp.Application,
 	env *envmodel.Environment,
-) (*EnvVarPreCheckResult, error) {
-	if app == nil || env == nil {
-		return nil, errors.New("app and environment are required")
-	}
+) (*DeployPreCheckResult, error) {
 	appModel, err := c.appModelStore.GetAppModel(ctx, app.ID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "get app %s model", app.ID)
@@ -71,10 +72,23 @@ func (c *EnvVarPreChecker) Check(
 	// Persisted models do not contain the deployment image. Use a copy with a placeholder
 	// so the full build can run without persisting it.
 	modelForBuild := *appModel
-	modelForBuild.Workload.Image = envVarPreCheckImage
+	modelForBuild.Workload.Image = deployPreCheckImage
 	buildResult, err := workload.NewBuilder(c.builderService, app, &modelForBuild).Build(ctx, env)
 	if err != nil {
-		return nil, errors.Wrap(err, "building workload for deployment env var pre-check")
+		return nil, errors.Wrap(err, "building workload for deployment pre-check")
 	}
-	return &EnvVarPreCheckResult{UndefinedVars: buildResult.UndefinedEnvVars}, nil
+	defs, err := c.clusterAddonDefStore.List(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "list cluster addon defs")
+	}
+	missing, err := clusteraddon.InspectRequiredAddons(
+		ctx, defs, app.Type, env, "",
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "pre-check required addons for app %s", app.ID)
+	}
+	return &DeployPreCheckResult{
+		UndefinedVars:                buildResult.UndefinedEnvVars,
+		MissingRequiredClusterAddons: missing,
+	}, nil
 }

@@ -1,0 +1,17 @@
+name: bcs-gamedeployment-operator
+displayName: GameDeployment-Operator
+description: GameDeployment-Operator 支持优雅删除/更新，原地更新及智能化地分步骤灰度发布功能
+chartInfo:
+  chartName: bcs-gamedeployment-operator
+  releaseName: bcs-gamedeployment-operator
+  defaultNamespace: bcs-system
+  exampleValues: |
+    command:
+      - ./bcs-gamedeployment-operator
+      - --concurrent-gamedeployment-syncs=5
+    DeleteProtectEnable: true
+requiredForAppTypes:
+  - trpc
+  - taf
+optionalForAppTypes: []
+unsupportedOnFederation: true

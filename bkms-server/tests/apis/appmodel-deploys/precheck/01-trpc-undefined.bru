@@ -1,0 +1,31 @@
+meta {
+  name: 01-trpc-undefined
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{serviceURL}}/apps/{{envVarPrecheckTrpcAppID}}/envs/{{envVarPrecheckEnvName}}/trpc-deploys/precheck
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body: isJson
+}
+
+tests {
+  test("should return the tRPC undefined variable response", () => {
+    expect(res.body.undefinedVars).to.deep.equal([{
+      key: bru.getVar("envVarPrecheckTrpcUndefinedKey"),
+      sources: [{type: "appConfigFile", name: "default"}]
+    }]);
+    expect(res.body.missingRequiredClusterAddons).to.be.an("array");
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 10000
+}

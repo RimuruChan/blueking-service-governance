@@ -18,22 +18,25 @@
 
 package bkerrs
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
 
-// WrapComponentNotInstalled 包装为"集群未安装所需组件"错误。
-// 适用于任意依赖集群侧组件/CRD 的场景（如 GPA 自动扩缩容、APM 等），
-// 前端可通过 detail code ErrDetailCodeComponentNotInstalled 识别该大类错误，
-// 并通过 detail 的 module 字段区分具体是哪个组件（如 "gpa"）。
-func WrapComponentNotInstalled(err error, component, clusterID string) error {
+	"github.com/samber/lo"
+)
+
+// WrapComponentsNotInstalled 包装多个组件缺失的错误，每个组件生成独立的详情。
+func WrapComponentsNotInstalled(err error, components []string, clusterID string) error {
 	wrappedErr := Wrapf(err, ErrCodeNotFound,
-		"component %s not installed in cluster: %s", component, clusterID)
-	return wrappedErr.SetDetails(
-		NewDetail(
+		"component %s not installed in cluster: %s", strings.Join(components, ", "), clusterID)
+	details := lo.Map(components, func(component string, _ int) Detail {
+		return NewDetail(
 			ErrDetailCodeComponentNotInstalled,
 			fmt.Sprintf("component %s is not installed in cluster %s, "+
 				"please install it before using this feature", component, clusterID),
 			WithSystem("bkms"),
 			WithModule(component),
-		),
-	)
+		)
+	})
+	return wrappedErr.SetDetails(details...)
 }

@@ -1,0 +1,31 @@
+meta {
+  name: 02-taf-undefined
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{serviceURL}}/apps/{{envVarPrecheckTafAppID}}/envs/{{envVarPrecheckEnvName}}/taf-deploys/precheck
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body: isJson
+}
+
+tests {
+  test("should return the TAF undefined variable response", () => {
+    expect(res.body.undefinedVars).to.deep.equal([{
+      key: bru.getVar("envVarPrecheckTafUndefinedKey"),
+      sources: [{type: "appConfigFile", name: "default"}]
+    }]);
+    expect(res.body.missingRequiredClusterAddons).to.be.an("array");
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 10000
+}

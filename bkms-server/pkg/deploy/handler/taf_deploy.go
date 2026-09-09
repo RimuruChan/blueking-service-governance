@@ -50,22 +50,22 @@ func (h *Handler) ListTafDeployRecords(c *gin.Context) {
 	h.listAppModelDeployRecords(c)
 }
 
-// PreCheckTafDeployEnvVars checks undefined env vars before a TAF deployment.
+// PreCheckTafDeploy checks a TAF deployment before create.
 //
-//	@ID			PreCheckTafDeployEnvVars
-//	@Summary	TAF 部署前环境变量校验
+//	@ID			PreCheckTafDeploy
+//	@Summary	TAF 部署前检查
 //	@Tags		deploy
 //	@Produce	json
 //	@Security	BkUserInfo
 //	@Security	BkUserCredential
 //	@Param		appID	path		string	true	"应用 ID"
 //	@Param		envName	path		string	true	"部署环境名称"
-//	@Success	200		{object}	serializer.EnvVarPreCheckOutput
+//	@Success	200		{object}	serializer.DeployPreCheckOutput
 //	@Failure	400		{object}	bkerrs.GinErrorOutput
 //	@Failure	404		{object}	bkerrs.GinErrorOutput
-//	@Router		/apps/{appID}/envs/{envName}/taf-deploys/env-var-precheck [get]
-func (h *Handler) PreCheckTafDeployEnvVars(c *gin.Context) {
-	h.preCheckDeployEnvVars(c, bkmsapp.AppTypeTAF)
+//	@Router		/apps/{appID}/envs/{envName}/taf-deploys/precheck [get]
+func (h *Handler) PreCheckTafDeploy(c *gin.Context) {
+	h.preCheckDeploy(c, bkmsapp.AppTypeTAF)
 }
 
 // CreateTafDeploy 创建 TAF 应用部署

@@ -53,7 +53,7 @@ func New(registry *storereg.Registry) *Handler {
 //	@Security	BkUserInfo
 //	@Security	BkUserCredential
 //	@Param		envID		path		string	true	"环境 ID"
-//	@Param		namespace	query		string	false	"命名空间"
+//	@Param		namespace	query		string	false	"命名空间，默认为插件定义中的 defaultNamespace"
 //	@Success	200			{object}	serializer.ListClusterAddonsOutput
 //	@Failure	400			{object}	bkerrs.GinErrorOutput
 //	@Router		/envs/{envID}/cluster-addons [get]
@@ -92,7 +92,13 @@ func (h *Handler) ListClusterAddons(c *gin.Context) {
 		return
 	}
 
-	addons := clusteraddon.BuildAddonInfoList(ctx, addonDefs, queryInput.Namespace, clusterID, repoIndex)
+	addons := clusteraddon.BuildAddonInfoList(
+		ctx,
+		addonDefs,
+		env,
+		queryInput.Namespace,
+		repoIndex,
+	)
 
 	ginutils.OK(c, &serializer.ListClusterAddonsOutput{
 		Addons: lo.Map(addons, func(addon *clusteraddon.ClusterAddonInfo, _ int) *serializer.ClusterAddonInfoOutput {
@@ -163,8 +169,12 @@ func (h *Handler) UpsertClusterAddon(c *gin.Context) {
 	defer installLock.Release(ctx)
 
 	if err = clusteraddon.InstallOrUpgradeClusterAddon(
-		ctx, addonDef, clusterID, namespace, jsonInput.ChartVersion, jsonInput.Values,
+		ctx, addonDef, env, namespace, jsonInput.ChartVersion, jsonInput.Values,
 	); err != nil {
+		if errors.Is(err, clusteraddon.ErrAddonNotApplicable) {
+			bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidRequest, "deploy cluster addon"))
+			return
+		}
 		bkerrs.AbortWithErr(c, bkerrs.Wrapf(err, bkerrs.ErrCodeInternalServerError,
 			"deploy cluster addon %s", uriInput.AddonName))
 		return
@@ -196,7 +206,7 @@ func (h *Handler) UpsertClusterAddon(c *gin.Context) {
 //	@Security	BkUserCredential
 //	@Param		envID		path		string	true	"环境 ID"
 //	@Param		addonName	path		string	true	"插件名称"
-//	@Param		namespace	query		string	false	"命名空间"
+//	@Param		namespace	query		string	false	"命名空间，默认为插件定义中的 defaultNamespace"
 //	@Success	200			{object}	serializer.DeleteClusterAddonOutput
 //	@Failure	400			{object}	bkerrs.GinErrorOutput
 //	@Router		/envs/{envID}/cluster-addons/{addonName} [delete]

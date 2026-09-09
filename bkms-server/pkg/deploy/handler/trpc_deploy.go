@@ -49,22 +49,22 @@ func (h *Handler) ListTrpcDeployRecords(c *gin.Context) {
 	h.listAppModelDeployRecords(c)
 }
 
-// PreCheckTrpcDeployEnvVars checks undefined env vars before a Trpc deployment.
+// PreCheckTrpcDeploy checks a Trpc deployment before create.
 //
-//	@ID			PreCheckTrpcDeployEnvVars
-//	@Summary	Trpc 部署前环境变量校验
+//	@ID			PreCheckTrpcDeploy
+//	@Summary	Trpc 部署前检查
 //	@Tags		deploy
 //	@Produce	json
 //	@Security	BkUserInfo
 //	@Security	BkUserCredential
 //	@Param		appID	path		string	true	"应用 ID"
 //	@Param		envName	path		string	true	"部署环境名称"
-//	@Success	200		{object}	serializer.EnvVarPreCheckOutput
+//	@Success	200		{object}	serializer.DeployPreCheckOutput
 //	@Failure	400		{object}	bkerrs.GinErrorOutput
 //	@Failure	404		{object}	bkerrs.GinErrorOutput
-//	@Router		/apps/{appID}/envs/{envName}/trpc-deploys/env-var-precheck [get]
-func (h *Handler) PreCheckTrpcDeployEnvVars(c *gin.Context) {
-	h.preCheckDeployEnvVars(c, bkmsapp.AppTypeTRPC)
+//	@Router		/apps/{appID}/envs/{envName}/trpc-deploys/precheck [get]
+func (h *Handler) PreCheckTrpcDeploy(c *gin.Context) {
+	h.preCheckDeploy(c, bkmsapp.AppTypeTRPC)
 }
 
 // CreateTrpcDeploy 创建 Trpc 应用部署

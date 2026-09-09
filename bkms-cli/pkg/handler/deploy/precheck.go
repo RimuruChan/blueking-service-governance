@@ -27,9 +27,9 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/constant"
 )
 
-// PrecheckEnvVars 根据应用类型路由到对应的部署前环境变量检查接口。
+// Precheck 根据应用类型路由到对应的部署前检查接口。
 // helm 类型不支持预检，返回错误；trpc/taf 返回检查结果。
-func PrecheckEnvVars(ctx context.Context, appID, envName string) (*client.DeployPrecheckResult, error) {
+func Precheck(ctx context.Context, appID, envName string) (*client.DeployPrecheckResult, error) {
 	cli := client.New()
 
 	app, err := cli.GetApp(ctx, appID)
@@ -39,11 +39,11 @@ func PrecheckEnvVars(ctx context.Context, appID, envName string) (*client.Deploy
 
 	switch app.Type {
 	case constant.AppTypeTrpc:
-		result, pErr := cli.PreCheckTrpcDeployEnvVars(ctx, appID, envName)
-		return result, errors.Wrap(pErr, "precheck trpc deploy env vars")
+		result, err := cli.PreCheckTrpcDeploy(ctx, appID, envName)
+		return result, errors.Wrap(err, "precheck trpc deploy")
 	case constant.AppTypeTaf:
-		result, pErr := cli.PreCheckTafDeployEnvVars(ctx, appID, envName)
-		return result, errors.Wrap(pErr, "precheck taf deploy env vars")
+		result, err := cli.PreCheckTafDeploy(ctx, appID, envName)
+		return result, errors.Wrap(err, "precheck taf deploy")
 	default:
 		return nil, errors.Errorf("precheck is not supported for app type '%s' (only trpc/taf)", app.Type)
 	}

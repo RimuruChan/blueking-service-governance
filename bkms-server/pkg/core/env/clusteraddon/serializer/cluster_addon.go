@@ -47,7 +47,7 @@ type EnvAddonURIInput struct {
 
 // ListClusterAddonsQueryInput is the query input for listing cluster addons.
 type ListClusterAddonsQueryInput struct {
-	// 命名空间（可选，默认为 bcs-system）
+	// 命名空间（可选，默认为插件定义中的 defaultNamespace）
 	Namespace string `form:"namespace"`
 }
 

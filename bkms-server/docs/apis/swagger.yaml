@@ -2546,6 +2546,13 @@ definitions:
           type: string
         type: array
     type: object
+  serializer.ClusterAddonReferenceOutput:
+    properties:
+      displayName:
+        type: string
+      name:
+        type: string
+    type: object
   serializer.ClusterInfoOutput:
     properties:
       businessID:
@@ -3732,6 +3739,18 @@ definitions:
         description: Memory requests，可选：未配置时不返回该字段
         type: string
     type: object
+  serializer.DeployPreCheckOutput:
+    properties:
+      missingRequiredClusterAddons:
+        description: 缺失的必选集群组件标识及展示名
+        items:
+          $ref: '#/definitions/serializer.ClusterAddonReferenceOutput'
+        type: array
+      undefinedVars:
+        items:
+          $ref: '#/definitions/serializer.UndefinedEnvVarOutput'
+        type: array
+    type: object
   serializer.DeployableImageTagOutputObj:
     properties:
       builtAt:
@@ -4224,13 +4243,6 @@ definitions:
       value:
         description: 环境变量值
         type: string
-    type: object
-  serializer.EnvVarPreCheckOutput:
-    properties:
-      undefinedVars:
-        items:
-          $ref: '#/definitions/serializer.UndefinedEnvVarOutput'
-        type: array
     type: object
   serializer.EnvVarReferenceSourceOutput:
     properties:
@@ -15447,41 +15459,6 @@ paths:
       summary: 获取 TAF 类型应用部署记录下某个资源的快照详情（具体 k8s 资源的 Manifest 等）
       tags:
       - deploy
-  /apps/{appID}/envs/{envName}/taf-deploys/env-var-precheck:
-    get:
-      operationId: PreCheckTafDeployEnvVars
-      parameters:
-      - description: 应用 ID
-        in: path
-        name: appID
-        required: true
-        type: string
-      - description: 部署环境名称
-        in: path
-        name: envName
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/serializer.EnvVarPreCheckOutput'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/bkerrs.GinErrorOutput'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/bkerrs.GinErrorOutput'
-      security:
-      - BkUserInfo: []
-      - BkUserCredential: []
-      summary: TAF 部署前环境变量校验
-      tags:
-      - deploy
   /apps/{appID}/envs/{envName}/taf-deploys/latest-status:
     get:
       operationId: GetLatestTafDeployStatus
@@ -15515,6 +15492,41 @@ paths:
       - BkUserInfo: []
       - BkUserCredential: []
       summary: 获取 TAF 应用最新一次部署的状态
+      tags:
+      - deploy
+  /apps/{appID}/envs/{envName}/taf-deploys/precheck:
+    get:
+      operationId: PreCheckTafDeploy
+      parameters:
+      - description: 应用 ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: 部署环境名称
+        in: path
+        name: envName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/serializer.DeployPreCheckOutput'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/bkerrs.GinErrorOutput'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/bkerrs.GinErrorOutput'
+      security:
+      - BkUserInfo: []
+      - BkUserCredential: []
+      summary: TAF 部署前检查
       tags:
       - deploy
   /apps/{appID}/envs/{envName}/trpc-build-deploys:
@@ -15772,41 +15784,6 @@ paths:
       summary: 获取 Trpc 类型应用部署记录下某个资源的快照详情（具体 k8s 资源的 Manifest 等）
       tags:
       - deploy
-  /apps/{appID}/envs/{envName}/trpc-deploys/env-var-precheck:
-    get:
-      operationId: PreCheckTrpcDeployEnvVars
-      parameters:
-      - description: 应用 ID
-        in: path
-        name: appID
-        required: true
-        type: string
-      - description: 部署环境名称
-        in: path
-        name: envName
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/serializer.EnvVarPreCheckOutput'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/bkerrs.GinErrorOutput'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/bkerrs.GinErrorOutput'
-      security:
-      - BkUserInfo: []
-      - BkUserCredential: []
-      summary: Trpc 部署前环境变量校验
-      tags:
-      - deploy
   /apps/{appID}/envs/{envName}/trpc-deploys/latest-status:
     get:
       operationId: GetLatestTrpcDeployStatus
@@ -15840,6 +15817,41 @@ paths:
       - BkUserInfo: []
       - BkUserCredential: []
       summary: 获取 Trpc 应用最新一次部署的状态
+      tags:
+      - deploy
+  /apps/{appID}/envs/{envName}/trpc-deploys/precheck:
+    get:
+      operationId: PreCheckTrpcDeploy
+      parameters:
+      - description: 应用 ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: 部署环境名称
+        in: path
+        name: envName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/serializer.DeployPreCheckOutput'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/bkerrs.GinErrorOutput'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/bkerrs.GinErrorOutput'
+      security:
+      - BkUserInfo: []
+      - BkUserCredential: []
+      summary: Trpc 部署前检查
       tags:
       - deploy
   /apps/{appID}/feat-envs:
@@ -17518,7 +17530,7 @@ paths:
         name: envID
         required: true
         type: string
-      - description: 命名空间
+      - description: 命名空间，默认为插件定义中的 defaultNamespace
         in: query
         name: namespace
         type: string
@@ -17553,7 +17565,7 @@ paths:
         name: addonName
         required: true
         type: string
-      - description: 命名空间
+      - description: 命名空间，默认为插件定义中的 defaultNamespace
         in: query
         name: namespace
         type: string

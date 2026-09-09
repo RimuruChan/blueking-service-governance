@@ -9613,62 +9613,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/apps/{appID}/envs/{envName}/taf-deploys/env-var-precheck": {
-            "get": {
-                "security": [
-                    {
-                        "BkUserInfo": []
-                    },
-                    {
-                        "BkUserCredential": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "deploy"
-                ],
-                "summary": "TAF 部署前环境变量校验",
-                "operationId": "PreCheckTafDeployEnvVars",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "应用 ID",
-                        "name": "appID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "部署环境名称",
-                        "name": "envName",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/serializer.EnvVarPreCheckOutput"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
-                        }
-                    }
-                }
-            }
-        },
         "/apps/{appID}/envs/{envName}/taf-deploys/latest-status": {
             "get": {
                 "security": [
@@ -9718,6 +9662,62 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            }
+        },
+        "/apps/{appID}/envs/{envName}/taf-deploys/precheck": {
+            "get": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deploy"
+                ],
+                "summary": "TAF 部署前检查",
+                "operationId": "PreCheckTafDeploy",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "应用 ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "部署环境名称",
+                        "name": "envName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/serializer.DeployPreCheckOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/bkerrs.GinErrorOutput"
                         }
@@ -10124,62 +10124,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/apps/{appID}/envs/{envName}/trpc-deploys/env-var-precheck": {
-            "get": {
-                "security": [
-                    {
-                        "BkUserInfo": []
-                    },
-                    {
-                        "BkUserCredential": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "deploy"
-                ],
-                "summary": "Trpc 部署前环境变量校验",
-                "operationId": "PreCheckTrpcDeployEnvVars",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "应用 ID",
-                        "name": "appID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "部署环境名称",
-                        "name": "envName",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/serializer.EnvVarPreCheckOutput"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
-                        }
-                    }
-                }
-            }
-        },
         "/apps/{appID}/envs/{envName}/trpc-deploys/latest-status": {
             "get": {
                 "security": [
@@ -10229,6 +10173,62 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            }
+        },
+        "/apps/{appID}/envs/{envName}/trpc-deploys/precheck": {
+            "get": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "deploy"
+                ],
+                "summary": "Trpc 部署前检查",
+                "operationId": "PreCheckTrpcDeploy",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "应用 ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "部署环境名称",
+                        "name": "envName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/serializer.DeployPreCheckOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/bkerrs.GinErrorOutput"
                         }
@@ -13074,7 +13074,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "命名空间",
+                        "description": "命名空间，默认为插件定义中的 defaultNamespace",
                         "name": "namespace",
                         "in": "query"
                     }
@@ -13187,7 +13187,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "命名空间",
+                        "description": "命名空间，默认为插件定义中的 defaultNamespace",
                         "name": "namespace",
                         "in": "query"
                     }
@@ -22085,6 +22085,17 @@ const docTemplate = `{
                 }
             }
         },
+        "serializer.ClusterAddonReferenceOutput": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "serializer.ClusterInfoOutput": {
             "type": "object",
             "properties": {
@@ -23774,6 +23785,24 @@ const docTemplate = `{
                 }
             }
         },
+        "serializer.DeployPreCheckOutput": {
+            "type": "object",
+            "properties": {
+                "missingRequiredClusterAddons": {
+                    "description": "缺失的必选集群组件标识及展示名",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/serializer.ClusterAddonReferenceOutput"
+                    }
+                },
+                "undefinedVars": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/serializer.UndefinedEnvVarOutput"
+                    }
+                }
+            }
+        },
         "serializer.DeployableImageTagOutputObj": {
             "type": "object",
             "properties": {
@@ -24503,17 +24532,6 @@ const docTemplate = `{
                 "value": {
                     "description": "环境变量值",
                     "type": "string"
-                }
-            }
-        },
-        "serializer.EnvVarPreCheckOutput": {
-            "type": "object",
-            "properties": {
-                "undefinedVars": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/serializer.UndefinedEnvVarOutput"
-                    }
                 }
             }
         },

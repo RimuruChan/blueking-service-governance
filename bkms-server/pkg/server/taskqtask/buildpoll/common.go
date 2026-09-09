@@ -244,5 +244,6 @@ func newAppModelDeployService(reg *storereg.Registry) (*appmodeldeploysvc.Servic
 		AppModelDeployRecordStore:           reg.AppModelDeployRecordStore,
 		AppModelDeployResourceSnapshotStore: reg.AppModelDeployResourceSnapshotStore,
 		AppConfigFileStore:                  reg.AppConfigFileStore,
+		ClusterAddonDefStore:                reg.ClusterAddonDefStore,
 	})
 }

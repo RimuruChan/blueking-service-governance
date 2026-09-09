@@ -44,8 +44,8 @@ type HelmDeployHandler interface {
 
 	// ListTrpcDeployRecords 获取 Trpc 应用部署记录列表
 	ListTrpcDeployRecords(c *gin.Context)
-	// PreCheckTrpcDeployEnvVars Trpc 部署前环境变量校验
-	PreCheckTrpcDeployEnvVars(c *gin.Context)
+	// PreCheckTrpcDeploy Trpc 部署前检查
+	PreCheckTrpcDeploy(c *gin.Context)
 	// CreateTrpcDeploy 部署 Trpc 应用
 	CreateTrpcDeploy(c *gin.Context)
 	// DeleteTrpcDeploy 删除 Trpc 应用部署
@@ -58,8 +58,8 @@ type HelmDeployHandler interface {
 	GetLatestTrpcDeployStatus(c *gin.Context)
 	// ListTafDeployRecords 获取 TAF 应用部署记录列表
 	ListTafDeployRecords(c *gin.Context)
-	// PreCheckTafDeployEnvVars TAF 部署前环境变量校验
-	PreCheckTafDeployEnvVars(c *gin.Context)
+	// PreCheckTafDeploy TAF 部署前检查
+	PreCheckTafDeploy(c *gin.Context)
 	// CreateTafDeploy 部署 TAF 应用
 	CreateTafDeploy(c *gin.Context)
 	// DeleteTafDeploy 删除 TAF 应用部署
@@ -92,8 +92,9 @@ func Register(rg *gin.RouterGroup, h HelmDeployHandler) {
 	// 获取 Trpc 应用部署记录列表
 	// [bkms-cli 使用] 避免破坏性修改
 	rg.GET("/apps/:appID/envs/:envName/trpc-deploys", h.ListTrpcDeployRecords)
-	// Trpc 部署前环境变量校验
-	rg.GET("/apps/:appID/envs/:envName/trpc-deploys/env-var-precheck", h.PreCheckTrpcDeployEnvVars)
+	// Trpc 部署前检查
+	// [bkms-cli 使用]
+	rg.GET("/apps/:appID/envs/:envName/trpc-deploys/precheck", h.PreCheckTrpcDeploy)
 	// 创建 Trpc 应用部署
 	// [bkms-cli 使用] 避免破坏性修改
 	rg.POST("/apps/:appID/envs/:envName/trpc-deploys", h.CreateTrpcDeploy)
@@ -112,8 +113,9 @@ func Register(rg *gin.RouterGroup, h HelmDeployHandler) {
 	// 获取 TAF 应用部署记录列表
 	// [bkms-cli 使用] 避免破坏性修改
 	rg.GET("/apps/:appID/envs/:envName/taf-deploys", h.ListTafDeployRecords)
-	// TAF 部署前环境变量校验
-	rg.GET("/apps/:appID/envs/:envName/taf-deploys/env-var-precheck", h.PreCheckTafDeployEnvVars)
+	// TAF 部署前检查
+	// [bkms-cli 使用]
+	rg.GET("/apps/:appID/envs/:envName/taf-deploys/precheck", h.PreCheckTafDeploy)
 	// 创建 TAF 应用部署
 	// [bkms-cli 使用] 避免破坏性修改
 	rg.POST("/apps/:appID/envs/:envName/taf-deploys", h.CreateTafDeploy)

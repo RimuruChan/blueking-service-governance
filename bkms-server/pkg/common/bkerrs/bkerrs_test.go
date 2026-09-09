@@ -89,6 +89,27 @@ var _ = Describe("Error", func() {
 		})
 	})
 
+	Describe("WrapComponentsNotInstalled", func() {
+		DescribeTable("should include a separate detail for each missing component",
+			func(components []string) {
+				err := bkerrs.WrapComponentsNotInstalled(errors.New("release not found"), components, "cluster-1")
+				var bkErr *bkerrs.Error
+				Expect(errors.As(err, &bkErr)).To(BeTrue())
+				Expect(bkErr.Code()).To(Equal(bkerrs.ErrCodeNotFound))
+				details := bkErr.Details()
+				Expect(details).To(HaveLen(len(components)))
+				for i, detail := range details.AsMaps() {
+					Expect(detail["code"]).To(Equal(bkerrs.ErrDetailCodeComponentNotInstalled))
+					Expect(detail["module"]).To(Equal(components[i]))
+					Expect(detail["system"]).To(Equal("bkms"))
+					Expect(detail["message"]).To(ContainSubstring("cluster-1"))
+				}
+			},
+			Entry("one component", []string{"gpa"}),
+			Entry("multiple components", []string{"game", "hook"}),
+		)
+	})
+
 	Describe("WrapBSCPNotFullyReleased", func() {
 		It("should wrap not fully released error with detail code", func() {
 			err := bkerrs.WrapBSCPNotFullyReleased(

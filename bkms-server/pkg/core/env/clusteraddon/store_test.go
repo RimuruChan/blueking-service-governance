@@ -52,9 +52,10 @@ var _ = Describe("ClusterAddonDefStoreMongo", func() {
 				DefaultChartVersion: "1.0.0",
 				DefaultNamespace:    "test-ns",
 			},
-			RequiredForAppTypes: []string{"webserver"},
-			OptionalForAppTypes: []string{"worker"},
-			Creator:             "admin",
+			RequiredForAppTypes:     []string{"webserver"},
+			OptionalForAppTypes:     []string{"worker"},
+			UnsupportedOnFederation: true,
+			Creator:                 "admin",
 		}
 	})
 
@@ -76,6 +77,7 @@ var _ = Describe("ClusterAddonDefStoreMongo", func() {
 				Expect(got.ChartInfo.DefaultChartVersion).To(Equal("1.0.0"))
 				Expect(got.RequiredForAppTypes).To(Equal([]string{"webserver"}))
 				Expect(got.OptionalForAppTypes).To(Equal([]string{"worker"}))
+				Expect(got.UnsupportedOnFederation).To(BeTrue())
 			})
 
 			It("createdAt and updatedAt fields should behave normally", func() {

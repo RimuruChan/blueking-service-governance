@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/action"
 
+	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	helmdeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/helm"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/helm"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/metrics"
@@ -40,15 +41,29 @@ func GenerateReleaseName(addonDef *ClusterAddonDef) string {
 	return addonDef.ChartInfo.ChartName
 }
 
-// InstallOrUpgradeClusterAddon 部署或更新集群 Addon
+// ErrAddonNotApplicable 表示组件不适用于目标集群。
+var ErrAddonNotApplicable = errors.New("cluster addon is not applicable to the target cluster")
+
+// InstallOrUpgradeClusterAddon 部署或更新集群 Addon，拒绝安装不适用于目标集群的组件。
 func InstallOrUpgradeClusterAddon(
 	ctx context.Context,
 	addonDef *ClusterAddonDef,
-	clusterID, namespace, chartVersion string,
+	env *envmodel.Environment,
+	namespace, chartVersion string,
 	valuesMap map[string]any,
 ) (retErr error) {
 	startedAt := time.Now()
 	defer metrics.ClusterAddonOperationFinished(metrics.ClusterAddonOperationDeploy, startedAt, &retErr)
+
+	clusterID := env.Cluster.ClusterID
+	if !addonDef.IsApplicableToEnv(env) {
+		return errors.Wrapf(
+			ErrAddonNotApplicable,
+			"install or upgrade addon %s in cluster %s",
+			addonDef.Name,
+			clusterID,
+		)
+	}
 
 	releaseName := GenerateReleaseName(addonDef)
 

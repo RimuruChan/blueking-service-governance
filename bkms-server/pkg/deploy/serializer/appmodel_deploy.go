@@ -24,6 +24,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/autodeploy"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
 	deploypkg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy"
 	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
 	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
@@ -38,9 +39,17 @@ type AppEnvURIInput struct {
 	EnvName string `uri:"envName" binding:"required,uri_slug"`
 }
 
-// EnvVarPreCheckOutput is the response body for a deployment env var pre-check.
-type EnvVarPreCheckOutput struct {
+// DeployPreCheckOutput is the response body for a tRPC / TAF deployment pre-check.
+type DeployPreCheckOutput struct {
 	UndefinedVars []UndefinedEnvVarOutput `json:"undefinedVars"`
+	// 缺失的必选集群组件标识及展示名
+	MissingRequiredClusterAddons []ClusterAddonReferenceOutput `json:"missingRequiredClusterAddons"`
+}
+
+// ClusterAddonReferenceOutput 包含用于关联组件的稳定标识和展示名。
+type ClusterAddonReferenceOutput struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
 }
 
 // UndefinedEnvVarOutput contains one referenced but undefined env var.
@@ -56,8 +65,8 @@ type EnvVarReferenceSourceOutput struct {
 }
 
 // FromModel converts a domain pre-check result to an API output.
-func (o *EnvVarPreCheckOutput) FromModel(result *deploypkg.EnvVarPreCheckResult) *EnvVarPreCheckOutput {
-	*o = EnvVarPreCheckOutput{
+func (o *DeployPreCheckOutput) FromModel(result *deploypkg.DeployPreCheckResult) *DeployPreCheckOutput {
+	*o = DeployPreCheckOutput{
 		UndefinedVars: lo.Map(
 			result.UndefinedVars,
 			func(item envvarrefs.UndefinedEnvVar, _ int) UndefinedEnvVarOutput {
@@ -73,6 +82,12 @@ func (o *EnvVarPreCheckOutput) FromModel(result *deploypkg.EnvVarPreCheckResult)
 						},
 					),
 				}
+			},
+		),
+		MissingRequiredClusterAddons: lo.Map(
+			result.MissingRequiredClusterAddons,
+			func(addon clusteraddon.AddonReference, _ int) ClusterAddonReferenceOutput {
+				return ClusterAddonReferenceOutput{Name: addon.Name, DisplayName: addon.DisplayName}
 			},
 		),
 	}
