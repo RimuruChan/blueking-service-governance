@@ -19,6 +19,7 @@
 package deploy
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"strings"
@@ -135,8 +136,8 @@ func printPrecheckFailure(ctx context.Context, result *client.DeployPrecheckResu
 		type addonRow struct {
 			MissingClusterAddons string
 		}
-		rows := lo.Map(result.MissingRequiredClusterAddons, func(name string, _ int) addonRow {
-			return addonRow{MissingClusterAddons: name}
+		rows := lo.Map(result.MissingRequiredClusterAddons, func(addon client.ClusterAddonReference, _ int) addonRow {
+			return addonRow{MissingClusterAddons: cmp.Or(addon.DisplayName, addon.Name)}
 		})
 		table, err := output.FormatData(ctx, rows, string(output.FormatTable))
 		if err != nil {

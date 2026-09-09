@@ -12787,12 +12787,8 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "enum": [
-                            "bcs-system"
-                        ],
                         "type": "string",
-                        "default": "bcs-system",
-                        "description": "命名空间，仅支持 bcs-system",
+                        "description": "命名空间，默认为插件定义中的 defaultNamespace",
                         "name": "namespace",
                         "in": "query"
                     }
@@ -12904,12 +12900,8 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "enum": [
-                            "bcs-system"
-                        ],
                         "type": "string",
-                        "default": "bcs-system",
-                        "description": "命名空间，仅支持 bcs-system",
+                        "description": "命名空间，默认为插件定义中的 defaultNamespace",
                         "name": "namespace",
                         "in": "query"
                     }
@@ -21580,6 +21572,17 @@ const docTemplate = `{
                 }
             }
         },
+        "serializer.ClusterAddonReferenceOutput": {
+            "type": "object",
+            "properties": {
+                "displayName": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
         "serializer.ClusterInfoOutput": {
             "type": "object",
             "properties": {
@@ -23247,10 +23250,10 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "missingRequiredClusterAddons": {
-                    "description": "缺失的必选集群组件展示名",
+                    "description": "缺失的必选集群组件标识及展示名",
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/serializer.ClusterAddonReferenceOutput"
                     }
                 },
                 "undefinedVars": {
@@ -30849,12 +30852,8 @@ const docTemplate = `{
                     "minLength": 1
                 },
                 "namespace": {
-                    "description": "命名空间（可选，仅支持 bcs-system，省略时使用默认值）",
-                    "type": "string",
-                    "default": "bcs-system",
-                    "enum": [
-                        "bcs-system"
-                    ]
+                    "description": "命名空间（可选，默认为插件定义中的 defaultNamespace）",
+                    "type": "string"
                 },
                 "values": {
                     "description": "Helm values 参数（JSON 格式）",

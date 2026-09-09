@@ -129,7 +129,9 @@ var _ = Describe("DeployPreChecker Check", func() {
 		)
 		fxApp.RequireStart()
 		workload.InitPlugin(appConfigFileStore, appConfigFileDefStore, polarisConfigStore)
-		statusMock = mockey.Mock(clusteraddon.QueryAddonStatus).Return(helm.StatusDeployed, nil).Build()
+		statusMock = mockey.Mock(clusteraddon.QueryAddonStatus).
+			Return(nil, &helm.Release{DeployResult: helm.DeployResult{Status: helm.StatusDeployed}}, nil).
+			Build()
 
 		newApp = func(opts *dbfactory.TrpcApplicationOpts) (*bkmsapp.Application, *envmodel.Environment) {
 			app, _ := dbfactory.TrpcApplication(ctx, &dbfactory.TrpcApplicationStores{
@@ -502,7 +504,7 @@ ignored: ${LEGACY}
 		})
 		It("returns missing addon identities", func() {
 			app, appEnv := newApp(nil)
-			statusMock.Return(helm.StatusNotFound, nil)
+			statusMock.Return(nil, &helm.Release{DeployResult: helm.DeployResult{Status: helm.StatusNotFound}}, nil)
 			result, err := checker.Check(ctx, app, appEnv)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.MissingRequiredClusterAddons).To(ContainElement(clusteraddon.AddonReference{
@@ -512,7 +514,7 @@ ignored: ${LEGACY}
 		It("preserves status query failures", func() {
 			app, appEnv := newApp(nil)
 			cause := errors.New("cluster unavailable")
-			statusMock.Return(helm.StatusUnknown, cause)
+			statusMock.Return(nil, nil, cause)
 			_, err := checker.Check(ctx, app, appEnv)
 			Expect(errors.Is(err, cause)).To(BeTrue())
 		})

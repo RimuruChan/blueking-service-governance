@@ -65,7 +65,8 @@ const DefaultNamespaceValue = "bcs-system"
 
 // IsApplicableToEnv 判断组件是否适用于目标环境，供列表、预检和安装共用。
 func (d *ClusterAddonDef) IsApplicableToEnv(env *envmodel.Environment) bool {
-	return !env.Cluster.IsFederation || !d.UnsupportedOnFederation
+	unsupported := d.UnsupportedOnFederation && env.Cluster.IsFederation
+	return !unsupported
 }
 
 // GetNamespace 获取命名空间，如果为空则返回默认值

@@ -2415,6 +2415,13 @@ definitions:
           type: string
         type: array
     type: object
+  serializer.ClusterAddonReferenceOutput:
+    properties:
+      displayName:
+        type: string
+      name:
+        type: string
+    type: object
   serializer.ClusterInfoOutput:
     properties:
       businessID:
@@ -3587,9 +3594,9 @@ definitions:
   serializer.DeployPreCheckOutput:
     properties:
       missingRequiredClusterAddons:
-        description: 缺失的必选集群组件展示名
+        description: 缺失的必选集群组件标识及展示名
         items:
-          type: string
+          $ref: '#/definitions/serializer.ClusterAddonReferenceOutput'
         type: array
       undefinedVars:
         items:
@@ -8737,10 +8744,7 @@ definitions:
         minLength: 1
         type: string
       namespace:
-        default: bcs-system
-        description: 命名空间（可选，仅支持 bcs-system，省略时使用默认值）
-        enum:
-        - bcs-system
+        description: 命名空间（可选，默认为插件定义中的 defaultNamespace）
         type: string
       values:
         additionalProperties: {}
@@ -17199,10 +17203,7 @@ paths:
         name: envID
         required: true
         type: string
-      - default: bcs-system
-        description: 命名空间，仅支持 bcs-system
-        enum:
-        - bcs-system
+      - description: 命名空间，默认为插件定义中的 defaultNamespace
         in: query
         name: namespace
         type: string
@@ -17237,10 +17238,7 @@ paths:
         name: addonName
         required: true
         type: string
-      - default: bcs-system
-        description: 命名空间，仅支持 bcs-system
-        enum:
-        - bcs-system
+      - description: 命名空间，默认为插件定义中的 defaultNamespace
         in: query
         name: namespace
         type: string

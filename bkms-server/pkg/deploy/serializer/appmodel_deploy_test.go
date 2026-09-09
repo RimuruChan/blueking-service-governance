@@ -59,7 +59,7 @@ var _ = Describe("AppModel deploy serializers", func() {
 						},
 					},
 				},
-				MissingRequiredClusterAddons: []string{},
+				MissingRequiredClusterAddons: []serializer.ClusterAddonReferenceOutput{},
 			}))
 		})
 
@@ -68,25 +68,21 @@ var _ = Describe("AppModel deploy serializers", func() {
 				MissingRequiredClusterAddons: []clusteraddon.AddonReference{
 					{Name: "game", DisplayName: "Gamedeploy"},
 					{Name: "hook", DisplayName: "Hook-operator"},
+					{Name: "other"},
 				},
 			})
-			Expect(output.MissingRequiredClusterAddons).To(Equal([]string{"Gamedeploy", "Hook-operator"}))
-		})
-
-		It("falls back to the addon name when the display name is empty", func() {
-			output := new(serializer.DeployPreCheckOutput).FromModel(&deploypkg.DeployPreCheckResult{
-				MissingRequiredClusterAddons: []clusteraddon.AddonReference{{Name: "bcs-hook-operator"}},
-			})
-			Expect(output.MissingRequiredClusterAddons).To(Equal([]string{"bcs-hook-operator"}))
+			payload, err := json.Marshal(output)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(payload).To(MatchJSON(`{"undefinedVars":[],"missingRequiredClusterAddons":[
+				{"name":"game","displayName":"Gamedeploy"},
+				{"name":"hook","displayName":"Hook-operator"},
+				{"name":"other","displayName":""}
+			]}`))
 		})
 
 		It("serializes empty undefined vars as an empty array", func() {
 			output := new(serializer.DeployPreCheckOutput).FromModel(&deploypkg.DeployPreCheckResult{})
 
-			Expect(output.UndefinedVars).To(BeEmpty())
-			Expect(output.UndefinedVars).NotTo(BeNil())
-			Expect(output.MissingRequiredClusterAddons).To(BeEmpty())
-			Expect(output.MissingRequiredClusterAddons).NotTo(BeNil())
 			payload, err := json.Marshal(output)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(payload).To(MatchJSON(`{"undefinedVars":[],"missingRequiredClusterAddons":[]}`))

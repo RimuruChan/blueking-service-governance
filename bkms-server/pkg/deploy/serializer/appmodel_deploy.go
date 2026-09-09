@@ -19,7 +19,6 @@
 package serializer
 
 import (
-	"cmp"
 	"time"
 
 	"github.com/samber/lo"
@@ -43,8 +42,14 @@ type AppEnvURIInput struct {
 // DeployPreCheckOutput is the response body for a tRPC / TAF deployment pre-check.
 type DeployPreCheckOutput struct {
 	UndefinedVars []UndefinedEnvVarOutput `json:"undefinedVars"`
-	// 缺失的必选集群组件展示名
-	MissingRequiredClusterAddons []string `json:"missingRequiredClusterAddons"`
+	// 缺失的必选集群组件标识及展示名
+	MissingRequiredClusterAddons []ClusterAddonReferenceOutput `json:"missingRequiredClusterAddons"`
+}
+
+// ClusterAddonReferenceOutput 包含用于关联组件的稳定标识和展示名。
+type ClusterAddonReferenceOutput struct {
+	Name        string `json:"name"`
+	DisplayName string `json:"displayName"`
 }
 
 // UndefinedEnvVarOutput contains one referenced but undefined env var.
@@ -81,8 +86,8 @@ func (o *DeployPreCheckOutput) FromModel(result *deploypkg.DeployPreCheckResult)
 		),
 		MissingRequiredClusterAddons: lo.Map(
 			result.MissingRequiredClusterAddons,
-			func(addon clusteraddon.AddonReference, _ int) string {
-				return cmp.Or(addon.DisplayName, addon.Name)
+			func(addon clusteraddon.AddonReference, _ int) ClusterAddonReferenceOutput {
+				return ClusterAddonReferenceOutput{Name: addon.Name, DisplayName: addon.DisplayName}
 			},
 		),
 	}

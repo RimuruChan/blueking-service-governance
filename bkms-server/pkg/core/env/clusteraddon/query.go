@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
+	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/storage/driver"
 
 	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
@@ -66,25 +67,11 @@ func (info *ClusterAddonInfo) FillClusterStatus(ctx context.Context, clusterID s
 	}()
 
 	releaseName := GenerateReleaseName(addonDef)
-	debugLog := helm.NewHelmDebugLogger(ctx, releaseName, "list-addon-status")
-	cfg, err := helm.NewActionConfiguration(clusterID, info.InstallInfo.Namespace, debugLog)
+	cfg, release, err := QueryAddonStatus(ctx, clusterID, info.InstallInfo.Namespace, addonDef)
 	if err != nil {
-		log.Warnf(ctx, "init helm action configuration for %s : %v", releaseName, err)
+		log.Warnf(ctx, "query addon status: %v", err)
 		info.InstallInfo.Status = helm.StatusUnknown
-		info.InstallInfo.Message = fmt.Sprintf("init helm action configuration failed: %v", err)
-		return
-	}
-
-	// 查询 Release 状态
-	release, err := helm.GetReleaseStatus(cfg, releaseName)
-	if err != nil {
-		if errors.Is(err, driver.ErrReleaseNotFound) {
-			info.InstallInfo.Status = helm.StatusNotFound
-			return
-		}
-		log.Warnf(ctx, "get release status for %s : %v", releaseName, err)
-		info.InstallInfo.Status = helm.StatusUnknown
-		info.InstallInfo.Message = fmt.Sprintf("get release status failed: %v", err)
+		info.InstallInfo.Message = err.Error()
 		return
 	}
 
@@ -92,6 +79,9 @@ func (info *ClusterAddonInfo) FillClusterStatus(ctx context.Context, clusterID s
 	info.InstallInfo.Status = release.DeployResult.Status
 	info.InstallInfo.Message = release.DeployResult.Description
 	info.InstallInfo.CurrentChartVersion = release.Chart.Version
+	if info.InstallInfo.Status == helm.StatusNotFound {
+		return
+	}
 
 	// 获取当前 Values
 	values, vErr := helm.GetReleaseValues(cfg, releaseName, 0)
@@ -128,21 +118,26 @@ func BuildAddonInfoList(
 	return addons
 }
 
-// QueryAddonStatus 仅查询组件 Release 状态，不读取 Values 或填充展示信息。
-func QueryAddonStatus(ctx context.Context, clusterID, namespace string, def *ClusterAddonDef) (AddonStatus, error) {
+// QueryAddonStatus 查询组件 Release 状态和元数据，返回的 Helm 配置可继续用于读取 Values。
+func QueryAddonStatus(
+	ctx context.Context, clusterID, namespace string, def *ClusterAddonDef,
+) (*action.Configuration, *helm.Release, error) {
 	releaseName := GenerateReleaseName(def)
 	debugLog := helm.NewHelmDebugLogger(ctx, releaseName, "query-addon-status")
 	cfg, err := helm.NewActionConfiguration(clusterID, namespace, debugLog)
 	if err != nil {
-		return helm.StatusUnknown, errors.Wrapf(err, "init helm configuration for addon %s in cluster %s namespace %s",
+		return nil, nil, errors.Wrapf(err, "init helm configuration for addon %s in cluster %s namespace %s",
 			def.Name, clusterID, namespace)
 	}
 	release, err := helm.GetReleaseStatus(cfg, releaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		return helm.StatusNotFound, nil
+		return cfg, &helm.Release{
+			Name: releaseName, Namespace: namespace,
+			DeployResult: helm.DeployResult{Status: helm.StatusNotFound},
+		}, nil
 	}
 	if err != nil {
-		return helm.StatusUnknown, errors.Wrapf(
+		return nil, nil, errors.Wrapf(
 			err,
 			"query addon %s status in cluster %s namespace %s",
 			def.Name,
@@ -151,11 +146,11 @@ func QueryAddonStatus(ctx context.Context, clusterID, namespace string, def *Clu
 		)
 	}
 	if release.DeployResult.Status == helm.StatusUnknown {
-		return helm.StatusUnknown, errors.Errorf(
+		return nil, nil, errors.Errorf(
 			"addon %s release status is unknown in cluster %s namespace %s", def.Name, clusterID, namespace,
 		)
 	}
-	return release.DeployResult.Status, nil
+	return cfg, release, nil
 }
 
 // ApplicableAddonDefs 返回适用于环境集群的组件定义，供列表展示和部署检查共用。
@@ -179,11 +174,11 @@ func InspectRequiredAddons(
 			continue
 		}
 		addon := AddonReference{Name: def.Name, DisplayName: def.DisplayName}
-		status, err := QueryAddonStatus(ctx, env.Cluster.ClusterID, def.GetNamespace(namespace), def)
+		_, release, err := QueryAddonStatus(ctx, env.Cluster.ClusterID, def.GetNamespace(namespace), def)
 		if err != nil {
 			return nil, errors.Wrap(err, "inspect required cluster addons")
 		}
-		if status != helm.StatusDeployed {
+		if release.DeployResult.Status != helm.StatusDeployed {
 			missing = append(missing, addon)
 		}
 	}

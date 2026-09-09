@@ -45,7 +45,7 @@ var _ = Describe("DeployPrecheckResult", func() {
 
 		It("fails when only required cluster addons are missing", func() {
 			result := &DeployPrecheckResult{
-				MissingRequiredClusterAddons: []string{"Gamedeploy"},
+				MissingRequiredClusterAddons: []ClusterAddonReference{{Name: "game", DisplayName: "Gamedeploy"}},
 			}
 			result.Normalize()
 			Expect(result.Passed).To(BeFalse())
@@ -54,7 +54,7 @@ var _ = Describe("DeployPrecheckResult", func() {
 		It("fails when both lists have findings", func() {
 			result := &DeployPrecheckResult{
 				UndefinedVars:                []UndefinedEnvVar{{Key: "DB_HOST"}},
-				MissingRequiredClusterAddons: []string{"Hook-operator"},
+				MissingRequiredClusterAddons: []ClusterAddonReference{{Name: "hook", DisplayName: "Hook-operator"}},
 			}
 			result.Normalize()
 			Expect(result.Passed).To(BeFalse())
@@ -64,14 +64,14 @@ var _ = Describe("DeployPrecheckResult", func() {
 	It("omits passed from JSON and keeps named finding lists", func() {
 		result := &DeployPrecheckResult{
 			UndefinedVars:                []UndefinedEnvVar{},
-			MissingRequiredClusterAddons: []string{"Gamedeploy"},
+			MissingRequiredClusterAddons: []ClusterAddonReference{{Name: "game", DisplayName: "Gamedeploy"}},
 		}
 		result.Normalize()
 		payload, err := json.Marshal(result)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(payload).To(MatchJSON(`{
 			"undefinedVars": [],
-			"missingRequiredClusterAddons": ["Gamedeploy"]
+			"missingRequiredClusterAddons": [{"name":"game","displayName":"Gamedeploy"}]
 		}`))
 	})
 })
