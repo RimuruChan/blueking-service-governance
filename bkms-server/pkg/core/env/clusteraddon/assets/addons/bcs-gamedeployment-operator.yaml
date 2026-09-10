@@ -14,4 +14,5 @@ requiredForAppTypes:
   - trpc
   - taf
 optionalForAppTypes: []
-unsupportedOnFederation: true
+# 临时联调：联邦环境也参与必选组件检查。
+unsupportedOnFederation: false
