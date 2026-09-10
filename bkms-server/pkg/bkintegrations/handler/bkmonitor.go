@@ -33,7 +33,6 @@ import (
 	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
 	bkmapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/perm"
 	bkmmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
 	ginperm "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
@@ -275,7 +274,7 @@ func (h *Handler) CreateEnvApm(c *gin.Context) {
 	}
 
 	// APM 创建成功后，异步将 workspace 下 admin/sre 人员同步到新告警组
-	go bkmmodel.NewUserGroupService(perm.NewManager(), storereg.G().EnvStore).SyncMembersForEnvWithRetry(
+	go bkmmodel.NewUserGroupService(storereg.G().EnvStore).SyncMembersForEnvWithRetry(
 		context.WithoutCancel(ctx), ws, env.Name, auth.MustGetUser(ctx).ID,
 	)
 

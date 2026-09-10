@@ -23,9 +23,11 @@ import (
 	"sort"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
 	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/perm"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
 )
 
@@ -75,6 +77,34 @@ func ListSortByOpTime(
 		}
 		return result[i].CreatedAt.After(result[j].CreatedAt)
 	})
+
+	return result, nil
+}
+
+// ListRoleMembers 聚合 workspace 下指定角色（roleCodes）的成员，按 ID 去重并过滤空字符串。
+func ListRoleMembers(
+	ctx context.Context,
+	workspaceID string,
+	roleCodes ...string,
+) ([]string, error) {
+	permMgr := perm.NewManager()
+
+	var allMembers []string
+	for _, roleCode := range roleCodes {
+		role, err := permMgr.GetRole(ctx, workspaceID, roleCode)
+		if err != nil {
+			return nil, errors.Wrapf(err, "get role(%s) of workspace(%s)", roleCode, workspaceID)
+		}
+		members, err := permMgr.ListRoleMembers(ctx, role.ID)
+		if err != nil {
+			return nil, errors.Wrapf(err, "list role(%s) members of workspace(%s)", roleCode, workspaceID)
+		}
+		allMembers = append(allMembers, members...)
+	}
+
+	// 过滤空字符串、去重并排序
+	result := lo.Uniq(lo.Filter(allMembers, func(m string, _ int) bool { return m != "" }))
+	sort.Strings(result)
 
 	return result, nil
 }

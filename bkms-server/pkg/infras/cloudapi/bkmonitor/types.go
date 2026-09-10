@@ -106,8 +106,6 @@ type CreateApmAppReq struct {
 	// AppName 名称
 	AppName string `json:"app_name" validate:"required"`
 	// BkBizID 蓝鲸监控下项目的业务 ID
-	// 注意：
-	//	容器项目 ID 是负数，这个是蓝鲸监控特殊规则
 	BkBizID int64 `json:"bk_biz_id" validate:"lt=0"`
 	// Operator 操作人
 	Operator string `json:"-" validate:"required"`
@@ -157,8 +155,6 @@ type GetApmAppReq struct {
 	ApmAppID int64 `json:"application_id"`
 
 	// BkBizID 蓝鲸监控下项目的业务 ID
-	// 注意：
-	//	容器项目 ID 是负数，这个是蓝鲸监控特殊规则
 	BkBizID int64 `json:"bk_biz_id" validate:"lt=0"`
 }
 
@@ -178,15 +174,10 @@ func NewGetApmAppReq(bkBizID, apmAppID int64, appName string) *GetApmAppReq {
 // ListApmAppReq 列出 APM 应用请求
 type ListApmAppReq struct {
 	// BkBizID 蓝鲸监控下项目的业务 ID
-	// 注意：
-	//	容器项目 ID 是负数，这个是蓝鲸监控特殊规则
 	BkBizID int64 `json:"bk_biz_id" validate:"lt=0"`
 }
 
 // NewListApmAppReq 创建列出 APM 应用请求
-// 注意：
-//
-//	蓝鲸监控的 容器项目 ID 必须是负数，这个是蓝鲸监控特殊规则
 func NewListApmAppReq(bkBizID int64) *ListApmAppReq {
 	if bkBizID > 0 {
 		bkBizID = -bkBizID
@@ -194,6 +185,64 @@ func NewListApmAppReq(bkBizID int64) *ListApmAppReq {
 
 	return &ListApmAppReq{
 		BkBizID: bkBizID,
+	}
+}
+
+// ApmServiceK8sRelation APM 服务绑定的容器负载关系。
+type ApmServiceK8sRelation struct {
+	// BcsClusterID BCS 集群 ID
+	BcsClusterID string `json:"bcs_cluster_id" validate:"required"`
+	// Namespace 命名空间
+	Namespace string `json:"namespace" validate:"required"`
+	// Kind 负载类型，如 Deployment、GameDeployment
+	Kind string `json:"kind" validate:"required"`
+	// Name 负载名称
+	Name string `json:"name" validate:"required"`
+}
+
+// ApmServiceCicdRelation APM 服务增量绑定的蓝盾流水线关系。
+type ApmServiceCicdRelation struct {
+	// ProjectID 蓝盾项目 ID
+	ProjectID string `json:"project_id" validate:"required"`
+	// PipelineID 流水线 ID
+	PipelineID string `json:"pipeline_id" validate:"required"`
+	// PipelineName 流水线名称
+	PipelineName string `json:"pipeline_name" validate:"required"`
+}
+
+// UpdateApmServiceConfigReq 更新 APM 服务配置请求
+type UpdateApmServiceConfigReq struct {
+	// BkBizID 蓝鲸监控下项目的业务 ID
+	BkBizID int64 `json:"bk_biz_id" validate:"lt=0"`
+	// AppName 应用名
+	AppName string `json:"app_name" validate:"required,max=50"`
+	// ServiceName 服务名
+	ServiceName string `json:"service_name" validate:"required,max=512"`
+	// Owners 服务负责人列表
+	Owners []string `json:"owners,omitempty"`
+	// IncrementalK8sRelations 增量容器负载关系
+	IncrementalK8sRelations []ApmServiceK8sRelation `json:"incremental_k8s_relations,omitempty"`
+	// IncrementalCicdRelations 增量蓝盾流水线关系
+	IncrementalCicdRelations []ApmServiceCicdRelation `json:"incremental_cicd_relations,omitempty"`
+}
+
+// NewUpdateApmServiceConfigReq 创建更新 APM 服务配置请求
+func NewUpdateApmServiceConfigReq(
+	bkBizID int64,
+	appName, serviceName string,
+	owners []string,
+	k8sRelations []ApmServiceK8sRelation,
+) *UpdateApmServiceConfigReq {
+	if bkBizID > 0 {
+		bkBizID = -bkBizID
+	}
+
+	return &UpdateApmServiceConfigReq{
+		BkBizID:                 bkBizID,
+		AppName:                 appName,
+		ServiceName:             serviceName,
+		Owners:                  owners,
+		IncrementalK8sRelations: k8sRelations,
 	}
 }
 

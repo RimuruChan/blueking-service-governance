@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/TencentBlueKing/gopkg/stringx"
+	"github.com/bytedance/mockey"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -30,6 +31,7 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
 	bkmsworkspace "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/perm"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
 )
 
@@ -173,5 +175,27 @@ var _ = Describe("ListSortByOpTime", func() {
 		}
 		// user1 视角：wsA 有操作记录，wsB 没有，所以 wsA 排在前面
 		Expect(idxMap[wsA.ID]).To(BeNumerically("<", idxMap[wsB.ID]))
+	})
+})
+
+var _ = Describe("ListRoleMembers", func() {
+	var ctx context.Context
+
+	BeforeEach(func() {
+		ctx = context.Background()
+	})
+
+	It("aggregates members from given roles, deduped and sorted", func() {
+		mockey.PatchConvey("aggregate role members", GinkgoT(), func() {
+			mockey.Mock(perm.NewManager).Return(&perm.StubAllowAnyManager{}).Build()
+
+			members, err := bkmsworkspace.ListRoleMembers(
+				ctx,
+				"ws-1",
+				perm.RoleCodeAdmin, perm.RoleCodeSre,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(members).To(ConsistOf("admin", "blueking", "sre"))
+		})
 	})
 })

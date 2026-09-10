@@ -62,6 +62,8 @@ type MonitorClient interface {
 	) (*ApmApp, error)
 	// ListApmApp 列出 APM 应用
 	ListApmApp(ctx context.Context, bkBizID int64) ([]*ApmApp, error)
+	// UpdateApmServiceConfig 更新 APM 服务配置（增量绑定容器负载/蓝盾流水线）
+	UpdateApmServiceConfig(ctx context.Context, req *UpdateApmServiceConfigReq) error
 	// GetMetadataSpaceDetail 获取空间详情
 	GetMetadataSpaceDetail(ctx context.Context, bcsProjectCode string) (*Space, error)
 	// SearchUserGroups 查询告警组列表

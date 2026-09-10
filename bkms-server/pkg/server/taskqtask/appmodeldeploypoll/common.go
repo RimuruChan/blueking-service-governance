@@ -21,11 +21,21 @@ package appmodeldeploypoll
 import (
 	"context"
 
+	"github.com/pkg/errors"
+
 	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
+	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy"
 	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
+	bkmapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/perm"
+	bkmmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor"
 	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/topology"
 )
 
@@ -81,4 +91,174 @@ func handleDeploySucceeded(ctx context.Context, args Args, record *appmodeldeplo
 	deploy.SyncAlertStrategiesAfterDeploy(
 		ctx, args.WorkspaceID, args.AppID, args.EnvName, args.TrafficLaneName, record.Creator,
 	)
+
+	// 部署成功后，回调 apm 关联容器接口，不影响部署结果
+	syncApmServiceConfigAfterDeploy(ctx, reg, args, record)
+}
+
+// syncApmServiceConfigAfterDeploy 回调 apm 关联容器接口
+func syncApmServiceConfigAfterDeploy(
+	ctx context.Context,
+	reg *storereg.Registry,
+	args Args,
+	record *appmodeldeploy.Record,
+) {
+	kind, name := record.MainWorkload()
+	if kind == "" || name == "" {
+		log.Warnf(ctx, "sync apm service config: main workload not found in deploy record, skip: %s", args)
+		return
+	}
+
+	app, env, ws, ok := loadApmServiceConfigContext(ctx, reg, args)
+	if !ok {
+		return
+	}
+
+	req := newApmServiceConfigRequest(ctx, reg, app, env, ws, kind, name)
+	if req == nil {
+		return
+	}
+
+	client, err := bkmapi.NewMonitorClient(record.Creator)
+	if err != nil {
+		log.Errorf(
+			ctx, "sync apm service config: new bkmonitor client failed, app=%s env=%s: %v",
+			app.ID, env.Name, err,
+		)
+		return
+	}
+	if err = client.UpdateApmServiceConfig(ctx, req); err != nil {
+		log.Errorf(
+			ctx, "sync apm service config: update apm service config failed, app=%s env=%s: %v",
+			app.ID, env.Name, err,
+		)
+		return
+	}
+
+	log.Infof(
+		ctx, "update apm service config success, app=%s env=%s app_name=%s service_name=%s",
+		app.ID, env.Name, req.AppName, req.ServiceName,
+	)
+}
+
+// loadApmServiceConfigContext 加载回调所需的 app/env/workspace，任一失败仅记录日志并返回 false。
+func loadApmServiceConfigContext(
+	ctx context.Context,
+	reg *storereg.Registry,
+	args Args,
+) (*bkmsapp.Application, *envmodel.Environment, *workspace.Workspace, bool) {
+	app, err := reg.AppStore.GetApp(ctx, args.AppID)
+	if err != nil {
+		log.Errorf(ctx, "sync apm service config: get app %s: %v", args.AppID, err)
+		return nil, nil, nil, false
+	}
+	env, err := reg.EnvStore.GetByName(ctx, args.WorkspaceID, args.AppID, args.EnvName)
+	if err != nil {
+		log.Errorf(ctx, "sync apm service config: get env %s: %v", args.EnvName, err)
+		return nil, nil, nil, false
+	}
+	ws, err := reg.WorkspaceStore.Get(ctx, args.WorkspaceID)
+	if err != nil {
+		log.Errorf(ctx, "sync apm service config: get workspace %s: %v", args.WorkspaceID, err)
+		return nil, nil, nil, false
+	}
+	return app, env, ws, true
+}
+
+// newApmServiceConfigRequest 获取 app_name / service_name / owners 并构建请求
+func newApmServiceConfigRequest(
+	ctx context.Context,
+	reg *storereg.Registry,
+	app *bkmsapp.Application,
+	env *envmodel.Environment,
+	ws *workspace.Workspace,
+	kind, name string,
+) *bkmapi.UpdateApmServiceConfigReq {
+	// 仅 trpc / taf 应用需要回调 apm 关联容器接口
+	if !bkmsapp.IsAppModelType(app.Type) {
+		log.Infof(ctx, "app %s type %s not trpc/taf, skip sync apm service config", app.ID, app.Type)
+		return nil
+	}
+	// 查询环境绑定的 APM 名称
+	apm, err := reg.ApmInstConfigStore.GetByEnvID(ctx, env.ID)
+	if err != nil {
+		if errors.Is(err, bkmmodel.ErrApmInstConfigNotFound) {
+			log.Infof(ctx, "env %s not bound to any apm, skip sync apm service config, app=%s", env.Name, app.ID)
+			return nil
+		}
+		log.Errorf(ctx, "sync apm service config: get apm by env failed, app=%s env=%s: %v", app.ID, env.Name, err)
+		return nil
+	}
+	// 获取 service_name
+	serviceName := resolveApmServiceName(ctx, reg, app, env)
+	if serviceName == "" {
+		return nil
+	}
+	// owners：admin/sre 成员
+	owners, err := workspace.ListRoleMembers(ctx, ws.ID, perm.RoleCodeAdmin, perm.RoleCodeSre)
+	if err != nil {
+		owners = nil
+		log.Warnf(ctx, "sync apm service config: list owners failed, app=%s env=%s: %v", app.ID, env.Name, err)
+	}
+	// 构建请求
+	bkMonitorProjectID, err := ws.ResolveBkMonitorProjectID()
+	if err != nil {
+		log.Errorf(
+			ctx, "sync apm service config: resolve bk monitor project id failed, app=%s env=%s: %v",
+			app.ID, env.Name, err,
+		)
+		return nil
+	}
+
+	return bkmapi.NewUpdateApmServiceConfigReq(
+		bkMonitorProjectID, apm.Name, serviceName, owners,
+		[]bkmapi.ApmServiceK8sRelation{{
+			BcsClusterID: env.Cluster.ClusterID,
+			Namespace:    env.Cluster.Namespace,
+			Kind:         kind,
+			Name:         name,
+		}},
+	)
+}
+
+// resolveApmServiceName 解析应用在当前环境下的 APM 服务名称，失败仅记录日志并返回空串。
+func resolveApmServiceName(
+	ctx context.Context,
+	reg *storereg.Registry,
+	app *bkmsapp.Application,
+	env *envmodel.Environment,
+) string {
+	appModel, err := reg.AppModelStore.GetAppModel(ctx, app.ID)
+	if err != nil {
+		log.Errorf(ctx, "sync apm service config: get app model failed, app=%s env=%s: %v", app.ID, env.Name, err)
+		return ""
+	}
+	_, _, content, err := appcfg.GetEnvContent(
+		ctx, reg.AppConfigFileStore, reg.AppConfigFileDefStore, app.ID, env.Name,
+	)
+	if err != nil {
+		log.Errorf(ctx, "sync apm service config: get env content failed, app=%s env=%s: %v", app.ID, env.Name, err)
+		return ""
+	}
+	appEnvVars, err := envvars.BuildAppEnvVars(
+		ctx, app, appModel, env,
+		envvars.NewUnifiedEnvVarsReader(reg.ScopedEnvVarStore, reg.AppDepsVarReader, reg.PolarisVarReader),
+	)
+	if err != nil {
+		log.Errorf(ctx, "sync apm service config: build app env vars failed, app=%s env=%s: %v", app.ID, env.Name, err)
+		return ""
+	}
+	serviceName, err := bkmmodel.GetApmServiceName(app.Type, content, appEnvVars.ToMap())
+	if err != nil {
+		if errors.Is(err, bkmmodel.ErrAPMConfigMissing) {
+			log.Infof(ctx, "apm config missing, skip sync apm service config, app=%s env=%s", app.ID, env.Name)
+			return ""
+		}
+		log.Errorf(
+			ctx, "sync apm service config: resolve apm service name failed, app=%s env=%s: %v",
+			app.ID, env.Name, err,
+		)
+		return ""
+	}
+	return serviceName
 }

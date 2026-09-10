@@ -147,7 +147,7 @@ func (h *Handler) CreateEnv(c *gin.Context) {
 				return
 			}
 			// APM 创建成功后，异步将 workspace 下 admin/sre 人员同步到新告警组（内部自带重试与延迟）
-			go bkmonitor.NewUserGroupService(perm.NewManager(), h.registry.EnvStore).SyncMembersForEnvWithRetry(
+			go bkmonitor.NewUserGroupService(h.registry.EnvStore).SyncMembersForEnvWithRetry(
 				ctx, ws, input.Name, creator,
 			)
 		} else {

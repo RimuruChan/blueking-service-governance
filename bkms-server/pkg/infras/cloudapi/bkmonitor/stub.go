@@ -168,6 +168,20 @@ func (s *StubClient) ListApmApp(ctx context.Context, bkBizID int64) ([]*ApmApp, 
 	return s.allApps(), nil
 }
 
+// UpdateApmServiceConfig 模拟更新 APM 服务配置
+func (s *StubClient) UpdateApmServiceConfig(ctx context.Context, req *UpdateApmServiceConfigReq) error {
+	log.Infof(
+		ctx,
+		"Stub: UpdateApmServiceConfig request: bkBizID=%d, appName=%s, serviceName=%s, owners=%v, k8sRelations=%v",
+		req.BkBizID,
+		req.AppName,
+		req.ServiceName,
+		req.Owners,
+		req.IncrementalK8sRelations,
+	)
+	return nil
+}
+
 // allApps 返回固定列表 + 动态创建列表的合集
 func (s *StubClient) allApps() []*ApmApp {
 	stubDynamicAppsMu.Lock()

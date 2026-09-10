@@ -166,6 +166,7 @@ var _ = Describe("UserGroupService", func() {
 		// mock time.Sleep 避免真实等待
 		BeforeEach(func() {
 			mockey.Mock(time.Sleep).To(func(_ time.Duration) {}).Build()
+			mockey.Mock(perm.NewManager).Return(&perm.StubAllowAnyManager{}).Build()
 		})
 		AfterEach(func() {
 			mockey.UnPatchAll()
@@ -188,7 +189,6 @@ var _ = Describe("UserGroupService", func() {
 
 				svc := &UserGroupService{
 					newClient: factory,
-					permMgr:   &perm.StubAllowAnyManager{},
 				}
 				svc.SyncMembersForEnvWithRetry(
 					context.Background(), buildWs(), "test-1", "tester",
@@ -222,7 +222,6 @@ var _ = Describe("UserGroupService", func() {
 
 				svc := &UserGroupService{
 					newClient: factory,
-					permMgr:   &perm.StubAllowAnyManager{},
 				}
 				svc.SyncMembersForEnvWithRetry(
 					context.Background(), buildWs(), "test-1", "tester",
@@ -252,7 +251,6 @@ var _ = Describe("UserGroupService", func() {
 
 				svc := &UserGroupService{
 					newClient: factory,
-					permMgr:   &perm.StubAllowAnyManager{},
 				}
 				svc.SyncMembersForEnvWithRetry(
 					context.Background(), buildWs(), "test-1", "tester",

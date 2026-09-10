@@ -248,6 +248,35 @@ func (c *MonitorGatewayClient) ListApmApp(ctx context.Context, bkBizID int64) ([
 	return result, nil
 }
 
+// UpdateApmServiceConfig 更新 APM 服务配置（增量绑定容器负载/蓝盾流水线）。
+func (c *MonitorGatewayClient) UpdateApmServiceConfig(
+	ctx context.Context,
+	req *UpdateApmServiceConfigReq,
+) error {
+	if err := Validate(req); err != nil {
+		return err
+	}
+
+	if _, err := c.handleOperation(ctx, c.NewOperation(
+		bkapi.OperationConfig{
+			Name:   "apm_update_service_config",
+			Method: http.MethodPost,
+			Path:   "/app/apm/service/update_service_config/",
+		},
+		bkapi.OptSetRequestBody(req),
+	)); err != nil {
+		return errors.Wrapf(
+			err,
+			"update apm service config failed, bk_biz_id: %d, app_name: %s, service_name: %s",
+			req.BkBizID,
+			req.AppName,
+			req.ServiceName,
+		)
+	}
+
+	return nil
+}
+
 // GetMetadataSpaceDetail 获取空间详情。
 func (c *MonitorGatewayClient) GetMetadataSpaceDetail(ctx context.Context, bcsProjectCode string) (*Space, error) {
 	params := map[string]string{

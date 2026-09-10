@@ -21,7 +21,6 @@ package bkmonitor
 
 import (
 	"context"
-	"sort"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -36,12 +35,6 @@ import (
 
 // ErrNoticeGroupNotFound 告警组不存在的语义错误，调用方可据此跳过。
 var ErrNoticeGroupNotFound = errors.New("user group not found")
-
-// syncRoleCodes 以下角色的成员会被同步到蓝鲸监控的 APM 告警组中
-var syncRoleCodes = []string{
-	perm.RoleCodeAdmin,
-	perm.RoleCodeSre,
-}
 
 const (
 	// userGroupNameTmpl 告警组名称模板：envName 会被填充到 %s
@@ -69,21 +62,14 @@ type UserGroupService struct {
 	// newClient 创建底层 bkmonitor 客户端的工厂函数
 	newClient userGroupClientFactory
 
-	// permMgr 用于查询 workspace 下 admin/sre 角色成员
-	permMgr perm.Manager
-
 	// envStore 用于查询 workspace 下全部环境列表
 	envStore envmodel.EnvironmentStore
 }
 
 // NewUserGroupService 创建 UserGroupService 实例。
-func NewUserGroupService(
-	permMgr perm.Manager,
-	envStore envmodel.EnvironmentStore,
-) *UserGroupService {
+func NewUserGroupService(envStore envmodel.EnvironmentStore) *UserGroupService {
 	return &UserGroupService{
 		newClient: bkmapi.NewMonitorClient,
-		permMgr:   permMgr,
 		envStore:  envStore,
 	}
 }
@@ -277,37 +263,7 @@ func (s *UserGroupService) listPermMgrMembers(
 	ctx context.Context,
 	workspaceID string,
 ) ([]string, error) {
-	if s.permMgr == nil {
-		return nil, errors.New("permMgr is nil")
-	}
-	memberSet := make(map[string]bool)
-
-	for _, roleCode := range syncRoleCodes {
-		role, err := s.permMgr.GetRole(ctx, workspaceID, roleCode)
-		if err != nil {
-			return nil, errors.Wrapf(err, "get role(%s) of workspace(%s)", roleCode, workspaceID)
-		}
-		members, err := s.permMgr.ListRoleMembers(ctx, role.ID)
-		if err != nil {
-			return nil, errors.Wrapf(err,
-				"list role(%s) members of workspace(%s)", roleCode, workspaceID,
-			)
-		}
-		for _, m := range members {
-			if m == "" {
-				continue
-			}
-			memberSet[m] = true
-		}
-	}
-
-	result := make([]string, 0, len(memberSet))
-	for m := range memberSet {
-		result = append(result, m)
-	}
-	sort.Strings(result)
-
-	return result, nil
+	return workspace.ListRoleMembers(ctx, workspaceID, perm.RoleCodeAdmin, perm.RoleCodeSre)
 }
 
 // listEnvNames 查询 workspace 下所有环境名。
