@@ -100,6 +100,16 @@ func InstallOrUpgradeClusterAddon(
 	}
 	if err == nil {
 		releaseName = release.Name
+	} else {
+		// 未匹配到目标 Chart 时，配置的名称可能已被其他 Chart 占用。
+		existing, statusErr := helm.GetReleaseStatus(cfg, releaseName)
+		if statusErr != nil && !errors.Is(statusErr, driver.ErrReleaseNotFound) {
+			return errors.Wrapf(statusErr, "check release name %s in namespace %s", releaseName, namespace)
+		}
+		if statusErr == nil && existing.Chart.Name != addonDef.ChartInfo.ChartName {
+			return errors.Errorf("release %s in namespace %s is already used by chart %s, expected %s",
+				releaseName, namespace, existing.Chart.Name, addonDef.ChartInfo.ChartName)
+		}
 	}
 
 	// 4. 执行 Upgrade 或 Install

@@ -73,6 +73,7 @@ var _ = Describe("InstallOrUpgradeClusterAddon", func() {
 				}}
 				mockey.Mock(helm.NewActionConfiguration).Return(&action.Configuration{}, nil).Build()
 				mockey.Mock(helm.GetReleaseByChart).Return(installed, lookupErr).Build()
+				mockey.Mock(helm.GetReleaseStatus).Return(nil, driver.ErrReleaseNotFound).Build()
 				mockey.Mock(helmdeploy.PullChart).Return(&chart.Chart{}, &helmdeploy.LintResult{}, nil).Build()
 				mockey.Mock(helmdeploy.RunHelmRelease).
 					To(func(_ *action.Configuration, name, namespace string, _ *chart.Chart, _ map[string]any, _ bool, _ postrender.PostRenderer) (*helmrelease.Release, error) {
@@ -88,6 +89,24 @@ var _ = Describe("InstallOrUpgradeClusterAddon", func() {
 		Entry("upgrade the discovered release", &helm.Release{Name: "hook-operator"}, nil, "hook-operator"),
 		Entry("install with the configured name", nil, driver.ErrReleaseNotFound, "bcs-hook-operator"),
 	)
+
+	It("rejects a configured release name occupied by another chart", func() {
+		mockey.PatchConvey("release name conflict", GinkgoT(), func() {
+			def := hookOperatorDef()
+			mockey.Mock(helm.NewActionConfiguration).Return(&action.Configuration{}, nil).Build()
+			mockey.Mock(helmdeploy.PullChart).Return(&chart.Chart{}, &helmdeploy.LintResult{}, nil).Build()
+			mockey.Mock(helm.GetReleaseByChart).Return(nil, driver.ErrReleaseNotFound).Build()
+			mockey.Mock(helm.GetReleaseStatus).To(func(_ *action.Configuration, name string) (*helm.Release, error) {
+				Expect(name).To(Equal(def.ChartInfo.ChartName))
+				return &helm.Release{Name: name, Chart: helm.Chart{Name: "another-chart"}}, nil
+			}).Build()
+			deploy := mockey.Mock(helmdeploy.RunHelmRelease).Return(&helmrelease.Release{}, nil).Build()
+			err := clusteraddon.InstallOrUpgradeClusterAddon(context.Background(), def,
+				addonEnvironment("cluster", false), "bcs-system", "1.0.0", nil)
+			Expect(err).To(MatchError(ContainSubstring("is already used by chart another-chart")))
+			Expect(deploy.Times()).To(BeZero())
+		})
+	})
 })
 
 var _ = Describe("UninstallClusterAddon", func() {
