@@ -101,7 +101,8 @@ var _ = Describe("Execute", func() {
 	})
 
 	It("does not repeat reported failures even through wrapping", func() {
-		runErr = errors.Wrap(clierr.Reported(errors.New("check failed")), "command")
+		runErr = errors.Wrap(clierr.Reportedf("%s failed", "check"), "command")
+		Expect(runErr).To(MatchError("command: check failed"))
 		Expect(cmdutil.Execute(context.Background(), root, []string{"check", "--env", "test"})).To(Equal(1))
 		Expect(stdout.String()).To(Equal("failure details\n"))
 		Expect(stderr.String()).To(BeEmpty())

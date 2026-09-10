@@ -143,9 +143,7 @@ func UpdateDeploy(ctx context.Context, workspaceID, appID, envName, updateSpecFi
 		}
 
 		if len(errs) > 0 {
-			return clierr.Reported(
-				errors.Errorf("deploy update failed for some envs:\n  %s", strings.Join(errs, "\n  ")),
-			)
+			return clierr.Reportedf("deploy update failed for some envs:\n  %s", strings.Join(errs, "\n  "))
 		}
 		return nil
 

@@ -85,7 +85,7 @@ func runDeployPrecheck(cmd *cobra.Command, appID, envName, outputFormat string) 
 		}
 		console.Info("%s", formatted)
 		if !result.Passed {
-			return clierr.Reported(errors.New("precheck failed"))
+			return clierr.Reportedf("precheck failed")
 		}
 		return nil
 	}
@@ -98,7 +98,7 @@ func runDeployPrecheck(cmd *cobra.Command, appID, envName, outputFormat string) 
 	if err := printPrecheckFailure(cmd.Context(), result); err != nil {
 		return errors.Wrap(err, "print precheck findings")
 	}
-	return clierr.Reported(errors.New("precheck failed"))
+	return clierr.Reportedf("precheck failed")
 }
 
 func printPrecheckFailure(ctx context.Context, result *client.DeployPrecheckResult) error {

@@ -76,7 +76,7 @@ func CreateDeploy(ctx context.Context, workspaceID, appID, envName, deploySpecFi
 	}
 
 	if len(errs) > 0 {
-		return clierr.Reported(errors.Errorf("deploy failed for some envs:\n  %s", strings.Join(errs, "\n  ")))
+		return clierr.Reportedf("deploy failed for some envs:\n  %s", strings.Join(errs, "\n  "))
 	}
 
 	return nil

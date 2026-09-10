@@ -58,9 +58,7 @@ For trpc and taf applications, the entire environment deployment is removed.`,
 			}
 
 			if app.Type == constant.AppTypeHelm && deployID == "" {
-				return clierr.Usage(
-					errors.New("--deploy-id is required for helm applications (see 'app deploy list')"),
-				)
+				return clierr.Usagef("--deploy-id is required for helm applications (see 'app deploy list')")
 			}
 
 			printDeployDeleteConfirmInfo(app, envName, deployID)

@@ -46,3 +46,8 @@ func (e *ReportedError) Unwrap() error { return e.Err }
 
 // Reported 标记已输出明细的失败，保留错误链而不重复打印。
 func Reported(err error) error { return &ReportedError{Err: err} }
+
+// Reportedf 创建已输出明细的失败，支持格式化消息。
+func Reportedf(format string, args ...any) error {
+	return Reported(errors.Errorf(format, args...))
+}
