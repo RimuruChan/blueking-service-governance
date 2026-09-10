@@ -45,6 +45,26 @@
         :model="formModel"
       >
         <Form.FormItem
+          :label="$t('实例数')"
+          property="replicas"
+          required
+          :rules="replicasRules"
+        >
+          <Input
+            v-model.number="formModel.replicas"
+            :min="1"
+            :precision="0"
+            type="number"
+          />
+          <div
+            v-if="hasInvalidEffectiveReplicas"
+            class="mt-[4px] text-[12px] leading-[20px] text-[#979BA5]"
+          >
+            {{ $t('实例删除后副本数已变为 0，请填写期望实例数后重新部署') }}
+          </div>
+        </Form.FormItem>
+
+        <Form.FormItem
           :label="$t('更新内容')"
           required
         >
@@ -230,6 +250,7 @@
     branch: string;
     deployType: 'InplaceUpdate' | 'RollingUpdate';
     imageTag: string;
+    replicas?: number;
     updateContent: 'both' | 'config' | 'image';
   }>({
     branch: '',
@@ -253,6 +274,21 @@
     if (branch) fetchRecommendTag(branch);
   }
   const { confirmBox, forceCleanDirtyTag, withPausedWatch } = useLeaveConfirm(formModel);
+
+  function isValidReplicas(value: number | string | undefined) {
+    return Number.isInteger(Number(value)) && Number(value) >= 1;
+  }
+
+  const replicasRules = [
+    {
+      validator: isValidReplicas,
+      message: t('请输入大于或等于 1 的整数'),
+      trigger: 'blur',
+    },
+  ];
+
+  // 仅在明确取到 0（实例被删光）时提示；undefined 表示规格未知，不能断言为 0。
+  const hasInvalidEffectiveReplicas = computed(() => props.effectiveReplicas === 0);
 
   const alertContent = computed(() => {
     if (formModel.updateContent === 'config') {
@@ -326,7 +362,7 @@
         appID: appDetailStore.appID,
         envName: trpcDeployStore.curEnvItem!.name ?? '',
         imageTag: formModel.imageTag,
-        replicas: props.effectiveReplicas ?? trpcDeployStore.deploySpec?.replicas ?? 0,
+        replicas: Number(formModel.replicas),
       };
       if (shouldBuildFromSource.value) {
         params.branch = formModel.branch;
@@ -431,11 +467,16 @@
         formModel.deployType = 'RollingUpdate';
         formModel.updateContent = 'both';
         formModel.imageTag = '';
+        formModel.replicas = undefined;
       });
       imageSource.value = 'image';
       showBuildLog.value = false;
       formRef.value?.clearValidate();
     } else {
+      // 打开弹窗时回填当前生效实例数；withPausedWatch 避免初始化赋值被标记为未保存修改。
+      withPausedWatch(() => {
+        formModel.replicas = isValidReplicas(props.effectiveReplicas) ? props.effectiveReplicas : undefined;
+      });
       // 打开弹窗时获取当前镜像 Tag
       await fetchCurrentImageTag();
     }

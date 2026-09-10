@@ -189,7 +189,8 @@ function useDeleteInstances(context: InstanceActionContext) {
             message: t('操作成功'),
           });
           context.clearSelections();
-          await context.refreshData();
+          // 列表刷新会重建 SSE Watch，不能阻塞确认框关闭。
+          void Promise.resolve(context.refreshData()).catch(error => console.warn(error));
         }
       },
     });

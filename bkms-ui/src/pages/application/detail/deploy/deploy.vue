@@ -112,6 +112,7 @@
           </Button>
           <!-- 扩缩容 -->
           <ScaleInstance
+            :before-open="fetchEffectiveDeploySpec"
             :effective-replicas="effectiveDeploySpec?.replicas"
             @update="fetchEffectiveDeploySpec"
           />
@@ -922,6 +923,8 @@
     try {
       const precheckPassed = await precheck(envName, trpcDeployStore.curEnvItem);
       if (precheckPassed && trpcDeployStore.curEnvItem?.name === envName) {
+        await fetchEffectiveDeploySpec();
+        if (trpcDeployStore.curEnvItem?.name !== envName) return;
         showFullUpdateDialog.value = true;
       }
     } catch (error) {

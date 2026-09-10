@@ -308,6 +308,7 @@
 
   const emit = defineEmits(['update']);
   const props = defineProps<{
+    beforeOpen?: () => Promise<void>;
     effectiveReplicas?: number;
     loading?: boolean;
   }>();
@@ -596,8 +597,19 @@
 
   // 打开侧边栏并加载当前环境扩缩容配置。
   async function handleOpen() {
-    isShow.value = true;
-    await fetchGPAConfig();
+    isInitLoading.value = true;
+    try {
+      // beforeOpen 失败时中止打开，由 finally 恢复按钮状态；异常不能抛给点击事件造成 unhandled rejection。
+      await props.beforeOpen?.();
+      await nextTick();
+      isShow.value = true;
+      await fetchGPAConfig();
+    } finally {
+      // 刷新生效规格失败时侧栏尚未打开，需要恢复按钮状态。
+      if (!isShow.value) {
+        isInitLoading.value = false;
+      }
+    }
   }
 
   // 删除指定触发条件指标，至少保留一条。
