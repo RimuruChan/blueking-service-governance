@@ -42,7 +42,6 @@ import (
 	depenvvars "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/envvars"
 	depmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/helm"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/envvarrefs"
@@ -129,8 +128,8 @@ var _ = Describe("DeployPreChecker Check", func() {
 		)
 		fxApp.RequireStart()
 		workload.InitPlugin(appConfigFileStore, appConfigFileDefStore, polarisConfigStore)
-		statusMock = mockey.Mock(clusteraddon.QueryAddonStatus).
-			Return(nil, &helm.Release{DeployResult: helm.DeployResult{Status: helm.StatusDeployed}}, nil).
+		statusMock = mockey.Mock(clusteraddon.InspectRequiredAddons).
+			Return(nil, nil).
 			Build()
 
 		newApp = func(opts *dbfactory.TrpcApplicationOpts) (*bkmsapp.Application, *envmodel.Environment) {
@@ -504,7 +503,7 @@ ignored: ${LEGACY}
 		})
 		It("returns missing addon identities", func() {
 			app, appEnv := newApp(nil)
-			statusMock.Return(nil, &helm.Release{DeployResult: helm.DeployResult{Status: helm.StatusNotFound}}, nil)
+			statusMock.Return([]clusteraddon.AddonReference{{Name: addon.Name, DisplayName: addon.DisplayName}}, nil)
 			result, err := checker.Check(ctx, app, appEnv)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.MissingRequiredClusterAddons).To(ContainElement(clusteraddon.AddonReference{
@@ -514,7 +513,7 @@ ignored: ${LEGACY}
 		It("preserves status query failures", func() {
 			app, appEnv := newApp(nil)
 			cause := errors.New("cluster unavailable")
-			statusMock.Return(nil, nil, cause)
+			statusMock.Return(nil, cause)
 			_, err := checker.Check(ctx, app, appEnv)
 			Expect(errors.Is(err, cause)).To(BeTrue())
 		})

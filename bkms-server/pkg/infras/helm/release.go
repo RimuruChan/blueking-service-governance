@@ -24,6 +24,8 @@ import (
 
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/action"
+	helmrelease "helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 // GetReleaseStatus 获取 Release 详细状态
@@ -34,10 +36,62 @@ func GetReleaseStatus(cfg *action.Configuration, releaseName string) (*Release, 
 		return nil, errors.Wrapf(err, "get release %s status", releaseName)
 	}
 
+	return releaseFromHelm(release), nil
+}
+
+// GetReleaseByChart 在当前 namespace 中按 Chart 元数据名称筛选未卸载的 Release。
+// 优先匹配 preferredName，否则选择 Release 名称字典序最小的候选。
+// 保留失败、pending 和 unknown 状态，由调用方判断是否可用。
+func GetReleaseByChart(cfg *action.Configuration, chartName, preferredName string) (*Release, error) {
+	releases, err := ListReleases(cfg)
+	if err != nil {
+		return nil, errors.Wrapf(err, "list releases for chart %s", chartName)
+	}
+	release := FindReleaseByChart(releases, chartName, preferredName)
+	if release == nil {
+		return nil, errors.Wrapf(driver.ErrReleaseNotFound, "no installed release for chart %s", chartName)
+	}
+	return release, nil
+}
+
+// ListReleases 查询当前 namespace 中各未卸载 Release 的最新版本，包含状态和 Values。
+func ListReleases(cfg *action.Configuration) ([]*Release, error) {
+	list := action.NewList(cfg)
+	list.StateMask = (action.ListAll | action.ListUnknown) &^ action.ListUninstalled
+	releases, err := list.Run()
+	if err != nil {
+		return nil, errors.Wrap(err, "list helm releases")
+	}
+	result := make([]*Release, 0, len(releases))
+	for _, release := range releases {
+		result = append(result, releaseFromHelm(release))
+	}
+	return result, nil
+}
+
+// FindReleaseByChart 从列表中匹配 Chart，同名优先，否则按名称字典序选择；无匹配时返回 nil。
+func FindReleaseByChart(releases []*Release, chartName, preferredName string) *Release {
+	var matched *Release
+	for _, release := range releases {
+		if release.Chart.Name == "" || release.Chart.Name != chartName {
+			continue
+		}
+		if release.Name == preferredName {
+			return release
+		}
+		if matched == nil || release.Name < matched.Name {
+			matched = release
+		}
+	}
+	return matched
+}
+
+func releaseFromHelm(release *helmrelease.Release) *Release {
 	result := &Release{
 		Name:      release.Name,
 		Namespace: release.Namespace,
 		Version:   strconv.Itoa(release.Version),
+		Values:    release.Config,
 		DeployResult: DeployResult{
 			Status:      release.Info.Status,
 			Description: release.Info.Description,
@@ -52,7 +106,7 @@ func GetReleaseStatus(cfg *action.Configuration, releaseName string) (*Release, 
 			Description: release.Chart.Metadata.Description,
 		}
 	}
-	return result, nil
+	return result
 }
 
 // GetReleaseValues 获取 Release 当前使用的 Values
