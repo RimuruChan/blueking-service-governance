@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
 )
@@ -59,7 +60,7 @@ WARNING: This operation is irreversible. The application and all its configurati
 					return errors.Wrap(inputErr, "read confirmation")
 				}
 				if input != app.Name {
-					return errors.New("deletion cancelled: input does not match app name")
+					return errors.Wrap(clierr.ErrCancelled, "input does not match app name")
 				}
 			}
 

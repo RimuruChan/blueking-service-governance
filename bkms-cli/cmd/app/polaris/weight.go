@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
 )
@@ -50,7 +51,7 @@ Weight range: 0-10000 (0 = drain all traffic, 100 = normal weight).`,
 		PreRunE: cmdutil.ResolveAppPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if weight < 0 || weight > 10000 {
-				return errors.New("--weight must be in range 0-10000")
+				return clierr.Usagef("--weight must be in range 0-10000")
 			}
 
 			if err := client.New().UpdatePolarisConfigEnvWeight(cmd.Context(), appID, configName, envName, weight); err != nil {
