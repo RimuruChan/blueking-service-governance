@@ -94,7 +94,7 @@ func InstallOrUpgradeClusterAddon(
 	if err != nil {
 		return errors.Wrapf(err, "init action configuration for deploy %s", releaseName)
 	}
-	release, err := resolveAddonRelease(cfg, addonDef)
+	release, err := helm.GetReleaseByChart(cfg, addonDef.ChartInfo.ChartName, releaseName)
 	if err != nil && !errors.Is(err, driver.ErrReleaseNotFound) {
 		return errors.Wrapf(err, "find installed addon %s", addonDef.Name)
 	}
@@ -137,7 +137,7 @@ func UninstallClusterAddon(
 	if err != nil {
 		return errors.Wrapf(err, "init action configuration for uninstall %s", releaseName)
 	}
-	release, err := resolveAddonRelease(cfg, addonDef)
+	release, err := helm.GetReleaseByChart(cfg, addonDef.ChartInfo.ChartName, releaseName)
 	if err != nil {
 		return errors.Wrapf(err, "find installed addon %s to uninstall", addonDef.Name)
 	}
@@ -150,14 +150,4 @@ func UninstallClusterAddon(
 	}
 
 	return nil
-}
-
-// resolveAddonRelease 按 Chart 名称筛选，优先使用配置的 Release 名称，否则按名称字典序选择。
-// 返回实际 Release，供升级和卸载使用同一个安装实例。
-func resolveAddonRelease(cfg *action.Configuration, def *ClusterAddonDef) (*helm.Release, error) {
-	release, err := helm.GetReleaseByChart(cfg, def.ChartInfo.ChartName, GenerateReleaseName(def))
-	if err != nil {
-		return nil, errors.Wrapf(err, "resolve addon %s release", def.Name)
-	}
-	return release, nil
 }
