@@ -19,7 +19,6 @@
 package env
 
 import (
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
@@ -49,7 +48,7 @@ Valid types: development | test | staging | production`,
 			workspaceID = cmdutil.GetWorkspaceID(workspaceID)
 
 			if displayName == "" && envType == "" {
-				return clierr.Usage(errors.New("at least one of --display-name or --type must be specified"))
+				return clierr.Usagef("at least one of --display-name or --type must be specified")
 			}
 
 			body := client.UpdateEnvBasicInfoBody{

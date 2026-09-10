@@ -58,7 +58,7 @@ Only specified fields will be updated.`,
 		PreRun: cmdutil.CommonPreRun,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if sensitive && noSensitive {
-				return clierr.Usage(errors.New("--sensitive and --no-sensitive cannot be used together"))
+				return clierr.Usagef("--sensitive and --no-sensitive cannot be used together")
 			}
 
 			key = strings.TrimSpace(key)

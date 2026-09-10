@@ -21,7 +21,6 @@ package instance
 import (
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
@@ -85,7 +84,7 @@ func runInstancePolaris(
 	isolate, weightSet, isolateSet bool,
 ) error {
 	if !weightSet && !isolateSet {
-		return clierr.Usage(errors.New("at least one of --weight or --isolate must be specified"))
+		return clierr.Usagef("at least one of --weight or --isolate must be specified")
 	}
 
 	instanceIDs := params.NormalizeInstIDs(instanceIDsStr, ",")

@@ -66,7 +66,7 @@ When --env is provided, this command edits the lifecycle config for that specifi
 		PreRunE: cmdutil.ResolveAppPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if specFile == "" {
-				return clierr.Usage(errors.New("-f is required for edit"))
+				return clierr.Usagef("-f is required for edit")
 			}
 
 			if err := appspec.EditHandler(cmd.Context(), appID, envName, specFile, client.AppSpecSectionLifecycle); err != nil {

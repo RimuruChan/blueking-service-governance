@@ -44,7 +44,7 @@ Example:
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// 使用第一个参数作为 workspaceID
 			if len(args) != 1 {
-				return clierr.Usage(errors.New("should provide workspaceID in args"))
+				return clierr.Usagef("should provide workspaceID in args")
 			}
 			workspaceID := args[0]
 

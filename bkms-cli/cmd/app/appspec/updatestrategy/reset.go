@@ -46,7 +46,7 @@ the default application-level update strategy. The --env flag is required.`,
 		PreRunE: cmdutil.ResolveAppPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if envName == "" {
-				return clierr.Usage(errors.New("reset requires --env to be specified"))
+				return clierr.Usagef("reset requires --env to be specified")
 			}
 
 			if err := appspec.ResetHandler(cmd.Context(), appID, envName, client.AppSpecSectionUpdateStrategy); err != nil {

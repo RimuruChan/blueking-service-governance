@@ -63,7 +63,7 @@ Use -f to write it to a file.`,
 		PreRunE: cmdutil.ResolveAppPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if scope == exportScopeEffectiveByEnv && envName == "" {
-				return clierr.Usage(errors.New("--env is required when --scope is effectiveByEnv"))
+				return clierr.Usagef("--env is required when --scope is effectiveByEnv")
 			}
 
 			content, err := client.New().ExportAppEnvVars(cmd.Context(), appID, client.ExportAppEnvVarsOptions{

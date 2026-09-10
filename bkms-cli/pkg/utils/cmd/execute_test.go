@@ -81,11 +81,18 @@ var _ = Describe("Execute", func() {
 		Entry(
 			"custom argument error",
 			[]string{"check", "--env", "test"},
-			errors.Wrap(clierr.Usage(errors.New("invalid options")), "configure"),
+			errors.Wrap(clierr.Usagef("invalid options"), "configure"),
 			true,
 		),
 		Entry("API failure", []string{"check", "--env", "test"}, errors.New("environment tes not found"), false),
 	)
+
+	It("prints formatted usage errors with usage", func() {
+		runErr = clierr.Usagef("unsupported mode: %s", "test")
+		Expect(cmdutil.Execute(context.Background(), root, []string{"check", "--env", "test"})).To(Equal(1))
+		Expect(stderr.String()).To(HavePrefix("Error: unsupported mode: test\n"))
+		Expect(stderr.String()).To(ContainSubstring("Usage:"))
+	})
 
 	It("prints authentication errors once without usage", func() {
 		preRunErr = errors.New("authentication failed")

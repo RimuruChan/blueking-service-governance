@@ -33,6 +33,11 @@ func (e *UsageError) Unwrap() error { return e.Err }
 // Usage 标记参数错误，供统一错误出口识别。
 func Usage(err error) error { return &UsageError{Err: err} }
 
+// Usagef 创建参数错误，支持格式化消息。
+func Usagef(format string, args ...any) error {
+	return Usage(errors.Errorf(format, args...))
+}
+
 // ReportedError 表示失败明细已经输出，仅需返回非零退出码。
 type ReportedError struct{ Err error }
 

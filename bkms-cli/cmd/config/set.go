@@ -19,7 +19,6 @@
 package config
 
 import (
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/config"
@@ -48,7 +47,7 @@ With --if-unset, the value is written only when it is currently empty.`,
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if bkmsBaseURL == "" {
-				return clierr.Usage(errors.New("--bkms-base-url is required"))
+				return clierr.Usagef("--bkms-base-url is required")
 			}
 
 			updated, err := config.G.SetBkmsBaseURL(bkmsBaseURL, ifUnset)

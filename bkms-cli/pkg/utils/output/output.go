@@ -190,7 +190,7 @@ type jqFormatter struct {
 
 func (f jqFormatter) Format(ctx context.Context, data any) (string, error) {
 	if strings.TrimSpace(f.expr) == "" {
-		return "", clierr.Usage(errors.New("jq expression cannot be empty"))
+		return "", clierr.Usagef("jq expression cannot be empty")
 	}
 	input, err := f.toInput(data)
 	if err != nil {
