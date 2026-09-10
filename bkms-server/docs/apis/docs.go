@@ -19260,6 +19260,13 @@ const docTemplate = `{
                         }
                     ]
                 },
+                "extraFiles": {
+                    "description": "打包额外文件路径，相对构建目录；空列表表示不额外拷贝",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "runnerImage": {
                     "description": "运行阶段基础镜像",
                     "type": "string"
@@ -19280,6 +19287,13 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_TencentBlueKing_blueking-service-governance_bkms-server_pkg_build_build_serializer.BuildCommandsOutputObj"
                         }
                     ]
+                },
+                "extraFiles": {
+                    "description": "打包额外文件路径，相对构建目录",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "runnerImage": {
                     "description": "运行阶段基础镜像",
@@ -19517,6 +19531,13 @@ const docTemplate = `{
                             "$ref": "#/definitions/github_com_TencentBlueKing_blueking-service-governance_bkms-server_pkg_core_app_serializer.BuildCommandsOutputObj"
                         }
                     ]
+                },
+                "extraFiles": {
+                    "description": "打包额外文件路径，相对构建目录",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "runnerImage": {
                     "description": "运行阶段基础镜像",
