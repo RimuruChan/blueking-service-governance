@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -243,14 +244,20 @@ func (c *SvcBasedClient) ImportPublicEnvVars(
 	ctx context.Context,
 	workspaceID, filePath string,
 ) (*EnvVarImportResult, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/scoped-env-vars/public-vars/import", workspaceID)
-	return c.uploadEnvFile(ctx, url, filePath)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/workspaces/%s/scoped-env-vars/public-vars/import",
+		url.PathEscape(workspaceID),
+	)
+	return c.uploadEnvFile(ctx, path, filePath)
 }
 
 // ExportPublicEnvVars 导出公共环境变量。
 func (c *SvcBasedClient) ExportPublicEnvVars(ctx context.Context, workspaceID string) (string, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/scoped-env-vars/public-vars/export", workspaceID)
-	return c.downloadEnvFile(ctx, url, nil)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/workspaces/%s/scoped-env-vars/public-vars/export",
+		url.PathEscape(workspaceID),
+	)
+	return c.downloadEnvFile(ctx, path, nil)
 }
 
 // ImportEnvScopedEnvVars 导入单环境环境变量。
@@ -258,20 +265,20 @@ func (c *SvcBasedClient) ImportEnvScopedEnvVars(
 	ctx context.Context,
 	envID, filePath string,
 ) (*EnvVarImportResult, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/scoped-env-vars/import/%s", envID)
-	return c.uploadEnvFile(ctx, url, filePath)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/scoped-env-vars/import/%s", url.PathEscape(envID))
+	return c.uploadEnvFile(ctx, path, filePath)
 }
 
 // ExportEnvScopedEnvVars 导出单环境环境变量。
 func (c *SvcBasedClient) ExportEnvScopedEnvVars(ctx context.Context, envID string) (string, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/scoped-env-vars/export/%s", envID)
-	return c.downloadEnvFile(ctx, url, nil)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/scoped-env-vars/export/%s", url.PathEscape(envID))
+	return c.downloadEnvFile(ctx, path, nil)
 }
 
 // ImportAppEnvVars 导入应用直接定义的环境变量。
 func (c *SvcBasedClient) ImportAppEnvVars(ctx context.Context, appID, filePath string) (*EnvVarImportResult, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/env-vars/import", appID)
-	return c.uploadEnvFile(ctx, url, filePath)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/env-vars/import", url.PathEscape(appID))
+	return c.uploadEnvFile(ctx, path, filePath)
 }
 
 // ExportAppEnvVars 导出应用环境变量。
@@ -280,14 +287,14 @@ func (c *SvcBasedClient) ExportAppEnvVars(
 	appID string,
 	opts ExportAppEnvVarsOptions,
 ) (string, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/env-vars/export", appID)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/env-vars/export", url.PathEscape(appID))
 	params := map[string]string{
 		"scope": opts.Scope,
 	}
 	if opts.EnvName != "" {
 		params["envName"] = opts.EnvName
 	}
-	return c.downloadEnvFile(ctx, url, params)
+	return c.downloadEnvFile(ctx, path, params)
 }
 
 // ---------- 环境变量导入预览方法 ----------
@@ -296,34 +303,37 @@ func (c *SvcBasedClient) ExportAppEnvVars(
 func (c *SvcBasedClient) PreviewPublicEnvVars(
 	ctx context.Context, workspaceID, filePath string,
 ) (*EnvVarImportPreview, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/scoped-env-vars/public-vars/preview", workspaceID)
-	return c.uploadEnvFileForPreview(ctx, url, filePath)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/workspaces/%s/scoped-env-vars/public-vars/preview",
+		url.PathEscape(workspaceID),
+	)
+	return c.uploadEnvFileForPreview(ctx, path, filePath)
 }
 
 // PreviewEnvScopedEnvVars 预览单环境环境变量导入。
 func (c *SvcBasedClient) PreviewEnvScopedEnvVars(
 	ctx context.Context, envID, filePath string,
 ) (*EnvVarImportPreview, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/scoped-env-vars/preview/%s", envID)
-	return c.uploadEnvFileForPreview(ctx, url, filePath)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/scoped-env-vars/preview/%s", url.PathEscape(envID))
+	return c.uploadEnvFileForPreview(ctx, path, filePath)
 }
 
 // PreviewAppEnvVars 预览应用环境变量导入。
 func (c *SvcBasedClient) PreviewAppEnvVars(
 	ctx context.Context, appID, filePath string,
 ) (*EnvVarImportPreview, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/env-vars/preview", appID)
-	return c.uploadEnvFileForPreview(ctx, url, filePath)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/env-vars/preview", url.PathEscape(appID))
+	return c.uploadEnvFileForPreview(ctx, path, filePath)
 }
 
 // ---------- 环境变量 CRUD 方法 ----------
 
 // ListPublicEnvVars 获取公共环境变量列表。
 func (c *SvcBasedClient) ListPublicEnvVars(ctx context.Context, workspaceID string) ([]ScopedEnvVar, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/scoped-env-vars/public-vars", workspaceID)
-
 	var respData listPublicEnvVarsResp
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/scoped-env-vars/public-vars", url.PathEscape(workspaceID))
+
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, errors.Wrap(err, "list public env vars")
 	}
@@ -337,10 +347,10 @@ func (c *SvcBasedClient) ListPublicEnvVars(ctx context.Context, workspaceID stri
 func (c *SvcBasedClient) CreateScopedEnvVar(
 	ctx context.Context, workspaceID string, opts CreateScopedEnvVarOptions,
 ) (*ScopedEnvVar, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/scoped-env-vars", workspaceID)
-
 	var respData createScopedEnvVarResp
-	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).SetResult(&respData).Post(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/scoped-env-vars", url.PathEscape(workspaceID))
+
+	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).SetResult(&respData).Post(path)
 	if err != nil {
 		return nil, errors.Wrap(err, "create scoped env var")
 	}
@@ -354,10 +364,14 @@ func (c *SvcBasedClient) CreateScopedEnvVar(
 func (c *SvcBasedClient) UpdateScopedEnvVar(
 	ctx context.Context, workspaceID, scopedEnvVarID string, opts UpdateScopedEnvVarOptions,
 ) (*ScopedEnvVar, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/scoped-env-vars/%s", workspaceID, scopedEnvVarID)
-
 	var respData updateScopedEnvVarResp
-	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).SetResult(&respData).Put(url)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/workspaces/%s/scoped-env-vars/%s",
+		url.PathEscape(workspaceID),
+		url.PathEscape(scopedEnvVarID),
+	)
+
+	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).SetResult(&respData).Put(path)
 	if err != nil {
 		return nil, errors.Wrap(err, "update scoped env var")
 	}
@@ -369,9 +383,13 @@ func (c *SvcBasedClient) UpdateScopedEnvVar(
 
 // DeleteScopedEnvVar 删除公共作用域环境变量。
 func (c *SvcBasedClient) DeleteScopedEnvVar(ctx context.Context, workspaceID, scopedEnvVarID string) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/scoped-env-vars/%s", workspaceID, scopedEnvVarID)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/workspaces/%s/scoped-env-vars/%s",
+		url.PathEscape(workspaceID),
+		url.PathEscape(scopedEnvVarID),
+	)
 
-	resp, err := c.cli.R().SetContext(ctx).Delete(url)
+	resp, err := c.cli.R().SetContext(ctx).Delete(path)
 	if err != nil {
 		return errors.Wrap(err, "delete scoped env var")
 	}
@@ -383,10 +401,10 @@ func (c *SvcBasedClient) DeleteScopedEnvVar(ctx context.Context, workspaceID, sc
 
 // ListAppDefinedEnvVars 获取应用直接定义的环境变量列表。
 func (c *SvcBasedClient) ListAppDefinedEnvVars(ctx context.Context, appID string) ([]AppDefinedEnvVar, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/env-vars", appID)
-
 	var respData listAppDefinedEnvVarsResp
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/env-vars", url.PathEscape(appID))
+
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, errors.Wrap(err, "list app defined env vars")
 	}
@@ -400,10 +418,10 @@ func (c *SvcBasedClient) ListAppDefinedEnvVars(ctx context.Context, appID string
 func (c *SvcBasedClient) CreateAppDefinedEnvVar(
 	ctx context.Context, appID string, opts CreateAppDefinedEnvVarOptions,
 ) (*AppDefinedEnvVar, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/env-vars", appID)
-
 	var respData createAppDefinedEnvVarResp
-	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).SetResult(&respData).Post(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/env-vars", url.PathEscape(appID))
+
+	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).SetResult(&respData).Post(path)
 	if err != nil {
 		return nil, errors.Wrap(err, "create app defined env var")
 	}
@@ -417,10 +435,10 @@ func (c *SvcBasedClient) CreateAppDefinedEnvVar(
 func (c *SvcBasedClient) UpdateAppDefinedEnvVar(
 	ctx context.Context, appID, key string, opts UpdateAppDefinedEnvVarOptions,
 ) (*AppDefinedEnvVar, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/env-vars/%s", appID, key)
-
 	var respData updateAppDefinedEnvVarResp
-	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).SetResult(&respData).Put(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/env-vars/%s", url.PathEscape(appID), url.PathEscape(key))
+
+	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).SetResult(&respData).Put(path)
 	if err != nil {
 		return nil, errors.Wrap(err, "update app defined env var")
 	}
@@ -432,9 +450,9 @@ func (c *SvcBasedClient) UpdateAppDefinedEnvVar(
 
 // DeleteAppDefinedEnvVar 删除应用直接定义的环境变量。
 func (c *SvcBasedClient) DeleteAppDefinedEnvVar(ctx context.Context, appID, key string) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/env-vars/%s", appID, key)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/env-vars/%s", url.PathEscape(appID), url.PathEscape(key))
 
-	resp, err := c.cli.R().SetContext(ctx).Delete(url)
+	resp, err := c.cli.R().SetContext(ctx).Delete(path)
 	if err != nil {
 		return errors.Wrap(err, "delete app defined env var")
 	}
@@ -446,10 +464,10 @@ func (c *SvcBasedClient) DeleteAppDefinedEnvVar(ctx context.Context, appID, key 
 
 // ListEnvScopedEnvVars 获取指定环境下的环境变量详情列表（含冲突信息）。
 func (c *SvcBasedClient) ListEnvScopedEnvVars(ctx context.Context, envID string) ([]ScopedEnvVarDetailed, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/scoped-env-vars/detailed-list/%s", envID)
-
 	var respData listEnvScopedEnvVarsResp
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/scoped-env-vars/detailed-list/%s", url.PathEscape(envID))
+
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, errors.Wrap(err, "list env scoped env vars")
 	}
@@ -461,10 +479,14 @@ func (c *SvcBasedClient) ListEnvScopedEnvVars(ctx context.Context, envID string)
 
 // ListAppEnvVars 获取应用在某环境下最终生效的全部环境变量。
 func (c *SvcBasedClient) ListAppEnvVars(ctx context.Context, appID, envName string) ([]AppEnvVar, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/env-variables", appID, envName)
-
 	var respData listAppEnvVarsResp
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/env-variables",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
+
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, errors.Wrap(err, "list app env vars")
 	}
@@ -477,7 +499,7 @@ func (c *SvcBasedClient) ListAppEnvVars(ctx context.Context, appID, envName stri
 // ---------- 内部辅助方法 ----------
 
 // uploadEnvFile 以 multipart/form-data 格式上传 .env 文件到指定 URL。
-func (c *SvcBasedClient) uploadEnvFile(ctx context.Context, url, filePath string) (*EnvVarImportResult, error) {
+func (c *SvcBasedClient) uploadEnvFile(ctx context.Context, path, filePath string) (*EnvVarImportResult, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, errors.Wrap(err, "open env file")
@@ -489,7 +511,7 @@ func (c *SvcBasedClient) uploadEnvFile(ctx context.Context, url, filePath string
 		SetContext(ctx).
 		SetFileReader("file", filepath.Base(filePath), file).
 		SetResult(&resp).
-		Post(url)
+		Post(path)
 	if err != nil {
 		return nil, errors.Wrap(err, "upload env file")
 	}
@@ -504,7 +526,7 @@ func (c *SvcBasedClient) uploadEnvFile(ctx context.Context, url, filePath string
 
 // uploadEnvFileForPreview 以 multipart/form-data 格式上传 .env 文件到预览 URL。
 func (c *SvcBasedClient) uploadEnvFileForPreview(
-	ctx context.Context, url, filePath string,
+	ctx context.Context, path, filePath string,
 ) (*EnvVarImportPreview, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -517,7 +539,7 @@ func (c *SvcBasedClient) uploadEnvFileForPreview(
 		SetContext(ctx).
 		SetFileReader("file", filepath.Base(filePath), file).
 		SetResult(&resp).
-		Post(url)
+		Post(path)
 	if err != nil {
 		return nil, errors.Wrap(err, "preview env file")
 	}
@@ -531,12 +553,12 @@ func (c *SvcBasedClient) uploadEnvFileForPreview(
 }
 
 // downloadEnvFile 从指定 URL 下载 .env 文件内容。
-func (c *SvcBasedClient) downloadEnvFile(ctx context.Context, url string, params map[string]string) (string, error) {
+func (c *SvcBasedClient) downloadEnvFile(ctx context.Context, path string, params map[string]string) (string, error) {
 	req := c.cli.R().SetContext(ctx)
 	if params != nil {
 		req.SetQueryParams(params)
 	}
-	r, err := req.Get(url)
+	r, err := req.Get(path)
 	if err != nil {
 		return "", errors.Wrap(err, "download env file")
 	}

@@ -41,16 +41,12 @@ type AppDashboardURIInput struct {
 type AppDashboardCreateInput struct {
 	// UID 仪表盘 uid
 	UID string `json:"uid" binding:"required,min=1"`
-	// Title 仪表盘标题
-	Title string `json:"title" binding:"required,min=1,max=64"`
 }
 
 // AppDashboardUpdateInput 更新应用仪表盘绑定请求。
 type AppDashboardUpdateInput struct {
-	// UID 仪表盘 uid（可选，变更绑定的仪表盘）
+	// UID 新的仪表盘 uid（仅支持变更绑定的仪表盘）
 	UID *string `json:"uid" binding:"omitempty,min=1"`
-	// Title 仪表盘标题（可选）
-	Title *string `json:"title" binding:"omitempty,min=1,max=64"`
 }
 
 // DashboardOutput 仪表盘输出。

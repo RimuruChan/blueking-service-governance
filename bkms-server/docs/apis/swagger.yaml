@@ -1263,28 +1263,17 @@ definitions:
     type: object
   serializer.AppDashboardCreateInput:
     properties:
-      title:
-        description: Title 仪表盘标题
-        maxLength: 64
-        minLength: 1
-        type: string
       uid:
         description: UID 仪表盘 uid
         minLength: 1
         type: string
     required:
-    - title
     - uid
     type: object
   serializer.AppDashboardUpdateInput:
     properties:
-      title:
-        description: Title 仪表盘标题（可选）
-        maxLength: 64
-        minLength: 1
-        type: string
       uid:
-        description: UID 仪表盘 uid（可选，变更绑定的仪表盘）
+        description: UID 新的仪表盘 uid（仅支持变更绑定的仪表盘）
         minLength: 1
         type: string
     type: object

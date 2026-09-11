@@ -205,6 +205,19 @@ type Client interface {
 	// DeleteAppComponent 删除应用组件
 	DeleteAppComponent(ctx context.Context, appID, compName string) error
 
+	// ---------- 仪表盘 ----------
+
+	// ListDashboardDirectoryTree 获取工作空间下的仪表盘目录树
+	ListDashboardDirectoryTree(ctx context.Context, workspaceID string) ([]DashboardDirectoryItem, error)
+	// ListAppDashboards 获取应用绑定的仪表盘列表
+	ListAppDashboards(ctx context.Context, appID string) ([]AppDashboard, error)
+	// CreateAppDashboard 创建应用仪表盘绑定
+	CreateAppDashboard(ctx context.Context, appID, uid string) error
+	// UpdateAppDashboard 更新应用仪表盘绑定
+	UpdateAppDashboard(ctx context.Context, appID, uid string, opts UpdateAppDashboardOptions) error
+	// DeleteAppDashboard 删除应用仪表盘绑定
+	DeleteAppDashboard(ctx context.Context, appID, uid string) error
+
 	// ---------- AppSpec ----------
 
 	// GetAppDetail 获取应用详情（包含类型和启动命令）

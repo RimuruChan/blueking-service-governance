@@ -474,6 +474,69 @@ func (_c *MockClient_CreateAppComponent_Call) RunAndReturn(run func(ctx context.
 	return _c
 }
 
+// CreateAppDashboard provides a mock function for the type MockClient
+func (_mock *MockClient) CreateAppDashboard(ctx context.Context, appID string, uid string) error {
+	ret := _mock.Called(ctx, appID, uid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for CreateAppDashboard")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = returnFunc(ctx, appID, uid)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockClient_CreateAppDashboard_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CreateAppDashboard'
+type MockClient_CreateAppDashboard_Call struct {
+	*mock.Call
+}
+
+// CreateAppDashboard is a helper method to define mock.On call
+//   - ctx context.Context
+//   - appID string
+//   - uid string
+func (_e *MockClient_Expecter) CreateAppDashboard(ctx any, appID any, uid any) *MockClient_CreateAppDashboard_Call {
+	return &MockClient_CreateAppDashboard_Call{Call: _e.mock.On("CreateAppDashboard", ctx, appID, uid)}
+}
+
+func (_c *MockClient_CreateAppDashboard_Call) Run(run func(ctx context.Context, appID string, uid string)) *MockClient_CreateAppDashboard_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_CreateAppDashboard_Call) Return(err error) *MockClient_CreateAppDashboard_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockClient_CreateAppDashboard_Call) RunAndReturn(run func(ctx context.Context, appID string, uid string) error) *MockClient_CreateAppDashboard_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // CreateAppDefinedEnvVar provides a mock function for the type MockClient
 func (_mock *MockClient) CreateAppDefinedEnvVar(ctx context.Context, appID string, opts client.CreateAppDefinedEnvVarOptions) (*client.AppDefinedEnvVar, error) {
 	ret := _mock.Called(ctx, appID, opts)
@@ -889,8 +952,8 @@ func (_c *MockClient_CreateEnv_Call) Run(run func(ctx context.Context, workspace
 	return _c
 }
 
-func (_c *MockClient_CreateEnv_Call) Return(id string, err error) *MockClient_CreateEnv_Call {
-	_c.Call.Return(id, err)
+func (_c *MockClient_CreateEnv_Call) Return(s string, err error) *MockClient_CreateEnv_Call {
+	_c.Call.Return(s, err)
 	return _c
 }
 
@@ -1152,6 +1215,69 @@ func (_c *MockClient_DeleteAppConfigFileVersion_Call) Return(err error) *MockCli
 }
 
 func (_c *MockClient_DeleteAppConfigFileVersion_Call) RunAndReturn(run func(ctx context.Context, appID string, versionID string) error) *MockClient_DeleteAppConfigFileVersion_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// DeleteAppDashboard provides a mock function for the type MockClient
+func (_mock *MockClient) DeleteAppDashboard(ctx context.Context, appID string, uid string) error {
+	ret := _mock.Called(ctx, appID, uid)
+
+	if len(ret) == 0 {
+		panic("no return value specified for DeleteAppDashboard")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) error); ok {
+		r0 = returnFunc(ctx, appID, uid)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockClient_DeleteAppDashboard_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'DeleteAppDashboard'
+type MockClient_DeleteAppDashboard_Call struct {
+	*mock.Call
+}
+
+// DeleteAppDashboard is a helper method to define mock.On call
+//   - ctx context.Context
+//   - appID string
+//   - uid string
+func (_e *MockClient_Expecter) DeleteAppDashboard(ctx any, appID any, uid any) *MockClient_DeleteAppDashboard_Call {
+	return &MockClient_DeleteAppDashboard_Call{Call: _e.mock.On("DeleteAppDashboard", ctx, appID, uid)}
+}
+
+func (_c *MockClient_DeleteAppDashboard_Call) Run(run func(ctx context.Context, appID string, uid string)) *MockClient_DeleteAppDashboard_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_DeleteAppDashboard_Call) Return(err error) *MockClient_DeleteAppDashboard_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockClient_DeleteAppDashboard_Call) RunAndReturn(run func(ctx context.Context, appID string, uid string) error) *MockClient_DeleteAppDashboard_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -3331,6 +3457,74 @@ func (_c *MockClient_ListAppConfigFiles_Call) RunAndReturn(run func(ctx context.
 	return _c
 }
 
+// ListAppDashboards provides a mock function for the type MockClient
+func (_mock *MockClient) ListAppDashboards(ctx context.Context, appID string) ([]client.AppDashboard, error) {
+	ret := _mock.Called(ctx, appID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListAppDashboards")
+	}
+
+	var r0 []client.AppDashboard
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) ([]client.AppDashboard, error)); ok {
+		return returnFunc(ctx, appID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) []client.AppDashboard); ok {
+		r0 = returnFunc(ctx, appID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]client.AppDashboard)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, appID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockClient_ListAppDashboards_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListAppDashboards'
+type MockClient_ListAppDashboards_Call struct {
+	*mock.Call
+}
+
+// ListAppDashboards is a helper method to define mock.On call
+//   - ctx context.Context
+//   - appID string
+func (_e *MockClient_Expecter) ListAppDashboards(ctx any, appID any) *MockClient_ListAppDashboards_Call {
+	return &MockClient_ListAppDashboards_Call{Call: _e.mock.On("ListAppDashboards", ctx, appID)}
+}
+
+func (_c *MockClient_ListAppDashboards_Call) Run(run func(ctx context.Context, appID string)) *MockClient_ListAppDashboards_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_ListAppDashboards_Call) Return(appDashboards []client.AppDashboard, err error) *MockClient_ListAppDashboards_Call {
+	_c.Call.Return(appDashboards, err)
+	return _c
+}
+
+func (_c *MockClient_ListAppDashboards_Call) RunAndReturn(run func(ctx context.Context, appID string) ([]client.AppDashboard, error)) *MockClient_ListAppDashboards_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListAppDefinedEnvVars provides a mock function for the type MockClient
 func (_mock *MockClient) ListAppDefinedEnvVars(ctx context.Context, appID string) ([]client.AppDefinedEnvVar, error) {
 	ret := _mock.Called(ctx, appID)
@@ -3695,78 +3889,6 @@ func (_c *MockClient_ListAppPolarisConfigs_Call) RunAndReturn(run func(ctx conte
 	return _c
 }
 
-// ResolveApp provides a mock function for the type MockClient
-func (_mock *MockClient) ResolveApp(ctx context.Context, workspaceID string, input string) (string, error) {
-	ret := _mock.Called(ctx, workspaceID, input)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ResolveApp")
-	}
-
-	var r0 string
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (string, error)); ok {
-		return returnFunc(ctx, workspaceID, input)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) string); ok {
-		r0 = returnFunc(ctx, workspaceID, input)
-	} else {
-		r0 = ret.Get(0).(string)
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
-		r1 = returnFunc(ctx, workspaceID, input)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockClient_ResolveApp_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResolveApp'
-type MockClient_ResolveApp_Call struct {
-	*mock.Call
-}
-
-// ResolveApp is a helper method to define mock.On call
-//   - ctx context.Context
-//   - workspaceID string
-//   - input string
-func (_e *MockClient_Expecter) ResolveApp(ctx any, workspaceID any, input any) *MockClient_ResolveApp_Call {
-	return &MockClient_ResolveApp_Call{Call: _e.mock.On("ResolveApp", ctx, workspaceID, input)}
-}
-
-func (_c *MockClient_ResolveApp_Call) Run(run func(ctx context.Context, workspaceID string, input string)) *MockClient_ResolveApp_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 string
-		if args[1] != nil {
-			arg1 = args[1].(string)
-		}
-		var arg2 string
-		if args[2] != nil {
-			arg2 = args[2].(string)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-		)
-	})
-	return _c
-}
-
-func (_c *MockClient_ResolveApp_Call) Return(s string, err error) *MockClient_ResolveApp_Call {
-	_c.Call.Return(s, err)
-	return _c
-}
-
-func (_c *MockClient_ResolveApp_Call) RunAndReturn(run func(ctx context.Context, workspaceID string, input string) (string, error)) *MockClient_ResolveApp_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // ListApps provides a mock function for the type MockClient
 func (_mock *MockClient) ListApps(ctx context.Context, workspaceID string) ([]client.AppMinimal, error) {
 	ret := _mock.Called(ctx, workspaceID)
@@ -3905,6 +4027,74 @@ func (_c *MockClient_ListBuildRecords_Call) Return(buildRecords []client.BuildRe
 }
 
 func (_c *MockClient_ListBuildRecords_Call) RunAndReturn(run func(ctx context.Context, appID string, keyword string) ([]client.BuildRecord, error)) *MockClient_ListBuildRecords_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ListDashboardDirectoryTree provides a mock function for the type MockClient
+func (_mock *MockClient) ListDashboardDirectoryTree(ctx context.Context, workspaceID string) ([]client.DashboardDirectoryItem, error) {
+	ret := _mock.Called(ctx, workspaceID)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListDashboardDirectoryTree")
+	}
+
+	var r0 []client.DashboardDirectoryItem
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) ([]client.DashboardDirectoryItem, error)); ok {
+		return returnFunc(ctx, workspaceID)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string) []client.DashboardDirectoryItem); ok {
+		r0 = returnFunc(ctx, workspaceID)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]client.DashboardDirectoryItem)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
+		r1 = returnFunc(ctx, workspaceID)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockClient_ListDashboardDirectoryTree_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListDashboardDirectoryTree'
+type MockClient_ListDashboardDirectoryTree_Call struct {
+	*mock.Call
+}
+
+// ListDashboardDirectoryTree is a helper method to define mock.On call
+//   - ctx context.Context
+//   - workspaceID string
+func (_e *MockClient_Expecter) ListDashboardDirectoryTree(ctx any, workspaceID any) *MockClient_ListDashboardDirectoryTree_Call {
+	return &MockClient_ListDashboardDirectoryTree_Call{Call: _e.mock.On("ListDashboardDirectoryTree", ctx, workspaceID)}
+}
+
+func (_c *MockClient_ListDashboardDirectoryTree_Call) Run(run func(ctx context.Context, workspaceID string)) *MockClient_ListDashboardDirectoryTree_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		run(
+			arg0,
+			arg1,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_ListDashboardDirectoryTree_Call) Return(dashboardDirectoryItems []client.DashboardDirectoryItem, err error) *MockClient_ListDashboardDirectoryTree_Call {
+	_c.Call.Return(dashboardDirectoryItems, err)
+	return _c
+}
+
+func (_c *MockClient_ListDashboardDirectoryTree_Call) RunAndReturn(run func(ctx context.Context, workspaceID string) ([]client.DashboardDirectoryItem, error)) *MockClient_ListDashboardDirectoryTree_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -5106,6 +5296,78 @@ func (_c *MockClient_PreviewPublicEnvVars_Call) RunAndReturn(run func(ctx contex
 	return _c
 }
 
+// ResolveApp provides a mock function for the type MockClient
+func (_mock *MockClient) ResolveApp(ctx context.Context, workspaceID string, input string) (string, error) {
+	ret := _mock.Called(ctx, workspaceID, input)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ResolveApp")
+	}
+
+	var r0 string
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (string, error)); ok {
+		return returnFunc(ctx, workspaceID, input)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) string); ok {
+		r0 = returnFunc(ctx, workspaceID, input)
+	} else {
+		r0 = ret.Get(0).(string)
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, workspaceID, input)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockClient_ResolveApp_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ResolveApp'
+type MockClient_ResolveApp_Call struct {
+	*mock.Call
+}
+
+// ResolveApp is a helper method to define mock.On call
+//   - ctx context.Context
+//   - workspaceID string
+//   - input string
+func (_e *MockClient_Expecter) ResolveApp(ctx any, workspaceID any, input any) *MockClient_ResolveApp_Call {
+	return &MockClient_ResolveApp_Call{Call: _e.mock.On("ResolveApp", ctx, workspaceID, input)}
+}
+
+func (_c *MockClient_ResolveApp_Call) Run(run func(ctx context.Context, workspaceID string, input string)) *MockClient_ResolveApp_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_ResolveApp_Call) Return(s string, err error) *MockClient_ResolveApp_Call {
+	_c.Call.Return(s, err)
+	return _c
+}
+
+func (_c *MockClient_ResolveApp_Call) RunAndReturn(run func(ctx context.Context, workspaceID string, input string) (string, error)) *MockClient_ResolveApp_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // RollbackAppConfigFileVersion provides a mock function for the type MockClient
 func (_mock *MockClient) RollbackAppConfigFileVersion(ctx context.Context, appID string, versionID string, opts client.RollbackAppConfigFileVersionOptions) (*client.AppConfigFile, error) {
 	ret := _mock.Called(ctx, appID, versionID, opts)
@@ -5549,6 +5811,75 @@ func (_c *MockClient_UpdateAppConfigFileOverlayContent_Call) Return(appConfigFil
 }
 
 func (_c *MockClient_UpdateAppConfigFileOverlayContent_Call) RunAndReturn(run func(ctx context.Context, appID string, fileID string, opts client.AppConfigFileContentOptions) (*client.AppConfigFileContentUpdateResult, error)) *MockClient_UpdateAppConfigFileOverlayContent_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UpdateAppDashboard provides a mock function for the type MockClient
+func (_mock *MockClient) UpdateAppDashboard(ctx context.Context, appID string, uid string, opts client.UpdateAppDashboardOptions) error {
+	ret := _mock.Called(ctx, appID, uid, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UpdateAppDashboard")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, client.UpdateAppDashboardOptions) error); ok {
+		r0 = returnFunc(ctx, appID, uid, opts)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockClient_UpdateAppDashboard_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateAppDashboard'
+type MockClient_UpdateAppDashboard_Call struct {
+	*mock.Call
+}
+
+// UpdateAppDashboard is a helper method to define mock.On call
+//   - ctx context.Context
+//   - appID string
+//   - uid string
+//   - opts client.UpdateAppDashboardOptions
+func (_e *MockClient_Expecter) UpdateAppDashboard(ctx any, appID any, uid any, opts any) *MockClient_UpdateAppDashboard_Call {
+	return &MockClient_UpdateAppDashboard_Call{Call: _e.mock.On("UpdateAppDashboard", ctx, appID, uid, opts)}
+}
+
+func (_c *MockClient_UpdateAppDashboard_Call) Run(run func(ctx context.Context, appID string, uid string, opts client.UpdateAppDashboardOptions)) *MockClient_UpdateAppDashboard_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 client.UpdateAppDashboardOptions
+		if args[3] != nil {
+			arg3 = args[3].(client.UpdateAppDashboardOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_UpdateAppDashboard_Call) Return(err error) *MockClient_UpdateAppDashboard_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockClient_UpdateAppDashboard_Call) RunAndReturn(run func(ctx context.Context, appID string, uid string, opts client.UpdateAppDashboardOptions) error) *MockClient_UpdateAppDashboard_Call {
 	_c.Call.Return(run)
 	return _c
 }

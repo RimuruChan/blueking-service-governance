@@ -16,37 +16,26 @@
  * to the current version of the project delivered to anyone in the future.
  */
 
-// Package workspace provide workspace command
-package workspace
+// Package dashboard provides app dashboard command group
+package dashboard
 
-import (
-	"github.com/spf13/cobra"
+import "github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/workspace/component"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/workspace/dashboard"
-)
-
-// NewCmd create workspace command
+// NewCmd returns a Command instance for 'app dashboard' command group
 func NewCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "workspace",
-		Short: "Manage workspaces",
-		Long: `Manage BKMS workspaces and workspace-related configurations.
+		Use:   "dashboard",
+		Short: "Manage application dashboard bindings",
+		Long: `Bind BlueKing Monitor dashboards to an application and manage the bindings.
 
-Use this command to list workspaces, set or unset default workspace for your CLI operations.`,
+Use 'workspace dashboard list' to browse available dashboards first.`,
 		DisableFlagsInUseLine: true,
 	}
 
-	// 有权限的工作空间列表
 	cmd.AddCommand(NewListCmd())
-	// 设置默认工作空间
-	cmd.AddCommand(NewSetCmd())
-	// 取消设置默认工作空间
-	cmd.AddCommand(NewUnsetCmd())
-	// 工作空间组件实例
-	cmd.AddCommand(component.NewCmd())
-	// 工作空间仪表盘目录树
-	cmd.AddCommand(dashboard.NewCmd())
+	cmd.AddCommand(NewCreateCmd())
+	cmd.AddCommand(NewUpdateCmd())
+	cmd.AddCommand(NewDeleteCmd())
 
 	return cmd
 }

@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -153,15 +154,18 @@ func (c *SvcBasedClient) DevModePublishPreflight(
 	instanceIDs []string,
 	publishAll bool,
 ) (*DevModePreflightData, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/devmode/%s/envs/%s/preflight", appID, envName)
-
+	var respData DevModePreflightRespData
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/devmode/%s/envs/%s/preflight",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
 	body := map[string]any{
 		"instanceIDs": instanceIDs,
 		"publishAll":  publishAll,
 	}
 
-	var respData DevModePreflightRespData
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&respData).Post(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&respData).Post(path)
 	if err != nil {
 		return nil, errors.Wrap(err, "publish preflight request failed")
 	}
@@ -181,10 +185,10 @@ func (c *SvcBasedClient) DevModePublishPreflight(
 
 // ListWorkspaces 获取工作空间列表
 func (c *SvcBasedClient) ListWorkspaces(ctx context.Context, keyword string) ([]Workspace, error) {
-	url := "/bkms/v1/bkms-server/workspaces"
-
 	var respData ListWorkspacesRespData
-	resp, err := c.cli.R().SetContext(ctx).SetQueryParam("keyword", keyword).SetResult(&respData).Get(url)
+	path := "/bkms/v1/bkms-server/workspaces"
+
+	resp, err := c.cli.R().SetContext(ctx).SetQueryParam("keyword", keyword).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -197,10 +201,10 @@ func (c *SvcBasedClient) ListWorkspaces(ctx context.Context, keyword string) ([]
 
 // GetWorkspace 获取工作空间详情
 func (c *SvcBasedClient) GetWorkspace(ctx context.Context, id string) (*Workspace, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s", id)
-
 	var respData GetWorkspaceRespData
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s", url.PathEscape(id))
+
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -213,10 +217,10 @@ func (c *SvcBasedClient) GetWorkspace(ctx context.Context, id string) (*Workspac
 
 // ListEnvs 获取环境列表
 func (c *SvcBasedClient) ListEnvs(ctx context.Context, workspaceID string) ([]Env, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/envs", workspaceID)
-
 	var respData ListEnvsRespData
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/envs", url.PathEscape(workspaceID))
+
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -229,10 +233,10 @@ func (c *SvcBasedClient) ListEnvs(ctx context.Context, workspaceID string) ([]En
 
 // GetEnv 获取环境详情
 func (c *SvcBasedClient) GetEnv(ctx context.Context, envID string) (*Env, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/envs/%s", envID)
-
 	var respData GetEnvRespData
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/envs/%s", url.PathEscape(envID))
+
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -245,10 +249,10 @@ func (c *SvcBasedClient) GetEnv(ctx context.Context, envID string) (*Env, error)
 
 // CreateEnv 创建环境
 func (c *SvcBasedClient) CreateEnv(ctx context.Context, workspaceID string, body CreateEnvBody) (string, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/envs", workspaceID)
-
 	var respData CreateEnvRespData
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&respData).Post(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/envs", url.PathEscape(workspaceID))
+
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&respData).Post(path)
 	if err != nil {
 		return "", err
 	}
@@ -261,9 +265,9 @@ func (c *SvcBasedClient) CreateEnv(ctx context.Context, workspaceID string, body
 
 // UpdateEnvBasicInfo 更新环境基本信息
 func (c *SvcBasedClient) UpdateEnvBasicInfo(ctx context.Context, envID string, body UpdateEnvBasicInfoBody) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/envs/%s/basic-info", envID)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/envs/%s/basic-info", url.PathEscape(envID))
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(path)
 	if err != nil {
 		return err
 	}
@@ -276,9 +280,9 @@ func (c *SvcBasedClient) UpdateEnvBasicInfo(ctx context.Context, envID string, b
 
 // DeleteEnv 删除环境
 func (c *SvcBasedClient) DeleteEnv(ctx context.Context, envID string) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/envs/%s", envID)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/envs/%s", url.PathEscape(envID))
 
-	resp, err := c.cli.R().SetContext(ctx).Delete(url)
+	resp, err := c.cli.R().SetContext(ctx).Delete(path)
 	if err != nil {
 		return err
 	}
@@ -291,14 +295,18 @@ func (c *SvcBasedClient) DeleteEnv(ctx context.Context, envID string) error {
 
 // ResolveApp 通过 ID 或 Name 解析应用，返回 appID
 func (c *SvcBasedClient) ResolveApp(ctx context.Context, workspaceID, input string) (string, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/apps/resolve/%s", workspaceID, input)
-
 	var respData struct {
 		Data struct {
 			ID string `json:"id"`
 		} `json:"data"`
 	}
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/workspaces/%s/apps/resolve/%s",
+		url.PathEscape(workspaceID),
+		url.PathEscape(input),
+	)
+
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return "", errors.Wrap(err, "resolve app")
 	}
@@ -314,10 +322,10 @@ func (c *SvcBasedClient) ResolveApp(ctx context.Context, workspaceID, input stri
 
 // ListApps 获取应用列表
 func (c *SvcBasedClient) ListApps(ctx context.Context, workspaceID string) ([]AppMinimal, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/apps", workspaceID)
-
 	var respData ListAppsRespData
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/apps", url.PathEscape(workspaceID))
+
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -347,10 +355,10 @@ func (c *SvcBasedClient) GetAppMinimal(ctx context.Context, workspaceID, appID s
 
 // GetApp 获取应用完整定义（含 BuildConfig / AppModelSpec）
 func (c *SvcBasedClient) GetApp(ctx context.Context, appID string) (*AppFull, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s", appID)
-
 	var respData GetAppFullRespData
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s", url.PathEscape(appID))
+
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -363,9 +371,9 @@ func (c *SvcBasedClient) GetApp(ctx context.Context, appID string) (*AppFull, er
 
 // DeleteApp 删除应用
 func (c *SvcBasedClient) DeleteApp(ctx context.Context, appID string) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s", appID)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s", url.PathEscape(appID))
 
-	resp, err := c.cli.R().SetContext(ctx).Delete(url)
+	resp, err := c.cli.R().SetContext(ctx).Delete(path)
 	if err != nil {
 		return err
 	}
@@ -378,10 +386,10 @@ func (c *SvcBasedClient) DeleteApp(ctx context.Context, appID string) error {
 
 // UpdateAppDisplayName 更新应用显示名
 func (c *SvcBasedClient) UpdateAppDisplayName(ctx context.Context, appID, displayName string) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/display-name", appID)
 	body := UpdateAppDisplayNameBody{DisplayName: displayName}
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/display-name", url.PathEscape(appID))
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(path)
 	if err != nil {
 		return err
 	}
@@ -394,9 +402,9 @@ func (c *SvcBasedClient) UpdateAppDisplayName(ctx context.Context, appID, displa
 
 // UpdateAppBuildConfig 更新应用构建配置
 func (c *SvcBasedClient) UpdateAppBuildConfig(ctx context.Context, appID string, body AppBuildConfigUpdateBody) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/build-configs", appID)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/build-configs", url.PathEscape(appID))
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(path)
 	if err != nil {
 		return err
 	}
@@ -409,10 +417,10 @@ func (c *SvcBasedClient) UpdateAppBuildConfig(ctx context.Context, appID string,
 
 // GetAppIDAutoSuffix 获取应用 ID 自动后缀（后端生成）
 func (c *SvcBasedClient) GetAppIDAutoSuffix(ctx context.Context) (string, error) {
-	url := "/bkms/v1/bkms-server/apps/auto-id-suffix"
-
 	var respData GetAppIDAutoSuffixRespData
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	path := "/bkms/v1/bkms-server/apps/auto-id-suffix"
+
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return "", err
 	}
@@ -425,10 +433,10 @@ func (c *SvcBasedClient) GetAppIDAutoSuffix(ctx context.Context) (string, error)
 
 // CreateApp 创建应用
 func (c *SvcBasedClient) CreateApp(ctx context.Context, workspaceID string, body any) (*AppMinimal, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/apps", workspaceID)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/apps", url.PathEscape(workspaceID))
 
 	var respData CreateAppRespData
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&respData).Post(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&respData).Post(path)
 	if err != nil {
 		return nil, err
 	}
@@ -441,10 +449,10 @@ func (c *SvcBasedClient) CreateApp(ctx context.Context, workspaceID string, body
 
 // CreateAppBuild 执行应用构建
 func (c *SvcBasedClient) CreateAppBuild(ctx context.Context, appID string, opts BuildOptions) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/builds", appID)
 	body := map[string]any{"branch": opts.Branch, "imageTag": opts.ImageTag}
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/builds", url.PathEscape(appID))
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Post(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Post(path)
 	if err != nil {
 		return err
 	}
@@ -457,7 +465,7 @@ func (c *SvcBasedClient) CreateAppBuild(ctx context.Context, appID string, opts 
 
 // ListAppImages 获取应用镜像列表（因 cli 场景，默认只提供前 10 条）
 func (c *SvcBasedClient) ListAppImages(ctx context.Context, appID, keyword string) ([]Image, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/images", appID)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/images", url.PathEscape(appID))
 	queryParams := map[string]string{
 		"keyword":  keyword,
 		"page":     "1",
@@ -465,7 +473,7 @@ func (c *SvcBasedClient) ListAppImages(ctx context.Context, appID, keyword strin
 	}
 
 	var respData ListAppImagesResp
-	resp, err := c.cli.R().SetContext(ctx).SetQueryParams(queryParams).SetResult(&respData).Get(url)
+	resp, err := c.cli.R().SetContext(ctx).SetQueryParams(queryParams).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -478,7 +486,7 @@ func (c *SvcBasedClient) ListAppImages(ctx context.Context, appID, keyword strin
 
 // ListAppConfigFiles 获取应用配置文件列表
 func (c *SvcBasedClient) ListAppConfigFiles(ctx context.Context, appID, envName string) ([]AppConfigFile, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/app-config-files", appID)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/app-config-files", url.PathEscape(appID))
 
 	var respData ListAppConfigFilesRespData
 	req := c.cli.R().SetContext(ctx).SetResult(&respData)
@@ -486,7 +494,7 @@ func (c *SvcBasedClient) ListAppConfigFiles(ctx context.Context, appID, envName 
 		req.SetQueryParam("envName", envName)
 	}
 
-	resp, err := req.Get(url)
+	resp, err := req.Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -502,10 +510,14 @@ func (c *SvcBasedClient) GetAppConfigFileDetails(
 	ctx context.Context,
 	appID, fileID string,
 ) (*AppConfigFileDetails, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/app-config-files/%s/details", appID, fileID)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/app-config-files/%s/details",
+		url.PathEscape(appID),
+		url.PathEscape(fileID),
+	)
 
 	var details AppConfigFileDetails
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&details).Get(url)
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&details).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -522,7 +534,7 @@ func (c *SvcBasedClient) ListAppConfigFileVersions(
 	appID string,
 	opts ListAppConfigFileVersionsOptions,
 ) (*PaginatedAppConfigFileVersions, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/app-config-file/versions", appID)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/app-config-file/versions", url.PathEscape(appID))
 
 	page := opts.Page
 	if page <= 0 {
@@ -557,7 +569,7 @@ func (c *SvcBasedClient) ListAppConfigFileVersions(
 		req.SetQueryParam("description", opts.Description)
 	}
 
-	resp, err := req.Get(url)
+	resp, err := req.Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -577,10 +589,14 @@ func (c *SvcBasedClient) GetAppConfigFileVersion(
 	ctx context.Context,
 	appID, versionID string,
 ) (*AppConfigFileVersion, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/app-config-file/versions/%s", appID, versionID)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/app-config-file/versions/%s",
+		url.PathEscape(appID),
+		url.PathEscape(versionID),
+	)
 
 	var respData GetAppConfigFileVersionRespData
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -600,9 +616,13 @@ func (c *SvcBasedClient) DeleteAppConfigFileVersion(
 	ctx context.Context,
 	appID, versionID string,
 ) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/app-config-file/versions/%s", appID, versionID)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/app-config-file/versions/%s",
+		url.PathEscape(appID),
+		url.PathEscape(versionID),
+	)
 
-	resp, err := c.cli.R().SetContext(ctx).Delete(url)
+	resp, err := c.cli.R().SetContext(ctx).Delete(path)
 	if err != nil {
 		return err
 	}
@@ -623,14 +643,18 @@ func (c *SvcBasedClient) RollbackAppConfigFileVersion(
 	appID, versionID string,
 	opts RollbackAppConfigFileVersionOptions,
 ) (*AppConfigFile, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/app-config-file/versions/%s/rollback", appID, versionID)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/app-config-file/versions/%s/rollback",
+		url.PathEscape(appID),
+		url.PathEscape(versionID),
+	)
 	body := map[string]any{
 		"currentVersion": opts.CurrentVersion,
 		"description":    opts.Description,
 	}
 
 	var respData RollbackAppConfigFileVersionRespData
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&respData).Post(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&respData).Post(path)
 	if err != nil {
 		return nil, err
 	}
@@ -651,7 +675,11 @@ func (c *SvcBasedClient) UpdateAppConfigFileContent(
 	appID, fileID string,
 	opts AppConfigFileContentOptions,
 ) (*AppConfigFileContentUpdateResult, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/app-config-files/%s/content", appID, fileID)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/app-config-files/%s/content",
+		url.PathEscape(appID),
+		url.PathEscape(fileID),
+	)
 	body := map[string]any{
 		"content":        opts.Content,
 		"description":    opts.Description,
@@ -659,7 +687,7 @@ func (c *SvcBasedClient) UpdateAppConfigFileContent(
 	}
 
 	var result AppConfigFileContentUpdateResult
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&result).Put(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&result).Put(path)
 	if err != nil {
 		return nil, err
 	}
@@ -676,7 +704,11 @@ func (c *SvcBasedClient) UpdateAppConfigFileOverlayContent(
 	appID, fileID string,
 	opts AppConfigFileContentOptions,
 ) (*AppConfigFileContentUpdateResult, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/app-config-files/%s/overlay-content", appID, fileID)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/app-config-files/%s/overlay-content",
+		url.PathEscape(appID),
+		url.PathEscape(fileID),
+	)
 	body := map[string]any{
 		"overlayContent": opts.Content,
 		"description":    opts.Description,
@@ -684,7 +716,7 @@ func (c *SvcBasedClient) UpdateAppConfigFileOverlayContent(
 	}
 
 	var result AppConfigFileContentUpdateResult
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&result).Put(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&result).Put(path)
 	if err != nil {
 		return nil, err
 	}
@@ -701,7 +733,7 @@ func (c *SvcBasedClient) UpdateAppConfigFileOverlayContent(
 
 // ListBuildRecords 获取应用构建记录（因 cli 场景，默认只提供前 10 条）
 func (c *SvcBasedClient) ListBuildRecords(ctx context.Context, appID, keyword string) ([]BuildRecord, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/builds", appID)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/builds", url.PathEscape(appID))
 	queryParams := map[string]string{
 		"keyword":  keyword,
 		"page":     "1",
@@ -709,7 +741,7 @@ func (c *SvcBasedClient) ListBuildRecords(ctx context.Context, appID, keyword st
 	}
 
 	var respData ListBuildRecordsRespData
-	resp, err := c.cli.R().SetContext(ctx).SetQueryParams(queryParams).SetResult(&respData).Get(url)
+	resp, err := c.cli.R().SetContext(ctx).SetQueryParams(queryParams).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -726,7 +758,11 @@ func (c *SvcBasedClient) CreateAppHelmDeploy(
 	appID, envName string,
 	opts HelmDeployOptions,
 ) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/helm-deploys", appID, envName)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/helm-deploys",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
 	body := map[string]any{
 		"imageTag":        opts.ImageTag,
 		"chartVersion":    opts.ChartVersion,
@@ -734,7 +770,7 @@ func (c *SvcBasedClient) CreateAppHelmDeploy(
 		"trafficLaneName": opts.TrafficLaneName,
 	}
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Post(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Post(path)
 	if err != nil {
 		return err
 	}
@@ -749,7 +785,11 @@ func (c *SvcBasedClient) CreateAppHelmDeploy(
 func (c *SvcBasedClient) ListHelmDeployRecords(
 	ctx context.Context, appID, envName, trafficLaneName, keyword string,
 ) ([]HelmDeployRecord, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/helm-deploys", appID, envName)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/helm-deploys",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
 	queryParams := map[string]string{
 		"trafficLaneName": trafficLaneName,
 		"keyword":         keyword,
@@ -758,7 +798,7 @@ func (c *SvcBasedClient) ListHelmDeployRecords(
 	}
 
 	var respData ListHelmDeployRecordsRespData
-	resp, err := c.cli.R().SetContext(ctx).SetQueryParams(queryParams).SetResult(&respData).Get(url)
+	resp, err := c.cli.R().SetContext(ctx).SetQueryParams(queryParams).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -775,14 +815,18 @@ func (c *SvcBasedClient) CreateAppTrpcDeploy(
 	appID, envName string,
 	opts AppModelDeployOptions,
 ) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/trpc-deploys", appID, envName)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/trpc-deploys",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
 	body := map[string]any{
 		"imageTag":        opts.ImageTag,
 		"replicas":        opts.Replicas,
 		"trafficLaneName": opts.TrafficLaneName,
 	}
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Post(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Post(path)
 	if err != nil {
 		return err
 	}
@@ -797,7 +841,11 @@ func (c *SvcBasedClient) CreateAppTrpcDeploy(
 func (c *SvcBasedClient) ListTrpcDeployRecords(
 	ctx context.Context, appID, envName, keyword, trafficLaneName string,
 ) ([]AppModelDeployRecord, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/trpc-deploys", appID, envName)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/trpc-deploys",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
 	queryParams := map[string]string{
 		"keyword":         keyword,
 		"trafficLaneName": trafficLaneName,
@@ -806,7 +854,7 @@ func (c *SvcBasedClient) ListTrpcDeployRecords(
 	}
 
 	var respData AppModelDeployRecordsResp
-	resp, err := c.cli.R().SetContext(ctx).SetQueryParams(queryParams).SetResult(&respData).Get(url)
+	resp, err := c.cli.R().SetContext(ctx).SetQueryParams(queryParams).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -819,9 +867,14 @@ func (c *SvcBasedClient) ListTrpcDeployRecords(
 
 // DeleteHelmDeploy 删除 Helm 部署
 func (c *SvcBasedClient) DeleteHelmDeploy(ctx context.Context, appID, envName, deployID string) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/helm-deploys/%s", appID, envName, deployID)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/helm-deploys/%s",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+		url.PathEscape(deployID),
+	)
 
-	resp, err := c.cli.R().SetContext(ctx).Delete(url)
+	resp, err := c.cli.R().SetContext(ctx).Delete(path)
 	if err != nil {
 		return err
 	}
@@ -836,7 +889,11 @@ func (c *SvcBasedClient) DeleteHelmDeploy(ctx context.Context, appID, envName, d
 func (c *SvcBasedClient) GrayscaleUpdateInstance(
 	ctx context.Context, appID, envName, imageTag string, instanceIDs []string, updateStrategy string,
 ) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/instances", appID, envName)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/instances",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
 	body := map[string]any{
 		// fixme 泳道支持
 		"imageTag":       imageTag,
@@ -844,7 +901,7 @@ func (c *SvcBasedClient) GrayscaleUpdateInstance(
 		"updateStrategy": updateStrategy,
 	}
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(path)
 	if err != nil {
 		return err
 	}
@@ -859,13 +916,17 @@ func (c *SvcBasedClient) GrayscaleUpdateInstance(
 func (c *SvcBasedClient) BatchUpdateInstance(
 	ctx context.Context, appID, envName, imageTag, updateStrategy string,
 ) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/instances", appID, envName)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/instances",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
 	body := map[string]any{
 		"imageTag":       imageTag,
 		"updateStrategy": updateStrategy,
 	}
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(path)
 	if err != nil {
 		return err
 	}
@@ -882,7 +943,11 @@ func (c *SvcBasedClient) ListAppInstances(
 	appID, envName string,
 	opts ListAppInstancesOptions,
 ) (*PaginatedInstances, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/instances", appID, envName)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/instances",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
 
 	page := opts.Page
 	if page <= 0 {
@@ -897,7 +962,7 @@ func (c *SvcBasedClient) ListAppInstances(
 	resp, err := c.cli.R().SetContext(ctx).SetQueryParams(map[string]string{
 		"page":     strconv.Itoa(page),
 		"pageSize": strconv.Itoa(pageSize),
-	}).SetResult(&respData).Get(url)
+	}).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -912,9 +977,13 @@ func (c *SvcBasedClient) ListAppInstances(
 func (c *SvcBasedClient) UpdateInstancePolaris(
 	ctx context.Context, appID, envName string, opts UpdateInstancePolarisOptions,
 ) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/instances/operations/polaris", appID, envName)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/instances/operations/polaris",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).Put(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).Put(path)
 	if err != nil {
 		return err
 	}
@@ -929,9 +998,13 @@ func (c *SvcBasedClient) UpdateInstancePolaris(
 func (c *SvcBasedClient) BatchDeleteInstances(
 	ctx context.Context, appID, envName string, opts BatchDeleteInstancesOptions,
 ) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/instances/operations/batch_delete", appID, envName)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/instances/operations/batch_delete",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).Post(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).Post(path)
 	if err != nil {
 		return err
 	}
@@ -946,14 +1019,18 @@ func (c *SvcBasedClient) BatchDeleteInstances(
 func (c *SvcBasedClient) ListTrpcAdminCmds(
 	ctx context.Context, appID, envName string, instanceIDs []string,
 ) ([]string, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/instances/admin-cmds", appID, envName)
-
 	var respData ListTrpcAdminCmdsRespData
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/instances/admin-cmds",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
+
 	req := c.cli.R().SetContext(ctx).SetResult(&respData)
 	for _, id := range instanceIDs {
 		req.QueryParam.Add("instanceIDs", id)
 	}
-	resp, err := req.Get(url)
+	resp, err := req.Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -968,10 +1045,14 @@ func (c *SvcBasedClient) ListTrpcAdminCmds(
 func (c *SvcBasedClient) ExecuteTrpcAdminCmd(
 	ctx context.Context, appID, envName string, opts ExecuteTrpcAdminCmdOptions,
 ) ([]AdminCmdResult, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/instances/admin-cmds", appID, envName)
-
 	var respData ExecuteAdminCmdRespData
-	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).SetResult(&respData).Post(url)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/instances/admin-cmds",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
+
+	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).SetResult(&respData).Post(path)
 	if err != nil {
 		return nil, err
 	}
@@ -986,10 +1067,14 @@ func (c *SvcBasedClient) ExecuteTrpcAdminCmd(
 func (c *SvcBasedClient) ExecuteTafAdminCmd(
 	ctx context.Context, appID, envName string, opts ExecuteTafAdminCmdOptions,
 ) ([]AdminCmdResult, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/instances/taf-admin-cmds", appID, envName)
-
 	var respData ExecuteAdminCmdRespData
-	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).SetResult(&respData).Post(url)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/instances/taf-admin-cmds",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
+
+	resp, err := c.cli.R().SetContext(ctx).SetBody(opts).SetResult(&respData).Post(path)
 	if err != nil {
 		return nil, err
 	}
@@ -1004,14 +1089,18 @@ func (c *SvcBasedClient) ExecuteTafAdminCmd(
 func (c *SvcBasedClient) CreateAppTafDeploy(
 	ctx context.Context, appID, envName string, opts AppModelDeployOptions,
 ) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/taf-deploys", appID, envName)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/taf-deploys",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
 	body := map[string]any{
 		"imageTag":        opts.ImageTag,
 		"replicas":        opts.Replicas,
 		"trafficLaneName": opts.TrafficLaneName,
 	}
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Post(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Post(path)
 	if err != nil {
 		return err
 	}
@@ -1026,7 +1115,11 @@ func (c *SvcBasedClient) CreateAppTafDeploy(
 func (c *SvcBasedClient) ListTafDeployRecords(
 	ctx context.Context, appID, envName, keyword, trafficLaneName string,
 ) ([]AppModelDeployRecord, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/taf-deploys", appID, envName)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/taf-deploys",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
 	queryParams := map[string]string{
 		"keyword":         keyword,
 		"trafficLaneName": trafficLaneName,
@@ -1035,7 +1128,7 @@ func (c *SvcBasedClient) ListTafDeployRecords(
 	}
 
 	var respData AppModelDeployRecordsResp
-	resp, err := c.cli.R().SetContext(ctx).SetQueryParams(queryParams).SetResult(&respData).Get(url)
+	resp, err := c.cli.R().SetContext(ctx).SetQueryParams(queryParams).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -1048,9 +1141,13 @@ func (c *SvcBasedClient) ListTafDeployRecords(
 
 // DeleteTrpcDeploy 删除 Trpc 部署
 func (c *SvcBasedClient) DeleteTrpcDeploy(ctx context.Context, appID, envName string) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/trpc-deploys", appID, envName)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/trpc-deploys",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
 
-	resp, err := c.cli.R().SetContext(ctx).Delete(url)
+	resp, err := c.cli.R().SetContext(ctx).Delete(path)
 	if err != nil {
 		return err
 	}
@@ -1066,8 +1163,12 @@ func (c *SvcBasedClient) PreCheckTrpcDeploy(
 	ctx context.Context,
 	appID, envName string,
 ) (*DeployPrecheckResult, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/trpc-deploys/precheck", appID, envName)
-	return c.preCheckDeploy(ctx, url, "precheck trpc deploy")
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/trpc-deploys/precheck",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
+	return c.preCheckDeploy(ctx, path, "precheck trpc deploy")
 }
 
 // PreCheckTafDeploy 部署前检查 TAF 应用
@@ -1075,13 +1176,17 @@ func (c *SvcBasedClient) PreCheckTafDeploy(
 	ctx context.Context,
 	appID, envName string,
 ) (*DeployPrecheckResult, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/taf-deploys/precheck", appID, envName)
-	return c.preCheckDeploy(ctx, url, "precheck taf deploy")
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/taf-deploys/precheck",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
+	return c.preCheckDeploy(ctx, path, "precheck taf deploy")
 }
 
-func (c *SvcBasedClient) preCheckDeploy(ctx context.Context, url, op string) (*DeployPrecheckResult, error) {
+func (c *SvcBasedClient) preCheckDeploy(ctx context.Context, path, op string) (*DeployPrecheckResult, error) {
 	var respData DeployPrecheckResult
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -1094,9 +1199,13 @@ func (c *SvcBasedClient) preCheckDeploy(ctx context.Context, url, op string) (*D
 
 // DeleteTafDeploy 删除 TAF 部署
 func (c *SvcBasedClient) DeleteTafDeploy(ctx context.Context, appID, envName string) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/taf-deploys", appID, envName)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/taf-deploys",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+	)
 
-	resp, err := c.cli.R().SetContext(ctx).Delete(url)
+	resp, err := c.cli.R().SetContext(ctx).Delete(path)
 	if err != nil {
 		return err
 	}
@@ -1111,10 +1220,10 @@ func (c *SvcBasedClient) DeleteTafDeploy(ctx context.Context, appID, envName str
 
 // GetAppDetail queries the full app detail to retrieve type and start command info.
 func (c *SvcBasedClient) GetAppDetail(ctx context.Context, appID string) (*AppDetail, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s", appID)
-
 	var respData GetAppDetailRespData
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s", url.PathEscape(appID))
+
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, errors.Wrapf(err, "get app detail %s", appID)
 	}
@@ -1135,8 +1244,12 @@ func (c *SvcBasedClient) GetAppSpecDefaultSection(
 	section AppSpecSectionName,
 	result any,
 ) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/app-spec/default-%s", appID, section)
-	return c.getAppSpecSection(ctx, url, fmt.Sprintf("get default %s", section), result)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/app-spec/default-%s",
+		url.PathEscape(appID),
+		url.PathEscape(string(section)),
+	)
+	return c.getAppSpecSection(ctx, path, fmt.Sprintf("get default %s", section), result)
 }
 
 // GetAppSpecEnvEffectiveSection 获取应用环境生效 section 配置。
@@ -1146,16 +1259,21 @@ func (c *SvcBasedClient) GetAppSpecEnvEffectiveSection(
 	section AppSpecSectionName,
 	result any,
 ) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/app-spec/%s/effective", appID, envName, section)
-	return c.getAppSpecSection(ctx, url, fmt.Sprintf("get env effective %s", section), result)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/app-spec/%s/effective",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+		url.PathEscape(string(section)),
+	)
+	return c.getAppSpecSection(ctx, path, fmt.Sprintf("get env effective %s", section), result)
 }
 
-func (c *SvcBasedClient) getAppSpecSection(ctx context.Context, url, desc string, result any) error {
+func (c *SvcBasedClient) getAppSpecSection(ctx context.Context, path, desc string, result any) error {
 	type respWrapper struct {
 		Data any `json:"data"`
 	}
 	wrapper := &respWrapper{Data: result}
-	resp, err := c.cli.R().SetContext(ctx).SetResult(wrapper).Get(url)
+	resp, err := c.cli.R().SetContext(ctx).SetResult(wrapper).Get(path)
 	if err != nil {
 		return errors.Wrap(err, desc)
 	}
@@ -1172,9 +1290,13 @@ func (c *SvcBasedClient) SetAppSpecDefaultSection(
 	section AppSpecSectionName,
 	body any,
 ) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/app-spec/default-%s", appID, section)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/app-spec/default-%s",
+		url.PathEscape(appID),
+		url.PathEscape(string(section)),
+	)
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(path)
 	if err != nil {
 		return errors.Wrapf(err, "set default %s config", section)
 	}
@@ -1192,9 +1314,14 @@ func (c *SvcBasedClient) SetAppSpecEnvSection(
 	section AppSpecSectionName,
 	body any,
 ) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/app-spec/%s", appID, envName, section)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/app-spec/%s",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+		url.PathEscape(string(section)),
+	)
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(path)
 	if err != nil {
 		return errors.Wrapf(err, "set %s config for env %s", section, envName)
 	}
@@ -1217,9 +1344,14 @@ func (c *SvcBasedClient) DeleteAppSpecEnvSection(
 	appID, envName string,
 	section AppSpecSectionName,
 ) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/envs/%s/app-spec/%s", appID, envName, section)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/envs/%s/app-spec/%s",
+		url.PathEscape(appID),
+		url.PathEscape(envName),
+		url.PathEscape(string(section)),
+	)
 
-	resp, err := c.cli.R().SetContext(ctx).Delete(url)
+	resp, err := c.cli.R().SetContext(ctx).Delete(path)
 	if err != nil {
 		return errors.Wrapf(err, "delete %s config for env %s", section, envName)
 	}
@@ -1245,9 +1377,9 @@ func (c *SvcBasedClient) UpdateAppStartCommand(ctx context.Context, appID, appTy
 		return errors.Errorf("app type %q does not support start command configuration", appType)
 	}
 
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/%s", appID, specPath)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/%s", url.PathEscape(appID), url.PathEscape(specPath))
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(path)
 	if err != nil {
 		return errors.Wrapf(err, "update start command for app %s", appID)
 	}
@@ -1265,10 +1397,10 @@ func (c *SvcBasedClient) UpdateAppStartCommand(ctx context.Context, appID, appTy
 
 // ListAppPolarisConfigs 获取应用的北极星配置列表
 func (c *SvcBasedClient) ListAppPolarisConfigs(ctx context.Context, appID string) ([]PolarisConfig, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/deps/polaris-configs", appID)
-
 	var respData ListPolarisConfigsRespData
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/deps/polaris-configs", url.PathEscape(appID))
+
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -1281,10 +1413,10 @@ func (c *SvcBasedClient) ListAppPolarisConfigs(ctx context.Context, appID string
 
 // CreateAppPolarisConfig 创建应用的北极星配置，返回配置名称
 func (c *SvcBasedClient) CreateAppPolarisConfig(ctx context.Context, appID string, body any) (string, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/deps/polaris-configs", appID)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/deps/polaris-configs", url.PathEscape(appID))
 
 	var respData CreatePolarisConfigRespData
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&respData).Post(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&respData).Post(path)
 	if err != nil {
 		return "", err
 	}
@@ -1297,9 +1429,13 @@ func (c *SvcBasedClient) CreateAppPolarisConfig(ctx context.Context, appID strin
 
 // DeleteAppPolarisConfig 删除应用的北极星配置
 func (c *SvcBasedClient) DeleteAppPolarisConfig(ctx context.Context, appID, configName string) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/deps/polaris-configs/%s", appID, configName)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/deps/polaris-configs/%s",
+		url.PathEscape(appID),
+		url.PathEscape(configName),
+	)
 
-	resp, err := c.cli.R().SetContext(ctx).Delete(url)
+	resp, err := c.cli.R().SetContext(ctx).Delete(path)
 	if err != nil {
 		return err
 	}
@@ -1315,10 +1451,10 @@ func (c *SvcBasedClient) ListWorkspaceComponents(
 	ctx context.Context,
 	workspaceID string,
 ) ([]WorkspaceComponent, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/components", workspaceID)
-
 	var respData ListWorkspaceComponentsRespData
-	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/workspaces/%s/components", url.PathEscape(workspaceID))
+
+	resp, err := c.cli.R().SetContext(ctx).SetResult(&respData).Get(path)
 	if err != nil {
 		return nil, err
 	}
@@ -1331,10 +1467,10 @@ func (c *SvcBasedClient) ListWorkspaceComponents(
 
 // CreateAppComponent 添加应用组件，返回组件名称
 func (c *SvcBasedClient) CreateAppComponent(ctx context.Context, appID string, body any) (string, error) {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/components", appID)
-
 	var respData CreateAppComponentRespData
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&respData).Post(url)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/components", url.PathEscape(appID))
+
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).SetResult(&respData).Post(path)
 	if err != nil {
 		return "", err
 	}
@@ -1347,9 +1483,9 @@ func (c *SvcBasedClient) CreateAppComponent(ctx context.Context, appID string, b
 
 // DeleteAppComponent 删除应用组件
 func (c *SvcBasedClient) DeleteAppComponent(ctx context.Context, appID, compName string) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/components/%s", appID, compName)
+	path := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/components/%s", url.PathEscape(appID), url.PathEscape(compName))
 
-	resp, err := c.cli.R().SetContext(ctx).Delete(url)
+	resp, err := c.cli.R().SetContext(ctx).Delete(path)
 	if err != nil {
 		return err
 	}
@@ -1362,9 +1498,13 @@ func (c *SvcBasedClient) DeleteAppComponent(ctx context.Context, appID, compName
 
 // PatchAppPolarisConfig 更新应用的北极星配置（部分更新）
 func (c *SvcBasedClient) PatchAppPolarisConfig(ctx context.Context, appID, configName string, body any) error {
-	url := fmt.Sprintf("/bkms/v1/bkms-server/apps/%s/deps/polaris-configs/%s", appID, configName)
+	path := fmt.Sprintf(
+		"/bkms/v1/bkms-server/apps/%s/deps/polaris-configs/%s",
+		url.PathEscape(appID),
+		url.PathEscape(configName),
+	)
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Patch(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Patch(path)
 	if err != nil {
 		return err
 	}
@@ -1381,13 +1521,13 @@ func (c *SvcBasedClient) UpdatePolarisConfigEnvWeight(
 	appID, configName, envName string,
 	weight int32,
 ) error {
-	url := fmt.Sprintf(
+	body := UpdatePolarisConfigEnvWeightBody{Weight: weight}
+	path := fmt.Sprintf(
 		"/bkms/v1/bkms-server/apps/%s/deps/polaris-configs/%s/envs/%s/weight",
 		appID, configName, envName,
 	)
-	body := UpdatePolarisConfigEnvWeightBody{Weight: weight}
 
-	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(url)
+	resp, err := c.cli.R().SetContext(ctx).SetBody(body).Put(path)
 	if err != nil {
 		return err
 	}

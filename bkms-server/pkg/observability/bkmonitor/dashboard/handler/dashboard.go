@@ -107,7 +107,7 @@ func (h *Handler) CreateAppDashboard(c *gin.Context) {
 		return
 	}
 
-	if err = h.service.Create(ctx, ws, app.ID, bodyInput.UID, bodyInput.Title, auth.MustGetUser(ctx).ID); err != nil {
+	if err = h.service.Create(ctx, ws, app.ID, bodyInput.UID, auth.MustGetUser(ctx).ID); err != nil {
 		bkerrs.AbortWithErr(c, h.wrapError(err, "create app dashboard"))
 		return
 	}
@@ -144,8 +144,8 @@ func (h *Handler) UpdateAppDashboard(c *gin.Context) {
 		return
 	}
 
-	if bodyInput.UID == nil && bodyInput.Title == nil {
-		bkerrs.AbortWithErr(c, bkerrs.New(bkerrs.ErrCodeInvalidRequest, "uid or title must be provided"))
+	if bodyInput.UID == nil {
+		bkerrs.AbortWithErr(c, bkerrs.New(bkerrs.ErrCodeInvalidRequest, "uid must be provided"))
 		return
 	}
 
@@ -163,8 +163,7 @@ func (h *Handler) UpdateAppDashboard(c *gin.Context) {
 	}
 
 	err = h.service.Update(ctx, ws, app.ID, uriInput.UID, auth.MustGetUser(ctx).ID, &dashboard.AppDashboardUpdateData{
-		UID:   bodyInput.UID,
-		Title: bodyInput.Title,
+		UID: bodyInput.UID,
 	})
 	if err != nil {
 		bkerrs.AbortWithErr(c, h.wrapError(err, "update app dashboard"))

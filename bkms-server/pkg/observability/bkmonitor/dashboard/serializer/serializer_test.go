@@ -20,7 +20,6 @@ package serializer_test
 
 import (
 	"encoding/json"
-	"strings"
 
 	"github.com/go-playground/validator/v10"
 	. "github.com/onsi/ginkgo/v2"
@@ -39,27 +38,21 @@ var _ = Describe("AppDashboard Serializer", func() {
 	})
 
 	Describe("AppDashboardCreateInput", func() {
-		It("should require uid and title", func() {
+		It("should require uid", func() {
 			Expect(validate.Struct(serializer.AppDashboardCreateInput{})).To(HaveOccurred())
-			Expect(validate.Struct(serializer.AppDashboardCreateInput{UID: "u", Title: "t"})).
+			Expect(validate.Struct(serializer.AppDashboardCreateInput{UID: "u"})).
 				NotTo(HaveOccurred())
-		})
-
-		It("should reject title longer than 64 characters", func() {
-			longTitle := strings.Repeat("a", 65)
-			Expect(validate.Struct(serializer.AppDashboardCreateInput{UID: "u", Title: longTitle})).
-				To(HaveOccurred())
 		})
 	})
 
 	Describe("AppDashboardUpdateInput", func() {
-		It("should allow empty update (both fields optional)", func() {
+		It("should allow empty update (uid optional)", func() {
 			Expect(validate.Struct(serializer.AppDashboardUpdateInput{})).NotTo(HaveOccurred())
 		})
 
-		It("should accept title only", func() {
-			title := "New Title"
-			Expect(validate.Struct(serializer.AppDashboardUpdateInput{Title: &title})).NotTo(HaveOccurred())
+		It("should accept uid", func() {
+			uid := "new-uid"
+			Expect(validate.Struct(serializer.AppDashboardUpdateInput{UID: &uid})).NotTo(HaveOccurred())
 		})
 	})
 

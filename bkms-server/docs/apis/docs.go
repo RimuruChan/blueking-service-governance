@@ -20161,16 +20161,9 @@ const docTemplate = `{
         "serializer.AppDashboardCreateInput": {
             "type": "object",
             "required": [
-                "title",
                 "uid"
             ],
             "properties": {
-                "title": {
-                    "description": "Title 仪表盘标题",
-                    "type": "string",
-                    "maxLength": 64,
-                    "minLength": 1
-                },
                 "uid": {
                     "description": "UID 仪表盘 uid",
                     "type": "string",
@@ -20181,14 +20174,8 @@ const docTemplate = `{
         "serializer.AppDashboardUpdateInput": {
             "type": "object",
             "properties": {
-                "title": {
-                    "description": "Title 仪表盘标题（可选）",
-                    "type": "string",
-                    "maxLength": 64,
-                    "minLength": 1
-                },
                 "uid": {
-                    "description": "UID 仪表盘 uid（可选，变更绑定的仪表盘）",
+                    "description": "UID 新的仪表盘 uid（仅支持变更绑定的仪表盘）",
                     "type": "string",
                     "minLength": 1
                 }
