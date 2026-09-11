@@ -3,7 +3,7 @@ displayName: Hook-Operator
 description: Hook-Operator 支持优雅删除/更新的 hook 检查
 chartInfo:
   chartName: bcs-hook-operator
-  releaseName: bcs-hook-operator
+  releaseName: hook-operator
   defaultNamespace: bcs-system
   exampleValues: |
     command:

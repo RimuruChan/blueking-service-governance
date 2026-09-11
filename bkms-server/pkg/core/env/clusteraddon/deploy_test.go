@@ -26,6 +26,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
+	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/chart"
+	"helm.sh/helm/v3/pkg/postrender"
+	helmrelease "helm.sh/helm/v3/pkg/release"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 
@@ -37,7 +42,7 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
 )
 
-var _ = Describe("InstallOrUpgradeClusterAddon applicability", func() {
+var _ = Describe("InstallOrUpgradeClusterAddon", func() {
 	DescribeTable("checks applicability before pulling the chart",
 		func(unsupported, isFederation, rejected bool) {
 			pullErr := errors.New("chart pull stopped for test")
@@ -59,6 +64,70 @@ var _ = Describe("InstallOrUpgradeClusterAddon applicability", func() {
 		Entry("allows those addons on regular clusters", true, false, false),
 		Entry("allows supported addons on federation clusters", false, true, false),
 	)
+
+	DescribeTable("uses the installed release name or the configured name for a new installation",
+		func(installed *helm.Release, lookupErr error, expectedName string) {
+			mockey.PatchConvey("install or upgrade release name", GinkgoT(), func() {
+				def := &clusteraddon.ClusterAddonDef{Name: "bcs-hook-operator", ChartInfo: clusteraddon.HelmChartInfo{
+					ChartName: "bcs-hook-operator", ReleaseName: "bcs-hook-operator",
+				}}
+				mockey.Mock(helm.NewActionConfiguration).Return(&action.Configuration{}, nil).Build()
+				mockey.Mock(helm.GetReleaseByChart).Return(installed, lookupErr).Build()
+				mockey.Mock(helm.GetReleaseStatus).Return(nil, driver.ErrReleaseNotFound).Build()
+				mockey.Mock(helmdeploy.PullChart).Return(&chart.Chart{}, &helmdeploy.LintResult{}, nil).Build()
+				mockey.Mock(helmdeploy.RunHelmRelease).
+					To(func(_ *action.Configuration, name, namespace string, _ *chart.Chart, _ map[string]any, _ bool, _ postrender.PostRenderer) (*helmrelease.Release, error) {
+						Expect(name).To(Equal(expectedName))
+						Expect(namespace).To(Equal("bcs-system"))
+						return &helmrelease.Release{}, nil
+					}).
+					Build()
+				Expect(clusteraddon.InstallOrUpgradeClusterAddon(context.Background(), def,
+					addonEnvironment("cluster", false), "bcs-system", "1.0.0", nil)).To(Succeed())
+			})
+		},
+		Entry("upgrade the discovered release", &helm.Release{Name: "hook-operator"}, nil, "hook-operator"),
+		Entry("install with the configured name", nil, driver.ErrReleaseNotFound, "bcs-hook-operator"),
+	)
+
+	It("rejects a configured release name occupied by another chart", func() {
+		mockey.PatchConvey("release name conflict", GinkgoT(), func() {
+			def := hookOperatorDef()
+			mockey.Mock(helm.NewActionConfiguration).Return(&action.Configuration{}, nil).Build()
+			mockey.Mock(helmdeploy.PullChart).Return(&chart.Chart{}, &helmdeploy.LintResult{}, nil).Build()
+			mockey.Mock(helm.GetReleaseByChart).Return(nil, driver.ErrReleaseNotFound).Build()
+			mockey.Mock(helm.GetReleaseStatus).To(func(_ *action.Configuration, name string) (*helm.Release, error) {
+				Expect(name).To(Equal(def.ChartInfo.ChartName))
+				return &helm.Release{Name: name, Chart: helm.Chart{Name: "another-chart"}}, nil
+			}).Build()
+			deploy := mockey.Mock(helmdeploy.RunHelmRelease).Return(&helmrelease.Release{}, nil).Build()
+			err := clusteraddon.InstallOrUpgradeClusterAddon(context.Background(), def,
+				addonEnvironment("cluster", false), "bcs-system", "1.0.0", nil)
+			Expect(err).To(MatchError(ContainSubstring("is already used by chart another-chart")))
+			Expect(deploy.Times()).To(BeZero())
+		})
+	})
+})
+
+var _ = Describe("UninstallClusterAddon", func() {
+	It("uninstalls the discovered release", func() {
+		mockey.PatchConvey("uninstall release name", GinkgoT(), func() {
+			def := &clusteraddon.ClusterAddonDef{Name: "bcs-hook-operator", ChartInfo: clusteraddon.HelmChartInfo{
+				ChartName: "bcs-hook-operator", ReleaseName: "bcs-hook-operator",
+			}}
+			mockey.Mock(helm.NewActionConfiguration).Return(&action.Configuration{}, nil).Build()
+			mockey.Mock(helm.GetReleaseByChart).Return(&helm.Release{Name: "hook-operator"}, nil).Build()
+			mockey.Mock((*action.Uninstall).Run).
+				To(func(_ *action.Uninstall, name string) (*helmrelease.UninstallReleaseResponse, error) {
+					Expect(name).To(Equal("hook-operator"))
+					return &helmrelease.UninstallReleaseResponse{}, nil
+				}).
+				Build()
+			Expect(
+				clusteraddon.UninstallClusterAddon(context.Background(), def, "cluster", "bcs-system"),
+			).To(Succeed())
+		})
+	})
 })
 
 var _ = Describe("Deploy", func() {

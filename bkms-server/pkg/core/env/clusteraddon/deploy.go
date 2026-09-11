@@ -25,6 +25,7 @@ import (
 
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/storage/driver"
 
 	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	helmdeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/helm"
@@ -94,7 +95,26 @@ func InstallOrUpgradeClusterAddon(
 		return errors.Wrapf(err, "init action configuration for deploy %s", releaseName)
 	}
 
-	// 4. 执行 Upgrade 或 Install
+	// 4. 按 Chart 查找实际安装实例；未安装时检查配置的 Release 名称是否冲突
+	release, err := helm.GetReleaseByChart(cfg, addonDef.ChartInfo.ChartName, releaseName)
+	if err != nil && !errors.Is(err, driver.ErrReleaseNotFound) {
+		return errors.Wrapf(err, "find installed addon %s", addonDef.Name)
+	}
+	if err == nil {
+		releaseName = release.Name
+	} else {
+		// 未匹配到目标 Chart 时，配置的名称可能已被其他 Chart 占用。
+		existing, statusErr := helm.GetReleaseStatus(cfg, releaseName)
+		if statusErr != nil && !errors.Is(statusErr, driver.ErrReleaseNotFound) {
+			return errors.Wrapf(statusErr, "check release name %s in namespace %s", releaseName, namespace)
+		}
+		if statusErr == nil && existing.Chart.Name != addonDef.ChartInfo.ChartName {
+			return errors.Errorf("release %s in namespace %s is already used by chart %s, expected %s",
+				releaseName, namespace, existing.Chart.Name, addonDef.ChartInfo.ChartName)
+		}
+	}
+
+	// 5. 执行 Upgrade 或 Install
 	if _, err = helmdeploy.RunHelmRelease(cfg, releaseName, namespace, chart, valuesMap, false, nil); err != nil {
 		return errors.Wrapf(err, "upgrade or install release %s", releaseName)
 	}
@@ -119,6 +139,13 @@ func UninstallClusterAddon(
 	if err != nil {
 		return errors.Wrapf(err, "init action configuration for uninstall %s", releaseName)
 	}
+
+	// 按 Chart 查找实际安装实例，使用匹配到的 Release 名称卸载
+	release, err := helm.GetReleaseByChart(cfg, addonDef.ChartInfo.ChartName, releaseName)
+	if err != nil {
+		return errors.Wrapf(err, "find installed addon %s to uninstall", addonDef.Name)
+	}
+	releaseName = release.Name
 
 	// 执行卸载操作
 	uninstall := action.NewUninstall(cfg)
