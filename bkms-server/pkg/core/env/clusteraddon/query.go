@@ -97,8 +97,8 @@ func BuildAddonInfoList(
 		addons = append(addons, info)
 	}
 	// 每个 namespace 只查询一次；填充原列表中的对象，保持组件定义的顺序。
-	byNamespace := lo.GroupBy(addons, func(info *ClusterAddonInfo) string { return info.InstallInfo.Namespace })
-	for ns, infos := range byNamespace {
+	addonsByNamespace := lo.GroupBy(addons, func(info *ClusterAddonInfo) string { return info.InstallInfo.Namespace })
+	for ns, infos := range addonsByNamespace {
 		releases, err := queryAddonReleases(ctx, env.Cluster.ClusterID, ns)
 		if err != nil {
 			log.Warnf(ctx, "query addon status: %v", err)
@@ -124,6 +124,8 @@ func ApplicableAddonDefs(defs []*ClusterAddonDef, env *envmodel.Environment) []*
 }
 
 // InspectRequiredAddons 查询必选组件状态。缺失作为检查结果，查询失败作为错误返回。
+// namespace 的取值与组件列表、安装和卸载接口保持一致：优先使用传入值，为空时取各组件的 defaultNamespace，再回退到 bcs-system。
+// 当前部署预检和创建部署均传空值，保留按 namespace 复用查询，不因前端安装表单固定使用 bcs-system 而在此写死。
 func InspectRequiredAddons(
 	ctx context.Context,
 	defs []*ClusterAddonDef,
@@ -133,7 +135,7 @@ func InspectRequiredAddons(
 ) ([]AddonReference, error) {
 	var missing []AddonReference
 	// 同一 namespace 的 Release 列表在本次检查中只读取一次，包括空列表。
-	byNamespace := make(map[string][]*helm.Release)
+	releasesByNamespace := make(map[string][]*helm.Release)
 	// 只检查适用于目标环境、且当前应用类型必选的组件。
 	for _, def := range ApplicableAddonDefs(defs, env) {
 		if !lo.Contains(def.RequiredForAppTypes, appType) {
@@ -141,14 +143,14 @@ func InspectRequiredAddons(
 		}
 		addon := AddonReference{Name: def.Name, DisplayName: def.DisplayName}
 		ns := def.GetNamespace(namespace)
-		releases, ok := byNamespace[ns]
+		releases, ok := releasesByNamespace[ns]
 		if !ok {
 			var err error
 			releases, err = queryAddonReleases(ctx, env.Cluster.ClusterID, ns)
 			if err != nil {
 				return nil, errors.Wrapf(err, "inspect required addon %s", def.Name)
 			}
-			byNamespace[ns] = releases
+			releasesByNamespace[ns] = releases
 		}
 		// 按 Chart 匹配实际安装实例，优先同名 Release，否则取名称字典序最小的候选。
 		release := helm.FindReleaseByChart(releases, def.ChartInfo.ChartName, GenerateReleaseName(def))

@@ -36,7 +36,7 @@ func GetReleaseStatus(cfg *action.Configuration, releaseName string) (*Release, 
 		return nil, errors.Wrapf(err, "get release %s status", releaseName)
 	}
 
-	return releaseFromHelm(release), nil
+	return newReleaseFromHelm(release), nil
 }
 
 // GetReleaseByChart 在当前 namespace 中按 Chart 元数据名称筛选未卸载的 Release。
@@ -64,7 +64,7 @@ func ListReleases(cfg *action.Configuration) ([]*Release, error) {
 	}
 	result := make([]*Release, 0, len(releases))
 	for _, release := range releases {
-		result = append(result, releaseFromHelm(release))
+		result = append(result, newReleaseFromHelm(release))
 	}
 	return result, nil
 }
@@ -86,7 +86,7 @@ func FindReleaseByChart(releases []*Release, chartName, preferredName string) *R
 	return matched
 }
 
-func releaseFromHelm(release *helmrelease.Release) *Release {
+func newReleaseFromHelm(release *helmrelease.Release) *Release {
 	result := &Release{
 		Name:      release.Name,
 		Namespace: release.Namespace,

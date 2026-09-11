@@ -94,6 +94,8 @@ func InstallOrUpgradeClusterAddon(
 	if err != nil {
 		return errors.Wrapf(err, "init action configuration for deploy %s", releaseName)
 	}
+
+	// 4. 按 Chart 查找实际安装实例；未安装时检查配置的 Release 名称是否冲突
 	release, err := helm.GetReleaseByChart(cfg, addonDef.ChartInfo.ChartName, releaseName)
 	if err != nil && !errors.Is(err, driver.ErrReleaseNotFound) {
 		return errors.Wrapf(err, "find installed addon %s", addonDef.Name)
@@ -112,7 +114,7 @@ func InstallOrUpgradeClusterAddon(
 		}
 	}
 
-	// 4. 执行 Upgrade 或 Install
+	// 5. 执行 Upgrade 或 Install
 	if _, err = helmdeploy.RunHelmRelease(cfg, releaseName, namespace, chart, valuesMap, false, nil); err != nil {
 		return errors.Wrapf(err, "upgrade or install release %s", releaseName)
 	}
@@ -137,6 +139,8 @@ func UninstallClusterAddon(
 	if err != nil {
 		return errors.Wrapf(err, "init action configuration for uninstall %s", releaseName)
 	}
+
+	// 按 Chart 查找实际安装实例，使用匹配到的 Release 名称卸载
 	release, err := helm.GetReleaseByChart(cfg, addonDef.ChartInfo.ChartName, releaseName)
 	if err != nil {
 		return errors.Wrapf(err, "find installed addon %s to uninstall", addonDef.Name)
