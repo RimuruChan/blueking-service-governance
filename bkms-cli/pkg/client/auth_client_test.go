@@ -26,14 +26,20 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/config"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version"
 )
 
 var _ = Describe("AuthClient", func() {
-	var testServer *httptest.Server
+	var (
+		testServer *httptest.Server
+		gotUA      string
+	)
 
 	BeforeEach(func() {
+		gotUA = ""
 		testServer = httptest.NewServer(
 			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotUA = r.Header.Get("User-Agent")
 				switch r.URL.Path {
 				case "/user_token/validate":
 					// 验证鉴权请求不携带 Authorization 头
@@ -100,6 +106,7 @@ var _ = Describe("AuthClient", func() {
 			username, err := authCli.ValidateAccessToken("valid_token")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(username).To(Equal("blueking"))
+			Expect(gotUA).To(Equal(version.UserAgent()))
 		})
 
 		It("should return error with status code when token is expired", func() {

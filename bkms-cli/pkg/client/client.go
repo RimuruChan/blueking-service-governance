@@ -34,6 +34,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/config"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version"
 )
 
 const (
@@ -85,13 +86,15 @@ func New() Client {
 		SetHeaders(map[string]string{
 			"Content-Type":  "application/json",
 			"Authorization": fmt.Sprintf("Bearer %s", config.G.AccessToken),
+			"User-Agent":    version.UserAgent(),
 		})
 
 	// 用于 ValidateAccessToken / ExchangeBkTicketForToken 等登录前的鉴权操作
 	authCli := resty.New().
 		SetTransport(transport).
 		SetBaseURL(config.G.BkmsBaseURL).
-		SetTimeout(10 * time.Second)
+		SetTimeout(10*time.Second).
+		SetHeader("User-Agent", version.UserAgent())
 
 	return &SvcBasedClient{cli: bizCli, authCli: authCli}
 }

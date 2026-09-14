@@ -16,39 +16,33 @@
  * to the current version of the project delivered to anyone in the future.
  */
 
-// Package version provides bkms-cli version info
 package version
 
 import (
 	"fmt"
 	"runtime"
-	"strings"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
-var (
-	// Version 版本号
-	Version = ""
-	// GitHash CommitID
-	GitHash = ""
-	// BuildTime 二进制构建时间
-	BuildTime = ""
-	// GoVersion Go 版本号
-	GoVersion = runtime.Version()
-)
+var _ = Describe("UserAgent", func() {
+	var originalVersion string
 
-// UserAgent 返回访问 bkms-server 时使用的 User-Agent。
-func UserAgent() string {
-	v := strings.TrimPrefix(Version, "v")
-	if v == "" {
-		v = "dev"
-	}
-	return fmt.Sprintf("bkms-cli/%s (%s/%s)", v, runtime.GOOS, runtime.GOARCH)
-}
+	BeforeEach(func() {
+		originalVersion = Version
+		DeferCleanup(func() { Version = originalVersion })
+	})
 
-// GetVersion 获取版本信息
-func GetVersion() string {
-	return fmt.Sprintf(
-		"\nVersion:   %s\nGitHash:   %s\nBuildTime: %s\nGoVersion: %s\n",
-		Version, GitHash, BuildTime, GoVersion,
+	DescribeTable("assembles product/version (os/arch)",
+		func(version, wantVersion string) {
+			Version = version
+			Expect(
+				UserAgent(),
+			).To(Equal(fmt.Sprintf("bkms-cli/%s (%s/%s)", wantVersion, runtime.GOOS, runtime.GOARCH)))
+		},
+		Entry("release version", "1.2.3", "1.2.3"),
+		Entry("strips leading v", "v1.2.3", "1.2.3"),
+		Entry("empty version uses dev", "", "dev"),
 	)
-}
+})

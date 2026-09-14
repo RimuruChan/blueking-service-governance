@@ -33,6 +33,8 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/pkg/errors"
+
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version"
 )
 
 const (
@@ -121,6 +123,7 @@ func (c *SvcBasedClient) dialWebSocket(
 	if auth := c.cli.Header.Get("Authorization"); auth != "" {
 		header.Set("Authorization", auth)
 	}
+	header.Set("User-Agent", version.UserAgent())
 
 	conn, resp, err := websocket.Dial(ctx, wsURL, &websocket.DialOptions{
 		HTTPHeader: header,

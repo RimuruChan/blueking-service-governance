@@ -19,11 +19,18 @@
 package client
 
 import (
+	"context"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 
+	"github.com/coder/websocket"
 	"github.com/go-resty/resty/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/config"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version"
 )
 
 var _ = Describe("buildWebSocketURL", func() {
@@ -88,5 +95,51 @@ var _ = Describe("buildWebSocketURL", func() {
 		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result).To(Equal("ws://localhost:8080/apps/my%20app/connect?key=value+with+spaces"))
+	})
+})
+
+var _ = Describe("port-forward User-Agent", func() {
+	var (
+		testServer *httptest.Server
+		gotUA      string
+		origConfig *config.Config
+	)
+
+	BeforeEach(func() {
+		origConfig = config.G
+		gotUA = ""
+		testServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotUA = r.Header.Get("User-Agent")
+			if r.Header.Get("Upgrade") == "websocket" {
+				conn, err := websocket.Accept(w, r, nil)
+				if err != nil {
+					return
+				}
+				_ = conn.CloseNow()
+				return
+			}
+			w.WriteHeader(http.StatusBadRequest)
+		}))
+		config.G = &config.Config{
+			BkmsBaseURL: testServer.URL,
+			AccessToken: "test-token",
+		}
+	})
+
+	AfterEach(func() {
+		config.G = origConfig
+		testServer.Close()
+	})
+
+	It("sends User-Agent on permission precheck", func() {
+		cli := New()
+		Expect(cli.CheckPortForwardPermission(context.Background(), "app", "env", "inst", 80, 8080)).To(Succeed())
+		Expect(gotUA).To(Equal(version.UserAgent()))
+	})
+
+	It("sends User-Agent on websocket handshake", func() {
+		cli := New().(*SvcBasedClient)
+		_, _ = cli.dialWebSocket(context.Background(), "/port-forward", nil)
+		Expect(gotUA).To(Equal(version.UserAgent()))
 	})
 })
