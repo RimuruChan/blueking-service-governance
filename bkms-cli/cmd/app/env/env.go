@@ -16,7 +16,7 @@
  * to the current version of the project delivered to anyone in the future.
  */
 
-// Package env 提供应用环境查询及专属特性环境管理命令。
+// Package env 提供应用专属特性环境管理命令。
 package env
 
 import "github.com/spf13/cobra"
@@ -25,12 +25,11 @@ import "github.com/spf13/cobra"
 func NewCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "env",
-		Short: "Manage application environments",
-		Long: `List standard and feature environments available to an application.
-Create and delete manage only application-owned feature environments.
+		Short: "Manage application feature environments",
+		Long: `List, create and delete feature environments owned by an application.
 Use 'bkms-cli env' to manage workspace standard environments.`,
 	}
-	// 查询应用可用的标准环境和专属特性环境
+	// 查询应用专属特性环境
 	cmd.AddCommand(NewListCmd())
 	// 从标准环境创建应用专属特性环境
 	cmd.AddCommand(NewCreateCmd())

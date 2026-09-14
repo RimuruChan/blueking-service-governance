@@ -27,6 +27,17 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 )
 
+// ListFeatureEnvs 从应用可用环境中筛选特性环境，保留完整环境信息用于输出。
+func ListFeatureEnvs(ctx context.Context, cli client.Client, appID string) ([]client.Env, error) {
+	envs, err := cli.ListAppEnvs(ctx, appID)
+	if err != nil {
+		return nil, errors.Wrap(err, "list app envs")
+	}
+	return lo.Filter(envs, func(env client.Env, _ int) bool {
+		return env.Kind == "feature"
+	}), nil
+}
+
 // ResolveFeatureEnv 在应用可用环境中按名称或 ID 定位目标，并校验特性环境归属。
 // 删除操作必须拒绝标准环境以及不属于当前应用的特性环境。
 // nameOrID 的规范化和必填校验由调用方完成。

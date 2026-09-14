@@ -59,7 +59,7 @@ Use this command to list and manage applications in your BKMS workspaces.`,
 	cmd.AddCommand(NewListCmd())
 	// 应用构建管理（命令组）
 	cmd.AddCommand(build.NewCmd())
-	// 应用环境查询及特性环境管理（命令组）
+	// 应用特性环境管理（命令组）
 	cmd.AddCommand(appenv.NewCmd())
 	// 应用部署管理（命令组）
 	cmd.AddCommand(deploy.NewCmd())

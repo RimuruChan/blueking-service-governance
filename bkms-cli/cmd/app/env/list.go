@@ -19,39 +19,28 @@
 package env
 
 import (
-	"strings"
-
-	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	handler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/env"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/output"
 )
 
-// NewListCmd 创建 app env list 子命令。
+// NewListCmd 创建 app env list 子命令，仅查询当前应用的特性环境。
 func NewListCmd() *cobra.Command {
-	var appID, kind, outputFormat string
+	var appID, outputFormat string
 	cmd := &cobra.Command{
 		Use:   "list",
-		Short: "List standard and application-owned feature environments",
-		Long:  "List available environments, optionally filtered by kind: standard or feature. Status indicates environment readiness; use 'app deploy list' to inspect deployments.",
+		Short: "List application-owned feature environments",
+		Long:  "List feature environments owned by an application. Use 'env list' for workspace standard environments and 'app deploy list' to inspect deployments.",
 		Example: `  bkms-cli app env list --app my-app
-  bkms-cli app env list --app my-app --kind feature -o json`,
-		Args: cobra.NoArgs,
-		PreRunE: func(cmd *cobra.Command, args []string) error {
-			// 命令层负责参数规范化和用法错误，在解析应用前完成校验。
-			kind = strings.TrimSpace(kind)
-			if kind != "" && kind != "standard" && kind != "feature" {
-				return clierr.Usage(errors.Errorf("invalid --kind %q: expected standard or feature", kind))
-			}
-			return cmdutil.ResolveAppPreRunE(cmd, args)
-		},
+  bkms-cli app env list --app my-app -o json`,
+		Args:    cobra.NoArgs,
+		PreRunE: cmdutil.ResolveAppPreRunE,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			envs, err := handler.ListAppEnvs(cmd.Context(), client.New(), appID, kind)
+			envs, err := handler.ListFeatureEnvs(cmd.Context(), client.New(), appID)
 			if err != nil {
 				return err
 			}
@@ -64,7 +53,6 @@ func NewListCmd() *cobra.Command {
 		},
 	}
 	cmdutil.AddAppFlags(cmd, &appID)
-	cmd.Flags().StringVar(&kind, "kind", "", "Filter by environment kind: standard | feature (default: all)")
 	output.AddFormatFlag(cmd, &outputFormat)
 	_ = cmd.MarkFlagRequired("app")
 	return cmd
