@@ -139,11 +139,7 @@ func (s *DeployStatusService) ListForAppsInWorkspace(
 
 	for i := range scopes {
 		scope := &scopes[i]
-		deployStatuses, buildErr := s.buildEnvDeployStatuses(scope, cache)
-		if buildErr != nil {
-			return nil, errors.Wrapf(buildErr, "list deploy statuses for environment %s", scope.env.Name)
-		}
-		for _, deployStatus := range deployStatuses {
+		for _, deployStatus := range s.buildEnvDeployStatuses(scope, cache) {
 			out[deployStatus.AppID] = append(out[deployStatus.AppID], deployStatus)
 		}
 	}
@@ -284,18 +280,18 @@ func (s *DeployStatusService) listForEnvironment(
 	if err != nil {
 		return nil, err
 	}
-	return s.buildEnvDeployStatuses(scope, cache)
+	return s.buildEnvDeployStatuses(scope, cache), nil
 }
 
 // buildEnvDeployStatuses 依据预取的部署状态缓存，构建某个环境上各应用、各泳道的部署状态
 func (s *DeployStatusService) buildEnvDeployStatuses(
 	scope *envStatusScope,
 	cache latestStatusCache,
-) ([]AppDeployStatus, error) {
+) []AppDeployStatus {
 	environment := scope.env
 	statuses := make([]AppDeployStatus, 0, len(scope.apps))
 	for _, application := range scope.apps {
-		deployStatuses, err := buildDeployStatuses(
+		statuses = append(statuses, buildDeployStatuses(
 			environment.ID.Hex(),
 			environment.Name,
 			environment.DisplayName,
@@ -306,13 +302,9 @@ func (s *DeployStatusService) buildEnvDeployStatuses(
 			application.Type,
 			scope.laneNames,
 			cache,
-		)
-		if err != nil {
-			return nil, errors.Wrap(err, "build deploy statuses")
-		}
-		statuses = append(statuses, deployStatuses...)
+		)...)
 	}
-	return statuses, nil
+	return statuses
 }
 
 // listEnvTrafficLaneNames 列出环境下的泳道
@@ -343,7 +335,7 @@ func buildDeployStatuses(
 	envID, envName, envDisplayName, envType, envKind, appID, appName, appType string,
 	laneNames []string,
 	cache latestStatusCache,
-) ([]AppDeployStatus, error) {
+) []AppDeployStatus {
 	statuses := make([]AppDeployStatus, 0, len(laneNames))
 
 	// 遍历每个泳道，获取部署状态
@@ -370,7 +362,7 @@ func buildDeployStatuses(
 
 	// 如果存在部署状态，则返回部署状态
 	if len(statuses) > 0 {
-		return statuses, nil
+		return statuses
 	}
 
 	// 否则返回未知状态
@@ -385,7 +377,7 @@ func buildDeployStatuses(
 		AppType:         appType,
 		TrafficLaneName: "",
 		DeployStatus:    StatusUnknown,
-	}}, nil
+	}}
 }
 
 // latestStatusKey 定位一条最新部署状态：同一应用在不同环境、不同泳道上互相独立。
@@ -406,7 +398,7 @@ type latestStatusCache map[latestStatusKey]*LatestDeployStatus
 func (s *DeployStatusService) prefetchLatestStatuses(
 	ctx context.Context, scopes []envStatusScope,
 ) (latestStatusCache, error) {
-	// 同一应用可能出现在多个环境上，按泳道汇总待查应用，交由存储层去重后批量聚合
+	// 同一应用可能出现在多个环境上，按泳道汇总待查应用并去重后再批量聚合
 	appModelIDsByLane := make(map[string][]string)
 	helmIDsByLane := make(map[string][]string)
 	for i := range scopes {
@@ -424,6 +416,12 @@ func (s *DeployStatusService) prefetchLatestStatuses(
 				}
 			}
 		}
+	}
+	for laneName, appIDs := range appModelIDsByLane {
+		appModelIDsByLane[laneName] = lo.Uniq(appIDs)
+	}
+	for laneName, appIDs := range helmIDsByLane {
+		helmIDsByLane[laneName] = lo.Uniq(appIDs)
 	}
 
 	cache := make(latestStatusCache)

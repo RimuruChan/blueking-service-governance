@@ -207,6 +207,67 @@ var _ = Describe("RecordStoreMongo", func() {
 		})
 	})
 
+	Describe("ListLatestByApps", func() {
+		It("should return the newest record per app and env", func() {
+			otherAppID := "test-app-" + stringx.Random(6)
+
+			Expect(store.Create(ctx, newRecord("stag", "stag-v1", trafficLaneName))).To(Succeed())
+			time.Sleep(5 * time.Millisecond)
+			Expect(store.Create(ctx, newRecord("stag", "stag-v2", trafficLaneName))).To(Succeed())
+			Expect(store.Create(ctx, newRecord("prod", "prod-v1", trafficLaneName))).To(Succeed())
+
+			otherStag := newRecord("stag", "other-stag-v1", trafficLaneName)
+			otherStag.AppID = otherAppID
+			Expect(store.Create(ctx, otherStag)).To(Succeed())
+			time.Sleep(5 * time.Millisecond)
+
+			otherStagNew := newRecord("stag", "other-stag-v2", trafficLaneName)
+			otherStagNew.AppID = otherAppID
+			Expect(store.Create(ctx, otherStagNew)).To(Succeed())
+
+			latest, err := store.ListLatestByApps(ctx, []string{appID, otherAppID}, trafficLaneName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latest).To(HaveLen(2))
+			Expect(latest[appID]).To(HaveLen(2))
+			Expect(latest[appID]["stag"].ImageTag).To(Equal("stag-v2"))
+			Expect(latest[appID]["prod"].ImageTag).To(Equal("prod-v1"))
+			Expect(latest[otherAppID]).To(HaveLen(1))
+			Expect(latest[otherAppID]["stag"].ImageTag).To(Equal("other-stag-v2"))
+		})
+
+		It("should only return records of the given traffic lane", func() {
+			Expect(store.Create(ctx, newRecord("stag", "base-v1", trafficLaneName))).To(Succeed())
+			Expect(store.Create(ctx, newRecord("stag", "lane-v1", "feature-lane"))).To(Succeed())
+
+			latest, err := store.ListLatestByApps(ctx, []string{appID}, trafficLaneName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latest).To(HaveLen(1))
+			Expect(latest[appID]["stag"].ImageTag).To(Equal("base-v1"))
+
+			laneLatest, err := store.ListLatestByApps(ctx, []string{appID}, "feature-lane")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(laneLatest).To(HaveLen(1))
+			Expect(laneLatest[appID]["stag"].ImageTag).To(Equal("lane-v1"))
+		})
+
+		It("should not return records of apps not in the list", func() {
+			otherAppID := "other-app-" + stringx.Random(6)
+
+			Expect(store.Create(ctx, newRecord("stag", "mine-v1", trafficLaneName))).To(Succeed())
+
+			other := newRecord("stag", "other-v1", trafficLaneName)
+			other.AppID = otherAppID
+			Expect(store.Create(ctx, other)).To(Succeed())
+
+			latest, err := store.ListLatestByApps(ctx, []string{appID}, trafficLaneName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latest).To(HaveLen(1))
+			Expect(latest).To(HaveKey(appID))
+			Expect(latest).NotTo(HaveKey(otherAppID))
+			Expect(latest[appID]["stag"].ImageTag).To(Equal("mine-v1"))
+		})
+	})
+
 	Describe("GetByBuildID", func() {
 		It("should return the record matching appID and buildID", func() {
 			record := newRecord("stag", "v1", trafficLaneName)
