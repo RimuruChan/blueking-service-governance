@@ -31,7 +31,7 @@ import (
 
 // NewListVersionsCmd returns a Command instance for 'app app-cfg-file list-versions' sub command.
 func NewListVersionsCmd() *cobra.Command {
-	var appID, envName, cfgFileName, outputFormat string
+	var appID, envName, outputFormat string
 
 	cmd := &cobra.Command{
 		Use:   "list-versions",
@@ -39,22 +39,18 @@ func NewListVersionsCmd() *cobra.Command {
 		Long: `List all history versions of the application config file selected by app and environment.
 
 When --env is omitted, this command lists versions of the default application-level config.
-When --env is provided, this command lists versions of that environment's overlay config.
-When an application has multiple config files in the same environment, use --name to select one.`,
+When --env is provided, this command lists versions of that environment's overlay config.`,
 		Example: `  # List all versions of the default config file
   bkms-cli app app-cfg-file list-versions --app demo
 
   # List all versions of an environment-specific overlay config file
   bkms-cli app app-cfg-file list-versions --app demo --env prod
 
-  # List all versions of one Helm config file by name
-  bkms-cli app app-cfg-file list-versions --app demo --name values
-
   # Output in JSON format
   bkms-cli app app-cfg-file list-versions --app demo --env prod -o json`,
 		PreRunE: cmdutil.ResolveAppPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := handler.ListVersions(cmd.Context(), client.New(), appID, envName, cfgFileName)
+			result, err := handler.ListVersions(cmd.Context(), client.New(), appID, envName, "")
 			if err != nil {
 				return errors.Wrap(err, "list app config file versions")
 			}
@@ -73,13 +69,8 @@ When an application has multiple config files in the same environment, use --nam
 	}
 
 	cmdutil.AddAppFlags(cmd, &appID)
-	cmd.Flags().StringVar(&envName, "env", "", "environment name")
-	cmd.Flags().StringVar(
-		&cfgFileName,
-		"name",
-		"",
-		"config file name; useful for Helm apps with multiple app-level config files",
-	)
+	cmd.Flags().
+		StringVar(&envName, "env", "", "environment name; trpc/TAF apps only (Helm apps have no per-environment config)")
 	output.AddFormatFlag(cmd, &outputFormat)
 
 	_ = cmd.MarkFlagRequired("app")

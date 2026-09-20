@@ -30,7 +30,7 @@ import (
 
 // NewDeleteVersionCmd returns a Command instance for 'app app-cfg-file delete-version' sub command.
 func NewDeleteVersionCmd() *cobra.Command {
-	var appID, envName, cfgFileName, versionID string
+	var appID, envName, versionID string
 	var version int64
 
 	cmd := &cobra.Command{
@@ -40,16 +40,12 @@ func NewDeleteVersionCmd() *cobra.Command {
 
 Use exactly one of --version or --version-id to identify the target history version.
 When --env is omitted, this command deletes a version of the default application-level config.
-When --env is provided, this command deletes a version of that environment's overlay config.
-When an application has multiple config files in the same environment, use --name to select one.`,
+When --env is provided, this command deletes a version of that environment's overlay config.`,
 		Example: `  # Delete version 7 of the default config file
   bkms-cli app app-cfg-file delete-version --app demo --version 7
 
   # Delete one version by version record ID
-  bkms-cli app app-cfg-file delete-version --app demo --env prod --version-id <record-id>
-
-  # Delete one Helm config file version by name
-  bkms-cli app app-cfg-file delete-version --app demo --name values --version 3`,
+  bkms-cli app app-cfg-file delete-version --app demo --env prod --version-id <record-id>`,
 		PreRunE: cmdutil.ResolveAppPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts, err := parseVersionRefOptions(cmd, version, versionID)
@@ -57,7 +53,7 @@ When an application has multiple config files in the same environment, use --nam
 				return err
 			}
 
-			result, err := handler.DeleteVersion(cmd.Context(), client.New(), appID, envName, cfgFileName, opts)
+			result, err := handler.DeleteVersion(cmd.Context(), client.New(), appID, envName, "", opts)
 			if err != nil {
 				return errors.Wrap(err, "delete app config file version")
 			}
@@ -68,13 +64,8 @@ When an application has multiple config files in the same environment, use --nam
 	}
 
 	cmdutil.AddAppFlags(cmd, &appID)
-	cmd.Flags().StringVar(&envName, "env", "", "environment name")
-	cmd.Flags().StringVar(
-		&cfgFileName,
-		"name",
-		"",
-		"config file name; useful for Helm apps with multiple app-level config files",
-	)
+	cmd.Flags().
+		StringVar(&envName, "env", "", "environment name; trpc/TAF apps only (Helm apps have no per-environment config)")
 	registerVersionRefFlags(cmd, &version, &versionID)
 
 	_ = cmd.MarkFlagRequired("app")

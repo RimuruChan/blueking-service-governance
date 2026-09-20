@@ -27,12 +27,13 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	handler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/appcfgfile"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/output"
 )
 
 // NewViewCmd returns a Command instance for 'app app-cfg-file view' sub command.
 func NewViewCmd() *cobra.Command {
-	var appID, envName, cfgFileName, outputFormat string
+	var appID, envName, outputFormat string
 
 	cmd := &cobra.Command{
 		Use:   "view",
@@ -40,24 +41,24 @@ func NewViewCmd() *cobra.Command {
 		Long: `View the latest application config file content selected by app and environment.
 
 When --env is omitted, this command views the default application-level config.
-When --env is provided, this command views that environment's overlay config.
-When an application has multiple config files in the same environment, use --name to select one.`,
+When --env is provided, this command views that environment's overlay config.`,
 		Example: `  # View default config file content
   bkms-cli app app-cfg-file view --app demo
 
   # View environment-specific overlay config file content
   bkms-cli app app-cfg-file view --app demo --env prod
 
-  # View one Helm config file by name when multiple files exist at app level
-  bkms-cli app app-cfg-file view --app demo --name values
-
   # Output in JSON format, including the selected config content
   bkms-cli app app-cfg-file view --app demo --env prod -o json`,
 		PreRunE: cmdutil.ResolveAppPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			result, err := handler.View(cmd.Context(), client.New(), appID, envName, cfgFileName)
+			result, err := handler.View(cmd.Context(), client.New(), appID, envName, "")
 			if err != nil {
 				return errors.Wrap(err, "view app config file")
+			}
+
+			if result.IsFallback {
+				console.Tips("Environment %s has no dedicated config, showing default config", envName)
 			}
 
 			viewOutput, err := result.Output()
@@ -74,13 +75,8 @@ When an application has multiple config files in the same environment, use --nam
 	}
 
 	cmdutil.AddAppFlags(cmd, &appID)
-	cmd.Flags().StringVar(&envName, "env", "", "environment name")
-	cmd.Flags().StringVar(
-		&cfgFileName,
-		"name",
-		"",
-		"config file name; useful for Helm apps with multiple app-level config files",
-	)
+	cmd.Flags().
+		StringVar(&envName, "env", "", "environment name; trpc/TAF apps only (Helm apps have no per-environment config)")
 	output.AddFormatFlag(cmd, &outputFormat)
 
 	_ = cmd.MarkFlagRequired("app")

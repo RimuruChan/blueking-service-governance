@@ -28,11 +28,12 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 	handler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/appcfgfile"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
 )
 
 // NewEditCmd returns a Command instance for 'app app-cfg-file edit' sub command.
 func NewEditCmd() *cobra.Command {
-	var appID, envName, cfgFileName, filePath, fileContent, description string
+	var appID, envName, filePath, fileContent, description string
 	var viewCompiledContent bool
 
 	cmd := &cobra.Command{
@@ -41,16 +42,12 @@ func NewEditCmd() *cobra.Command {
 		Long: `Edit the application config file content selected by app and environment.
 
 When --env is omitted, this command edits the default application-level config.
-When --env is provided, this command edits that environment's config file.
-When an application has multiple config files in the same environment, use --name to select one.`,
+When --env is provided, this command edits that environment's config file.`,
 		Example: `  # Edit default config file content
   bkms-cli app app-cfg-file edit --app demo -f values.yaml
 
   # Edit environment-specific overlay config file content
   bkms-cli app app-cfg-file edit --app demo --env prod -f values-prod.yaml
-
-  # Edit one Helm config file by name when multiple files exist at app level
-  bkms-cli app app-cfg-file edit --app demo --name values -f values.yaml
 
   # Edit config file content from a literal value
   bkms-cli app app-cfg-file edit --app demo --file-content $'server:\n  port: 8081\n'
@@ -69,7 +66,7 @@ When an application has multiple config files in the same environment, use --nam
 				client.New(),
 				appID,
 				envName,
-				cfgFileName,
+				"",
 				handler.EditOptions{
 					Content:     content,
 					Description: description,
@@ -77,6 +74,10 @@ When an application has multiple config files in the same environment, use --nam
 			)
 			if err != nil {
 				return errors.Wrap(err, "edit app config file")
+			}
+
+			if result.Created {
+				console.Tips("Created overlay config for environment %s", envName)
 			}
 
 			if viewCompiledContent {
@@ -89,13 +90,8 @@ When an application has multiple config files in the same environment, use --nam
 	}
 
 	cmdutil.AddAppFlags(cmd, &appID)
-	cmd.Flags().StringVar(&envName, "env", "", "environment name")
-	cmd.Flags().StringVar(
-		&cfgFileName,
-		"name",
-		"",
-		"config file name; useful for Helm apps with multiple app-level config files",
-	)
+	cmd.Flags().
+		StringVar(&envName, "env", "", "environment name; trpc/TAF apps only (Helm apps have no per-environment config)")
 	cmd.Flags().StringVarP(&filePath, "file", "f", "", "config file content path")
 	cmd.Flags().StringVar(&fileContent, "file-content", "", "config file content literal")
 	cmd.Flags().StringVar(&description, "description", "", "version description")

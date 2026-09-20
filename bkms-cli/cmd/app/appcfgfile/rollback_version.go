@@ -30,7 +30,7 @@ import (
 
 // NewRollbackVersionCmd returns a Command instance for 'app app-cfg-file rollback-version' sub command.
 func NewRollbackVersionCmd() *cobra.Command {
-	var appID, envName, cfgFileName, versionID, description string
+	var appID, envName, versionID, description string
 	var version int64
 
 	cmd := &cobra.Command{
@@ -40,16 +40,12 @@ func NewRollbackVersionCmd() *cobra.Command {
 
 Use exactly one of --version or --version-id to identify the target history version.
 When --env is omitted, this command rolls back the default application-level config.
-When --env is provided, this command rolls back that environment's overlay config.
-When an application has multiple config files in the same environment, use --name to select one.`,
+When --env is provided, this command rolls back that environment's overlay config.`,
 		Example: `  # Roll back the default config file to version 7
   bkms-cli app app-cfg-file rollback-version --app demo --version 7
 
   # Roll back one version by version record ID
   bkms-cli app app-cfg-file rollback-version --app demo --env prod --version-id <record-id>
-
-  # Roll back one Helm config file version by name
-  bkms-cli app app-cfg-file rollback-version --app demo --name values --version 3
 
   # Roll back and record a description
   bkms-cli app app-cfg-file rollback-version --app demo --env prod --version 7 --description "rollback prod values"`,
@@ -65,7 +61,7 @@ When an application has multiple config files in the same environment, use --nam
 				client.New(),
 				appID,
 				envName,
-				cfgFileName,
+				"",
 				handler.RollbackVersionOptions{
 					VersionRef:  versionRef,
 					Description: description,
@@ -86,13 +82,8 @@ When an application has multiple config files in the same environment, use --nam
 	}
 
 	cmdutil.AddAppFlags(cmd, &appID)
-	cmd.Flags().StringVar(&envName, "env", "", "environment name")
-	cmd.Flags().StringVar(
-		&cfgFileName,
-		"name",
-		"",
-		"config file name; useful for Helm apps with multiple app-level config files",
-	)
+	cmd.Flags().
+		StringVar(&envName, "env", "", "environment name; trpc/TAF apps only (Helm apps have no per-environment config)")
 	registerVersionRefFlags(cmd, &version, &versionID)
 	cmd.Flags().StringVar(&description, "description", "", "rollback version description")
 
