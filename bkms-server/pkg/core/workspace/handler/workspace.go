@@ -25,6 +25,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
@@ -378,80 +379,96 @@ func (h *Handler) ListWorkspacesOverview(c *gin.Context) {
 		h.registry.HelmDeployRecordStore,
 	)
 
-	// 查询每个 workspace 下的 app
+	// 各空间互不依赖，并行拉应用与部署状态
+	permMgr := perm.NewManager()
+	g, gCtx := errgroup.WithContext(ctx)
 	for idx := range outputList {
 		wsObj := outputList[idx]
-		appDetails, appErr := bkmsapp.ListSortByOpTime(
-			ctx, h.registry.AppStore, h.registry.OperationRecordStore,
-			wsObj.ID, username,
-		)
-		if appErr != nil {
-			continue
-		}
-
-		// 权限过滤
-		appIDs := lo.Map(appDetails, func(a bkmsapp.AppWithDetails, _ int) string { return a.ID })
-		hasPermApps, permErr := perm.NewManager().FilterViewableApps(ctx, wsObj.ID, appIDs)
-		if permErr != nil {
-			continue
-		}
-
-		filteredAppDetails := lo.Filter(appDetails, func(a bkmsapp.AppWithDetails, _ int) bool {
-			return hasPermApps.Has(a.ID)
+		g.Go(func() error {
+			h.loadWorkspaceOverviewApps(gCtx, wsObj, username, deployStatusService, permMgr)
+			return nil
 		})
-
-		// 查询 app 在各环境下的部署状态，返回按照 appID 分组
-		deployStatusMap, depErr := deployStatusService.ListForAppsInWorkspace(
-			ctx,
-			wsObj.ID,
-			lo.Map(
-				filteredAppDetails,
-				func(a bkmsapp.AppWithDetails, _ int) *bkmsapp.Application { return a.Application },
-			),
-		)
-		if depErr != nil {
-			continue
-		}
-
-		appList := make([]*serializer.AppInfoOutputObj, 0, len(filteredAppDetails))
-		for _, ad := range filteredAppDetails {
-			language := ""
-			if ad.TrpcSpec != nil {
-				language = ad.TrpcSpec.Language
-			}
-			appInfo := &serializer.AppInfoOutputObj{
-				ID:          ad.ID,
-				WorkspaceID: ad.WorkspaceID,
-				Name:        ad.Name,
-				Type:        ad.Type,
-				DisplayName: ad.DisplayName,
-				Creator:     ad.Creator,
-				Language:    language,
-				DeployedEnvs: lo.Map(deployStatusMap[ad.ID], func(
-					row deploystatus.AppDeployStatus, _ int,
-				) *serializer.AppDeployedEnvOutputObj {
-					return &serializer.AppDeployedEnvOutputObj{
-						ID:              row.EnvID,
-						Name:            row.EnvName,
-						DisplayName:     row.EnvDisplayName,
-						Type:            row.EnvType,
-						Kind:            row.EnvKind,
-						TrafficLaneName: row.TrafficLaneName,
-						DeployStatus:    row.DeployStatus,
-						ImageTag:        row.ImageTag,
-					}
-				}),
-			}
-			if !ad.LastOperatedAt.IsZero() {
-				t := ad.LastOperatedAt
-				appInfo.LastOperatedAt = &t
-			}
-			appList = append(appList, appInfo)
-		}
-		wsObj.Apps = appList
 	}
+	_ = g.Wait()
 
 	ginutils.OK(c, serializer.ListWorkspacesOverviewOutput{Data: outputList})
+}
+
+// loadWorkspaceOverviewApps 填充单个工作空间的应用列表与部署状态。
+// 查询失败时保持 Apps 为空，与原先串行循环中 continue 的行为一致，避免单个空间拖垮整页。
+func (h *Handler) loadWorkspaceOverviewApps(
+	ctx context.Context,
+	wsObj *serializer.WorkspaceWithAppsOutputObj,
+	username string,
+	deployStatusService *deploystatus.DeployStatusService,
+	permMgr perm.Manager,
+) {
+	appDetails, err := bkmsapp.ListSortByOpTime(
+		ctx, h.registry.AppStore, h.registry.OperationRecordStore,
+		wsObj.ID, username,
+	)
+	if err != nil {
+		return
+	}
+
+	appIDs := lo.Map(appDetails, func(a bkmsapp.AppWithDetails, _ int) string { return a.ID })
+	hasPermApps, err := permMgr.FilterViewableApps(ctx, wsObj.ID, appIDs)
+	if err != nil {
+		return
+	}
+
+	filteredAppDetails := lo.Filter(appDetails, func(a bkmsapp.AppWithDetails, _ int) bool {
+		return hasPermApps.Has(a.ID)
+	})
+
+	deployStatusMap, err := deployStatusService.ListForAppsInWorkspace(
+		ctx,
+		wsObj.ID,
+		lo.Map(
+			filteredAppDetails,
+			func(a bkmsapp.AppWithDetails, _ int) *bkmsapp.Application { return a.Application },
+		),
+	)
+	if err != nil {
+		return
+	}
+
+	appList := make([]*serializer.AppInfoOutputObj, 0, len(filteredAppDetails))
+	for _, ad := range filteredAppDetails {
+		language := ""
+		if ad.TrpcSpec != nil {
+			language = ad.TrpcSpec.Language
+		}
+		appInfo := &serializer.AppInfoOutputObj{
+			ID:          ad.ID,
+			WorkspaceID: ad.WorkspaceID,
+			Name:        ad.Name,
+			Type:        ad.Type,
+			DisplayName: ad.DisplayName,
+			Creator:     ad.Creator,
+			Language:    language,
+			DeployedEnvs: lo.Map(deployStatusMap[ad.ID], func(
+				row deploystatus.AppDeployStatus, _ int,
+			) *serializer.AppDeployedEnvOutputObj {
+				return &serializer.AppDeployedEnvOutputObj{
+					ID:              row.EnvID,
+					Name:            row.EnvName,
+					DisplayName:     row.EnvDisplayName,
+					Type:            row.EnvType,
+					Kind:            row.EnvKind,
+					TrafficLaneName: row.TrafficLaneName,
+					DeployStatus:    row.DeployStatus,
+					ImageTag:        row.ImageTag,
+				}
+			}),
+		}
+		if !ad.LastOperatedAt.IsZero() {
+			t := ad.LastOperatedAt
+			appInfo.LastOperatedAt = &t
+		}
+		appList = append(appList, appInfo)
+	}
+	wsObj.Apps = appList
 }
 
 // CreateWorkspace 创建工作空间。
