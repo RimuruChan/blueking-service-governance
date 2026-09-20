@@ -158,55 +158,6 @@ var _ = Describe("RecordStoreMongo", func() {
 		})
 	})
 
-	Describe("ListLatestByApp", func() {
-		It("should return the newest record of each env", func() {
-			Expect(store.Create(ctx, newRecord("stag", "stag-v1", trafficLaneName))).To(Succeed())
-			time.Sleep(5 * time.Millisecond)
-			Expect(store.Create(ctx, newRecord("stag", "stag-v2", trafficLaneName))).To(Succeed())
-			Expect(store.Create(ctx, newRecord("prod", "prod-v1", trafficLaneName))).To(Succeed())
-
-			latestByEnv, err := store.ListLatestByApp(ctx, appID, trafficLaneName)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(latestByEnv).To(HaveLen(2))
-			Expect(latestByEnv["stag"].ImageTag).To(Equal("stag-v2"))
-			Expect(latestByEnv["prod"].ImageTag).To(Equal("prod-v1"))
-		})
-
-		It("should only return records of the given traffic lane", func() {
-			Expect(store.Create(ctx, newRecord("stag", "base-v1", trafficLaneName))).To(Succeed())
-			Expect(store.Create(ctx, newRecord("stag", "lane-v1", "lane-a"))).To(Succeed())
-
-			latestByEnv, err := store.ListLatestByApp(ctx, appID, trafficLaneName)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(latestByEnv).To(HaveLen(1))
-			Expect(latestByEnv["stag"].ImageTag).To(Equal("base-v1"))
-
-			laneByEnv, err := store.ListLatestByApp(ctx, appID, "lane-a")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(laneByEnv).To(HaveLen(1))
-			Expect(laneByEnv["stag"].ImageTag).To(Equal("lane-v1"))
-		})
-
-		It("should not return records of other apps", func() {
-			Expect(store.Create(ctx, newRecord("stag", "mine-v1", trafficLaneName))).To(Succeed())
-
-			other := newRecord("stag", "other-v1", trafficLaneName)
-			other.AppID = "test-app-" + stringx.Random(6)
-			Expect(store.Create(ctx, other)).To(Succeed())
-
-			latestByEnv, err := store.ListLatestByApp(ctx, appID, trafficLaneName)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(latestByEnv).To(HaveLen(1))
-			Expect(latestByEnv["stag"].ImageTag).To(Equal("mine-v1"))
-		})
-
-		It("should return an empty map when the app has no record", func() {
-			latestByEnv, err := store.ListLatestByApp(ctx, "non-existent-app", trafficLaneName)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(latestByEnv).To(BeEmpty())
-		})
-	})
-
 	Describe("ListLatestByApps", func() {
 		It("should return the newest record per app and env", func() {
 			otherAppID := "test-app-" + stringx.Random(6)
@@ -265,6 +216,12 @@ var _ = Describe("RecordStoreMongo", func() {
 			Expect(latest).To(HaveKey(appID))
 			Expect(latest).NotTo(HaveKey(otherAppID))
 			Expect(latest[appID]["stag"].ImageTag).To(Equal("mine-v1"))
+		})
+
+		It("should omit apps that have no record", func() {
+			latest, err := store.ListLatestByApps(ctx, []string{"non-existent-app"}, trafficLaneName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latest).To(BeEmpty())
 		})
 	})
 

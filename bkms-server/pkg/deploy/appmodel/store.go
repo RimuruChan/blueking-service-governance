@@ -62,9 +62,6 @@ type RecordStore interface {
 	// GetLatest 获取最新应用部署记录
 	GetLatest(ctx context.Context, appID, envName, trafficLaneName string) (*Record, error)
 
-	// ListLatestByApp 按环境返回该应用在指定泳道下各环境最新的一条部署记录
-	ListLatestByApp(ctx context.Context, appID, trafficLaneName string) (map[string]*Record, error)
-
 	// ListLatestByApps 按应用、环境返回一批应用在指定泳道下各环境最新的一条部署记录
 	ListLatestByApps(
 		ctx context.Context, appIDs []string, trafficLaneName string,
@@ -255,49 +252,8 @@ func (s *RecordStoreMongo) GetLatest(
 	})
 }
 
-// ListLatestByApp 返回 app 在指定泳道下各环境最新部署记录（按 createdAt 倒序取每组第一条）。
-// key 为 envName；某环境无记录时不出现在 map 中。
-func (s *RecordStoreMongo) ListLatestByApp(
-	ctx context.Context,
-	appID, trafficLaneName string,
-) (map[string]*Record, error) {
-	pipeline := bson.A{
-		bson.M{"$match": bson.M{
-			"appID":           appID,
-			"trafficLaneName": trafficLaneName,
-		}},
-		bson.M{"$sort": bson.M{"createdAt": -1}},
-		bson.M{"$group": bson.M{
-			"_id": "$envName",
-			"doc": bson.M{"$first": "$$ROOT"},
-		}},
-		bson.M{"$replaceRoot": bson.M{"newRoot": "$doc"}},
-	}
-
-	cursor, err := s.collection.Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, errors.Wrapf(err, "aggregate latest deploy records for app %s", appID)
-	}
-	defer cursor.Close(ctx)
-
-	out := make(map[string]*Record)
-	for cursor.Next(ctx) {
-		var record Record
-		if err := cursor.Decode(&record); err != nil {
-			return nil, errors.Wrapf(err, "decode latest deploy record for app %s", appID)
-		}
-		rec := record
-		out[rec.EnvName] = &rec
-	}
-	if err := cursor.Err(); err != nil {
-		return nil, errors.Wrapf(err, "iterate latest deploy records for app %s", appID)
-	}
-	return out, nil
-}
-
 // ListLatestByApps 返回一批 app 在指定泳道下各环境最新部署记录（按 createdAt 倒序取每组第一条）。
 // 外层 key 为 appID，内层 key 为 envName；无记录的应用或环境不出现在结果中。
-// 与逐个应用调用 ListLatestByApp 相比，本方法只需一次聚合，往返次数与应用数无关。
 func (s *RecordStoreMongo) ListLatestByApps(
 	ctx context.Context,
 	appIDs []string, trafficLaneName string,

@@ -64,15 +64,6 @@ func (f *fakeBuildAutoDeployStore) GetLatest(_ context.Context, _, _, _ string) 
 	return f.record, nil
 }
 
-func (f *fakeBuildAutoDeployStore) ListLatestByApp(
-	_ context.Context, _, _ string,
-) (map[string]*autodeploy.Record, error) {
-	if f.record == nil {
-		return map[string]*autodeploy.Record{}, nil
-	}
-	return map[string]*autodeploy.Record{f.record.EnvName: f.record}, nil
-}
-
 func (f *fakeBuildAutoDeployStore) ListLatestByApps(
 	_ context.Context, _ []string, _ string,
 ) (map[string]map[string]*autodeploy.Record, error) {

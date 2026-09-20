@@ -45,6 +45,10 @@ import (
 	bkmsreg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/registry"
 )
 
+// workspaceOverviewMaxConcurrency 限制空间总览并行拉应用与部署状态的 goroutine 数。
+// 查询参数 limit 只有下限，调用方传入过大时不能按空间数无上限开协程。
+const workspaceOverviewMaxConcurrency = 8
+
 // Handler handles Gin workspace API requests.
 type Handler struct {
 	registry *storereg.Registry
@@ -80,11 +84,7 @@ func (h *Handler) GetUserStatistics(c *gin.Context) {
 	// 如果没有工作空间，则返回空统计数据，避免请求权限管理器
 	if len(workspaces) == 0 {
 		ginutils.OK(c, serializer.GetUserStatisticsOutput{
-			Data: &serializer.UserStatisticsOutputObj{
-				WorkspaceCount: 0,
-				AppCount:       0,
-				EnvCount:       0,
-			},
+			Data: &serializer.UserStatisticsOutputObj{},
 		})
 		return
 	}
@@ -102,11 +102,7 @@ func (h *Handler) GetUserStatistics(c *gin.Context) {
 	})
 	if len(allowedWorkspaceIDs) == 0 {
 		ginutils.OK(c, serializer.GetUserStatisticsOutput{
-			Data: &serializer.UserStatisticsOutputObj{
-				WorkspaceCount: 0,
-				AppCount:       0,
-				EnvCount:       0,
-			},
+			Data: &serializer.UserStatisticsOutputObj{},
 		})
 		return
 	}
@@ -143,7 +139,6 @@ func (h *Handler) GetUserStatistics(c *gin.Context) {
 			EnvCount:    envCount,
 		})
 	}
-
 	ginutils.OK(c, serializer.GetUserStatisticsOutput{
 		Data: &serializer.UserStatisticsOutputObj{
 			WorkspaceCount:      int64(len(statistics)),
@@ -393,9 +388,10 @@ func (h *Handler) ListWorkspacesOverview(c *gin.Context) {
 		h.registry.HelmDeployRecordStore,
 	)
 
-	// 各空间互不依赖，并行拉应用与部署状态
+	// 各空间互不依赖，并行拉应用与部署状态，但限制并发以免 limit 过大打满连接。
 	permMgr := perm.NewManager()
 	g, gCtx := errgroup.WithContext(ctx)
+	g.SetLimit(workspaceOverviewMaxConcurrency)
 	for idx := range outputList {
 		wsObj := outputList[idx]
 		g.Go(func() error {

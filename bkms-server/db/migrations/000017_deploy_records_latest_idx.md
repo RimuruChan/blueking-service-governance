@@ -10,7 +10,7 @@
 - app_model_deploy_records 新建索引：
   - appID_1_envName_1_trafficLaneName_1_createdAt_-1：支撑 `RecordStoreMongo.GetLatest` /
     `GetLatestByStatuses` / `List`，按 appID + envName + trafficLaneName 过滤并按 createdAt 倒序；
-  - appID_1_trafficLaneName_1_createdAt_-1：支撑 `RecordStoreMongo.ListLatestByApp`
+  - appID_1_trafficLaneName_1_createdAt_-1：支撑 `RecordStoreMongo.ListLatestByApps`
     跨环境聚合各环境最新记录时的 $match + $sort 阶段。
 - helm_deploy_records 新建索引：
   - appID_1_envName_1_trafficLaneName_1_createdAt_-1：支撑 `helm.RecordStoreMongo.GetLatest` /
@@ -18,6 +18,6 @@
   - appID_1_trafficLaneName_1_createdAt_-1：为按应用跨环境聚合最新部署记录预留，
     与另两张部署记录表保持一致的索引形态。
 - build_auto_deploy_records 新建索引：
-  - appID_1_trafficLaneName_1_createdAt_-1：补齐 `ListLatestByApp` 的跨环境聚合；
+  - appID_1_trafficLaneName_1_createdAt_-1：补齐 `ListLatestByApps` 的跨环境聚合；
     该表已有的 appID_1_envName_1_trafficLaneName_1_createdAt_-1 因 envName 位于
     trafficLaneName 之前，无法支撑不带 envName 的过滤。

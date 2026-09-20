@@ -557,14 +557,16 @@ func (s *DeployStatusService) ListLatestByAppLane(
 	}
 
 	// 一次聚合拉齐该泳道下各环境最新的一键构建部署记录与 AppModel 部署记录。
-	buildByEnv, err := s.BuildAutoDeployRecordStore.ListLatestByApp(ctx, appID, laneName)
+	buildByApp, err := s.BuildAutoDeployRecordStore.ListLatestByApps(ctx, []string{appID}, laneName)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "list latest build auto deploy records")
 	}
-	deployByEnv, err := s.AppModelDeployRecordStore.ListLatestByApp(ctx, appID, laneName)
+	buildByEnv := buildByApp[appID]
+	deployByApp, err := s.AppModelDeployRecordStore.ListLatestByApps(ctx, []string{appID}, laneName)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "list latest appmodel deploy records")
 	}
+	deployByEnv := deployByApp[appID]
 
 	// 按环境比较两类记录的关联关系与时间，选出真正最新的状态。
 	return mergeAppModelStatuses(buildByEnv, deployByEnv), deployByEnv, nil
