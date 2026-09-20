@@ -97,36 +97,50 @@ func (h *Handler) GetUserStatistics(c *gin.Context) {
 		return
 	}
 
-	// 各个空间下的统计数据
-	var statistics []*serializer.UserWorkspaceStatisticsOutputObj
-	for _, ws := range workspaces {
-		// 没有查看权限的工作空间，跳过
-		if !hasPermWorkspaceIDs.Has(ws.ID) {
-			continue
-		}
+	allowedWorkspaceIDs := lo.FilterMap(workspaces, func(ws workspace.Workspace, _ int) (string, bool) {
+		return ws.ID, hasPermWorkspaceIDs.Has(ws.ID)
+	})
+	if len(allowedWorkspaceIDs) == 0 {
+		ginutils.OK(c, serializer.GetUserStatisticsOutput{
+			Data: &serializer.UserStatisticsOutputObj{
+				WorkspaceCount: 0,
+				AppCount:       0,
+				EnvCount:       0,
+			},
+		})
+		return
+	}
 
-		// 查询出工作空间下的应用数量
-		apps, lErr := h.registry.AppStore.ListApps(ctx, &bkmsapp.ListOpts{WorkspaceID: ws.ID})
-		if lErr != nil {
-			bkerrs.AbortWithErr(c, bkerrs.Wrap(lErr, bkerrs.ErrCodeInternalServerError, "list apps"))
-			return
-		}
-		workspaceAppCount := int64(len(apps))
+	var (
+		appCounts map[string]int
+		envCounts map[string]int
+	)
+	g, gCtx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		var countErr error
+		appCounts, countErr = h.registry.AppStore.CountByWorkspaceIDs(gCtx, allowedWorkspaceIDs)
+		return countErr
+	})
+	g.Go(func() error {
+		var countErr error
+		envCounts, countErr = h.registry.EnvStore.CountByWorkspaceIDs(gCtx, allowedWorkspaceIDs)
+		return countErr
+	})
+	if err = g.Wait(); err != nil {
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "count apps and envs by workspace"))
+		return
+	}
 
-		// 查询出工作空间下的环境数量
-		envs, lErr := h.registry.EnvStore.ListStdEnvs(ctx, ws.ID)
-		if lErr != nil {
-			bkerrs.AbortWithErr(c, bkerrs.Wrap(lErr, bkerrs.ErrCodeInternalServerError, "list envs"))
-			return
-		}
-		workspaceEnvCount := int64(len(envs))
-
-		totalAppCount += workspaceAppCount
-		totalEnvCount += workspaceEnvCount
+	statistics := make([]*serializer.UserWorkspaceStatisticsOutputObj, 0, len(allowedWorkspaceIDs))
+	for _, workspaceID := range allowedWorkspaceIDs {
+		appCount := int64(appCounts[workspaceID])
+		envCount := int64(envCounts[workspaceID])
+		totalAppCount += appCount
+		totalEnvCount += envCount
 		statistics = append(statistics, &serializer.UserWorkspaceStatisticsOutputObj{
-			WorkspaceID: ws.ID,
-			AppCount:    workspaceAppCount,
-			EnvCount:    workspaceEnvCount,
+			WorkspaceID: workspaceID,
+			AppCount:    appCount,
+			EnvCount:    envCount,
 		})
 	}
 
