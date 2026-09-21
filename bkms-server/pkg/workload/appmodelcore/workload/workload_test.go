@@ -1315,13 +1315,13 @@ spec:
 			Expect(err).NotTo(HaveOccurred())
 
 			if enableRender {
-				def, err := stores.AppConfigFileDefStore.GetByID(ctx, created.DefID)
-				Expect(err).NotTo(HaveOccurred())
-				err = cfgSvc.UpdateAppCfgFileDef(ctx, def, appcfg.FileDefUpdate{
+				def, cfgErr := stores.AppConfigFileDefStore.GetByID(ctx, created.DefID)
+				Expect(cfgErr).NotTo(HaveOccurred())
+				cfgErr = cfgSvc.UpdateAppCfgFileDef(ctx, def, appcfg.FileDefUpdate{
 					EnableEnvVarRender: lo.ToPtr(true),
 					Operator:           appcfg.CfgSystemUser,
 				})
-				Expect(err).NotTo(HaveOccurred())
+				Expect(cfgErr).NotTo(HaveOccurred())
 			}
 
 			builder := workload.NewBuilder(builderSvc, app, appModel)

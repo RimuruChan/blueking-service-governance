@@ -63,7 +63,7 @@ const (
 	OperationTypeGray OperationType = "gray"
 	// OperationTypeExecute 执行操作
 	OperationTypeExecute OperationType = "execute"
-	// OperationTypePublish 开发模式发布操作
+	// OperationTypePublish 开发模式热更新操作
 	OperationTypePublish OperationType = "publish"
 )
 
@@ -105,7 +105,7 @@ func (t OperationType) DisplayName() string {
 	case OperationTypeExecute:
 		return "执行"
 	case OperationTypePublish:
-		return "发布"
+		return "热更新"
 	default:
 		// 默认返回原始值
 		return string(t)
@@ -218,8 +218,6 @@ const (
 	AttributeGPA Attribute = "gpa"
 	// AttributeHostPort 随机 HostPort 端口映射
 	AttributeHostPort Attribute = "hostport"
-	// AttributeDevModePublish 开发模式发布
-	AttributeDevModePublish Attribute = "devModePublish"
 )
 
 // DisplayName 属性展示用名称 TODO 国际化
@@ -263,8 +261,6 @@ func (t Attribute) DisplayName() string {
 		return "自动扩缩容配置"
 	case AttributeHostPort:
 		return "HostPort 端口映射"
-	case AttributeDevModePublish:
-		return "开发模式发布"
 	default:
 		// 默认返回原始值
 		return string(t)

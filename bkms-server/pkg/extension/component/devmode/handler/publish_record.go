@@ -97,7 +97,6 @@ func (h *Handler) CreateDevModePublishRecords(c *gin.Context) {
 			audit.OperationTypePublish,
 			audit.ResourceTypeInstance,
 			result.Instance,
-			audit.WithAttribute(audit.AttributeDevModePublish),
 			audit.WithResult(publishAuditResult(result)),
 			audit.WithDataAfter(map[string]any{
 				"binaryName": input.BinaryName,
