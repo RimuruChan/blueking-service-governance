@@ -100,6 +100,9 @@ type RecordStoreMongo struct {
 // NewRecordStoreMongo 创建 RecordStoreMongo 实例
 func NewRecordStoreMongo(client *mongo.Client, dbName string) (*RecordStoreMongo, error) {
 	coll := client.Database(dbName).Collection(collectionName)
+	// 索引（由 golang-migrate 维护）：
+	// - 查询提速：appID + envName + trafficLaneName + createdAt(倒序)
+	// - 查询提速：appID + trafficLaneName + createdAt(倒序)
 	return &RecordStoreMongo{collection: coll}, nil
 }
 
@@ -293,7 +296,11 @@ func (s *RecordStoreMongo) ListLatestByApps(
 			"appID":           bson.M{"$in": lo.Uniq(appIDs)},
 			"trafficLaneName": trafficLaneName,
 		}},
-		bson.M{"$sort": bson.M{"createdAt": -1}},
+		bson.M{"$sort": bson.D{
+			{Key: "appID", Value: 1},
+			{Key: "trafficLaneName", Value: 1},
+			{Key: "createdAt", Value: -1},
+		}},
 		bson.M{"$group": bson.M{
 			"_id": bson.M{"appID": "$appID", "envName": "$envName"},
 			"doc": bson.M{"$first": "$$ROOT"},

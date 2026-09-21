@@ -30,6 +30,7 @@ import (
 	"go.uber.org/fx/fxtest"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/autodeploy"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
 )
 
 var _ = Describe("RecordStoreMongo", func() {
@@ -159,18 +160,31 @@ var _ = Describe("RecordStoreMongo", func() {
 	})
 
 	Describe("ListLatestByApps", func() {
+		// Create 会把 CreatedAt 写成 time.Now()。BSON DateTime 只有毫秒精度，
+		// 连续插入可能落在同一毫秒，导致 $sort + $first 取「最新」不稳定。
+		// 创建后再显式回写 createdAt，用明确时间差拉开新旧记录，避免 CI 抖动影响结果。
+		createAt := func(record *autodeploy.Record, createdAt time.Time) {
+			GinkgoHelper()
+			Expect(store.Create(ctx, record)).To(Succeed())
+			got, err := store.GetByBuildID(ctx, record.AppID, record.BuildID)
+			Expect(err).NotTo(HaveOccurred())
+			_, err = database.Client().Database(database.Name()).Collection("build_auto_deploy_records").UpdateByID(
+				ctx, got.ID, bson.M{"$set": bson.M{"createdAt": createdAt}},
+			)
+			Expect(err).NotTo(HaveOccurred())
+		}
+
 		It("should return the newest record per app and env", func() {
 			otherAppID := "test-app-" + stringx.Random(6)
+			now := time.Now().UTC().Truncate(time.Millisecond)
 
-			Expect(store.Create(ctx, newRecord("stag", "stag-v1", trafficLaneName))).To(Succeed())
-			time.Sleep(5 * time.Millisecond)
+			createAt(newRecord("stag", "stag-v1", trafficLaneName), now.Add(-2*time.Second))
 			Expect(store.Create(ctx, newRecord("stag", "stag-v2", trafficLaneName))).To(Succeed())
 			Expect(store.Create(ctx, newRecord("prod", "prod-v1", trafficLaneName))).To(Succeed())
 
 			otherStag := newRecord("stag", "other-stag-v1", trafficLaneName)
 			otherStag.AppID = otherAppID
-			Expect(store.Create(ctx, otherStag)).To(Succeed())
-			time.Sleep(5 * time.Millisecond)
+			createAt(otherStag, now.Add(-time.Second))
 
 			otherStagNew := newRecord("stag", "other-stag-v2", trafficLaneName)
 			otherStagNew.AppID = otherAppID

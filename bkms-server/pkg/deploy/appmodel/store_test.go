@@ -308,12 +308,26 @@ var _ = Describe("RecordStoreMongo", func() {
 	})
 
 	Context("ListLatestByApps", func() {
+		// Create 会把 CreatedAt 写成 time.Now()。BSON DateTime 只有毫秒精度，
+		// 连续插入可能落在同一毫秒，导致 $sort + $first 取「最新」不稳定。
+		// 创建后再显式回写 createdAt，用明确时间差拉开新旧记录，避免 CI 抖动影响结果。
+		persistCreatedAt := func(id string, createdAt time.Time) {
+			GinkgoHelper()
+			objID, err := bson.ObjectIDFromHex(id)
+			Expect(err).NotTo(HaveOccurred())
+			_, err = database.Client().Database(database.Name()).Collection("app_model_deploy_records").UpdateByID(
+				ctx, objID, bson.M{"$set": bson.M{"createdAt": createdAt}},
+			)
+			Expect(err).NotTo(HaveOccurred())
+		}
+
 		It("should return the newest record per app and env", func() {
 			otherAppID := "test-app-" + stringx.Random(6)
+			now := time.Now().UTC().Truncate(time.Millisecond)
 
-			_, err := store.Create(ctx, &recordA)
+			idA, err := store.Create(ctx, &recordA)
 			Expect(err).NotTo(HaveOccurred())
-			time.Sleep(5 * time.Millisecond)
+			persistCreatedAt(idA, now.Add(-2*time.Second))
 
 			recordB.ImageTag = "v1.0.1"
 			_, err = store.Create(ctx, &recordB)
@@ -328,9 +342,9 @@ var _ = Describe("RecordStoreMongo", func() {
 			otherStag := recordA
 			otherStag.AppID = otherAppID
 			otherStag.ImageTag = "other-stag-v1"
-			_, err = store.Create(ctx, &otherStag)
+			idOther, err := store.Create(ctx, &otherStag)
 			Expect(err).NotTo(HaveOccurred())
-			time.Sleep(5 * time.Millisecond)
+			persistCreatedAt(idOther, now.Add(-time.Second))
 
 			otherStagNew := otherStag
 			otherStagNew.ImageTag = "other-stag-v2"

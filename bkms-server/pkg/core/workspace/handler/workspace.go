@@ -21,6 +21,7 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -28,6 +29,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
@@ -414,16 +416,25 @@ func (h *Handler) loadWorkspaceOverviewApps(
 	permMgr perm.Manager,
 ) {
 	appDetails, err := bkmsapp.ListSortByOpTime(
-		ctx, h.registry.AppStore, h.registry.OperationRecordStore,
-		wsObj.ID, username,
+		ctx, h.registry.AppStore, h.registry.OperationRecordStore, wsObj.ID, username,
 	)
 	if err != nil {
+		log.WarnAttrs(ctx, "list workspace apps failed, keep apps empty",
+			slog.String("workspace_id", wsObj.ID),
+			slog.String("username", username),
+			slog.String("err", err.Error()),
+		)
 		return
 	}
 
 	appIDs := lo.Map(appDetails, func(a bkmsapp.AppWithDetails, _ int) string { return a.ID })
 	hasPermApps, err := permMgr.FilterViewableApps(ctx, wsObj.ID, appIDs)
 	if err != nil {
+		log.WarnAttrs(ctx, "filter viewable apps failed, keep apps empty",
+			slog.String("workspace_id", wsObj.ID),
+			slog.String("username", username),
+			slog.String("err", err.Error()),
+		)
 		return
 	}
 
@@ -432,14 +443,18 @@ func (h *Handler) loadWorkspaceOverviewApps(
 	})
 
 	deployStatusMap, err := deployStatusService.ListForAppsInWorkspace(
-		ctx,
-		wsObj.ID,
+		ctx, wsObj.ID,
 		lo.Map(
 			filteredAppDetails,
 			func(a bkmsapp.AppWithDetails, _ int) *bkmsapp.Application { return a.Application },
 		),
 	)
 	if err != nil {
+		log.WarnAttrs(ctx, "list app deploy status failed, keep apps empty",
+			slog.String("workspace_id", wsObj.ID),
+			slog.String("username", username),
+			slog.String("err", err.Error()),
+		)
 		return
 	}
 
