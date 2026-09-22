@@ -26,6 +26,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
@@ -33,16 +35,15 @@ import (
 
 var _ = Describe("RecordStoreMongo", func() {
 	var store appmodel.RecordStore
+	var diApp *fxtest.App
 	var ctx context.Context
 
 	var workspaceID, appID, envName, trafficLaneName string
 	var recordA, recordB appmodel.Record
 
 	BeforeEach(func() {
-		var err error
-
-		store, err = appmodel.NewRecordStoreMongo(database.Client(), database.Name())
-		Expect(err).NotTo(HaveOccurred())
+		diApp = fxtest.New(GinkgoT(), appmodel.FxModule, fx.Populate(&store))
+		diApp.RequireStart()
 
 		ctx = context.Background()
 		workspaceID = "test-workspace-" + stringx.Random(6)
@@ -83,6 +84,10 @@ var _ = Describe("RecordStoreMongo", func() {
 				"version": "1.0.1",
 			},
 		}
+	})
+
+	AfterEach(func() {
+		diApp.RequireStop()
 	})
 
 	Context("Create", func() {
@@ -351,7 +356,18 @@ var _ = Describe("RecordStoreMongo", func() {
 			_, err = store.Create(ctx, &otherStagNew)
 			Expect(err).NotTo(HaveOccurred())
 
-			latest, err := store.ListLatestByApps(ctx, []string{appID, otherAppID}, trafficLaneName)
+			otherProd := prod
+			otherProd.AppID = otherAppID
+			_, err = store.Create(ctx, &otherProd)
+			Expect(err).NotTo(HaveOccurred())
+			unrequested := recordA
+			unrequested.EnvName = "unrequested"
+			_, err = store.Create(ctx, &unrequested)
+			Expect(err).NotTo(HaveOccurred())
+
+			latest, err := store.ListLatestByApps(ctx, map[string][]string{
+				envName: {appID, appID, otherAppID}, "production": {appID}, "unrequested": nil,
+			}, trafficLaneName)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(latest).To(HaveLen(2))
 			Expect(latest[appID]).To(HaveLen(2))
@@ -359,6 +375,14 @@ var _ = Describe("RecordStoreMongo", func() {
 			Expect(latest[appID]["production"].ImageTag).To(Equal("prod-v1"))
 			Expect(latest[otherAppID]).To(HaveLen(1))
 			Expect(latest[otherAppID][envName].ImageTag).To(Equal("other-stag-v2"))
+		})
+
+		It("should return no records for an empty scope", func() {
+			_, err := store.Create(ctx, &recordA)
+			Expect(err).NotTo(HaveOccurred())
+			latest, err := store.ListLatestByApps(ctx, nil, trafficLaneName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latest).To(BeEmpty())
 		})
 
 		It("should only return records of the given traffic lane", func() {
@@ -372,12 +396,12 @@ var _ = Describe("RecordStoreMongo", func() {
 			_, err = store.Create(ctx, &recordB)
 			Expect(err).NotTo(HaveOccurred())
 
-			latest, err := store.ListLatestByApps(ctx, []string{appID}, trafficLaneName)
+			latest, err := store.ListLatestByApps(ctx, map[string][]string{envName: {appID}}, trafficLaneName)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(latest).To(HaveLen(1))
 			Expect(latest[appID][envName].ImageTag).To(Equal("base-v1"))
 
-			laneLatest, err := store.ListLatestByApps(ctx, []string{appID}, "feature-lane")
+			laneLatest, err := store.ListLatestByApps(ctx, map[string][]string{envName: {appID}}, "feature-lane")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(laneLatest).To(HaveLen(1))
 			Expect(laneLatest[appID][envName].ImageTag).To(Equal("lane-v1"))
@@ -395,7 +419,7 @@ var _ = Describe("RecordStoreMongo", func() {
 			_, err = store.Create(ctx, &other)
 			Expect(err).NotTo(HaveOccurred())
 
-			latest, err := store.ListLatestByApps(ctx, []string{appID}, trafficLaneName)
+			latest, err := store.ListLatestByApps(ctx, map[string][]string{envName: {appID}}, trafficLaneName)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(latest).To(HaveLen(1))
 			Expect(latest).To(HaveKey(appID))

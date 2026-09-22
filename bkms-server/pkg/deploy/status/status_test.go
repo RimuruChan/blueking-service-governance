@@ -795,6 +795,33 @@ var _ = Describe("DeployStatusService", func() {
 			))
 		})
 
+		It("should keep statuses separate when querying multiple feature environments", func() {
+			secondEnv := dbfactory.FeatEnv(ctx, envSvc, trpcApp, sourceEnv)
+			for _, env := range []*envmodel.Environment{featureEnv, secondEnv} {
+				Expect(envStore.AddApp(ctx, env.ID, trpcApp.ID)).To(Succeed())
+			}
+			featureEnv = reloadEnv(ctx, envStore, featureEnv.ID)
+			secondEnv = reloadEnv(ctx, envStore, secondEnv.ID)
+			mockListTrafficLanesReturn(nil, nil)
+
+			dbfactory.AppModelDeployRecord(ctx, appModelDeployRecordStore, trpcApp, featureEnv,
+				&dbfactory.AppModelDeployRecordOpts{Status: appmodeldeploy.StatusDeployed, ImageTag: "first"})
+			dbfactory.AppModelDeployRecord(ctx, appModelDeployRecordStore, trpcApp, secondEnv,
+				&dbfactory.AppModelDeployRecordOpts{Status: appmodeldeploy.StatusFailed, ImageTag: "second"})
+			dbfactory.AppModelDeployRecord(ctx, appModelDeployRecordStore, trpcApp, sourceEnv,
+				&dbfactory.AppModelDeployRecordOpts{Status: appmodeldeploy.StatusDeploying, ImageTag: "outside"})
+
+			out, err := svc.ListFeatureEnvsForApp(ctx, trpcApp, []envmodel.Environment{*featureEnv, *secondEnv})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(out).To(HaveLen(2))
+			Expect(out[featureEnv.Name]).To(ConsistOf(MatchFields(IgnoreExtras, Fields{
+				"ImageTag": Equal("first"), "DeployStatus": Equal(string(appmodeldeploy.StatusDeployed)),
+			})))
+			Expect(out[secondEnv.Name]).To(ConsistOf(MatchFields(IgnoreExtras, Fields{
+				"ImageTag": Equal("second"), "DeployStatus": Equal(string(appmodeldeploy.StatusFailed)),
+			})))
+		})
+
 		It("should return an empty slice when the app has not been deployed in the feature env yet", func() {
 			var laneCalls int
 			mockListTrafficLanesWithHook(func(

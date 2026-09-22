@@ -20,6 +20,7 @@ package autodeploy
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/pkg/errors"
@@ -39,10 +40,10 @@ type RecordStore interface {
 	Create(ctx context.Context, record *Record) error
 	Update(ctx context.Context, record *Record) error
 	GetLatest(ctx context.Context, appID, envName, trafficLaneName string) (*Record, error)
-	// ListLatestByApps 返回一批应用在指定泳道下各环境最新的一条记录。
+	// ListLatestByApps 返回指定环境、应用在泳道下的最新记录。
 	// 外层 key 为 appID，内层 key 为 envName；无记录的应用或环境不出现在结果中。
 	ListLatestByApps(
-		ctx context.Context, appIDs []string, trafficLaneName string,
+		ctx context.Context, appIDsByEnv map[string][]string, trafficLaneName string,
 	) (map[string]map[string]*Record, error)
 	GetByBuildID(ctx context.Context, appID, buildID string) (*Record, error)
 	GetByDeployID(ctx context.Context, appID, deployID string) (*Record, error)
@@ -122,53 +123,64 @@ func (s *RecordStoreMongo) GetLatest(
 	return &record, nil
 }
 
-// ListLatestByApps 返回一批 app 在指定泳道下各环境最新记录（按 createdAt 倒序取每组第一条）。
-// 外层 key 为 appID，内层 key 为 envName；无记录的应用或环境不出现在结果中。
+// ListLatestByApps 返回指定环境、应用在泳道下的最新记录；空范围不查询。
+// 外层 key 为 appID，内层 key 为 envName；无记录的组合不出现在结果中。
 func (s *RecordStoreMongo) ListLatestByApps(
 	ctx context.Context,
-	appIDs []string, trafficLaneName string,
+	appIDsByEnv map[string][]string, trafficLaneName string,
 ) (map[string]map[string]*Record, error) {
-	out := make(map[string]map[string]*Record, len(appIDs))
-	if len(appIDs) == 0 {
-		return out, nil
-	}
-
-	pipeline := bson.A{
-		bson.M{"$match": bson.M{
-			"appID":           bson.M{"$in": lo.Uniq(appIDs)},
-			"trafficLaneName": trafficLaneName,
-		}},
-		bson.M{"$sort": bson.D{
-			{Key: "appID", Value: 1},
-			{Key: "trafficLaneName", Value: 1},
-			{Key: "createdAt", Value: -1},
-		}},
-		bson.M{"$group": bson.M{
-			"_id": bson.M{"appID": "$appID", "envName": "$envName"},
-			"doc": bson.M{"$first": "$$ROOT"},
-		}},
-		bson.M{"$replaceRoot": bson.M{"newRoot": "$doc"}},
-	}
-
-	cursor, err := s.collection.Aggregate(ctx, pipeline)
-	if err != nil {
-		return nil, errors.Wrap(err, "aggregate latest build auto deploy records for apps")
-	}
-	defer cursor.Close(ctx)
-
-	for cursor.Next(ctx) {
-		var record Record
-		if err := cursor.Decode(&record); err != nil {
-			return nil, errors.Wrap(err, "decode latest build auto deploy record for apps")
+	out := make(map[string]map[string]*Record)
+	envNames := make([]string, 0, len(appIDsByEnv))
+	for envName, appIDs := range appIDsByEnv {
+		if len(appIDs) > 0 {
+			envNames = append(envNames, envName)
 		}
-		rec := record
-		if _, ok := out[rec.AppID]; !ok {
-			out[rec.AppID] = make(map[string]*Record)
-		}
-		out[rec.AppID][rec.EnvName] = &rec
 	}
-	if err := cursor.Err(); err != nil {
-		return nil, errors.Wrap(err, "iterate latest build auto deploy records for apps")
+	slices.Sort(envNames)
+
+	// 固定环境和泳道后按 appID 分组，使用 DISTINCT_SCAN 跳过旧记录。
+	// 每批最多 100 个环境，避免生成过长的 $unionWith 管道。
+	for _, batch := range lo.Chunk(envNames, 100) {
+		var pipeline mongo.Pipeline
+		for _, envName := range batch {
+			branch := mongo.Pipeline{
+				{{Key: "$match", Value: bson.M{
+					"appID":           bson.M{"$in": lo.Uniq(appIDsByEnv[envName])},
+					"envName":         envName,
+					"trafficLaneName": trafficLaneName,
+				}}},
+				{{Key: "$sort", Value: bson.D{
+					{Key: "appID", Value: 1},
+					{Key: "createdAt", Value: -1},
+				}}},
+				{{Key: "$group", Value: bson.M{
+					"_id": "$appID",
+					"doc": bson.M{"$first": "$$ROOT"},
+				}}},
+				{{Key: "$replaceRoot", Value: bson.M{"newRoot": "$doc"}}},
+			}
+			if len(pipeline) == 0 {
+				pipeline = branch
+			} else {
+				pipeline = append(pipeline, bson.D{{Key: "$unionWith", Value: bson.M{
+					"coll": collectionName, "pipeline": branch,
+				}}})
+			}
+		}
+		cursor, err := s.collection.Aggregate(ctx, pipeline)
+		if err != nil {
+			return nil, errors.Wrap(err, "aggregate latest build auto deploy records for apps")
+		}
+		var records []*Record
+		if err := cursor.All(ctx, &records); err != nil {
+			return nil, errors.Wrap(err, "decode latest build auto deploy records for apps")
+		}
+		for _, record := range records {
+			if out[record.AppID] == nil {
+				out[record.AppID] = make(map[string]*Record)
+			}
+			out[record.AppID][record.EnvName] = record
+		}
 	}
 	return out, nil
 }

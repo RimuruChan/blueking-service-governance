@@ -215,13 +215,24 @@ func (s *DeployStatusService) ListFeatureEnvsForApp(
 	}
 
 	out := make(map[string][]AppDeployStatus, len(featureEnvs))
+	scopes := make([]envStatusScope, 0, len(featureEnvs))
 	for i := range featureEnvs {
 		featureEnv := &featureEnvs[i]
-		deployStatuses, err := s.listForEnvironment(ctx, featureEnv, []*app.Application{application})
+		out[featureEnv.Name] = nil
+		scope, err := s.resolveEnvStatusScope(ctx, featureEnv, []*app.Application{application})
 		if err != nil {
-			return nil, errors.Wrapf(err, "list deploy statuses for feature environment %s", featureEnv.Name)
+			return nil, errors.Wrapf(err, "resolve deploy status scope for feature environment %s", featureEnv.Name)
 		}
-		out[featureEnv.Name] = deployStatuses
+		if scope != nil {
+			scopes = append(scopes, *scope)
+		}
+	}
+	cache, err := s.prefetchLatestStatuses(ctx, scopes)
+	if err != nil {
+		return nil, err
+	}
+	for i := range scopes {
+		out[scopes[i].env.Name] = s.buildEnvDeployStatuses(&scopes[i], cache)
 	}
 	return out, nil
 }
@@ -394,58 +405,58 @@ type latestStatusCache map[latestStatusKey]*LatestDeployStatus
 // prefetchLatestStatuses 一次性聚合各 scope 中应用在各泳道、各环境上的最新部署状态。
 //
 // 按应用类型分流：AppModel 类应用查构建部署与 AppModel 部署两张表，Helm 类应用查 Helm 部署表。
-// 每个泳道最多三次聚合查询，往返次数与环境数、应用数无关。
+// 每个泳道按源表批量查询；环境较多时由 store 分批执行。
 func (s *DeployStatusService) prefetchLatestStatuses(
 	ctx context.Context, scopes []envStatusScope,
 ) (latestStatusCache, error) {
-	// 同一应用可能出现在多个环境上，按泳道汇总待查应用并去重后再批量聚合
-	appModelIDsByLane := make(map[string][]string)
-	helmIDsByLane := make(map[string][]string)
+	// 保留每个环境实际关联的应用，特性环境只查询归属应用。
+	appModelIDsByLane := make(map[string]map[string][]string)
+	helmIDsByLane := make(map[string]map[string][]string)
 	for i := range scopes {
 		for _, laneName := range scopes[i].laneNames {
 			for _, application := range scopes[i].apps {
+				var idsByLane map[string]map[string][]string
 				switch {
 				case app.IsAppModelType(application.Type):
-					appModelIDsByLane[laneName] = append(appModelIDsByLane[laneName], application.ID)
+					idsByLane = appModelIDsByLane
 				case app.IsHelmBasedType(application.Type):
-					helmIDsByLane[laneName] = append(helmIDsByLane[laneName], application.ID)
+					idsByLane = helmIDsByLane
 				default:
 					return nil, errors.Wrapf(
 						ErrUnsupportedAppType, "app %s app type %s", application.ID, application.Type,
 					)
 				}
+				if idsByLane[laneName] == nil {
+					idsByLane[laneName] = make(map[string][]string)
+				}
+				envName := scopes[i].env.Name
+				idsByLane[laneName][envName] = append(idsByLane[laneName][envName], application.ID)
 			}
 		}
-	}
-	for laneName, appIDs := range appModelIDsByLane {
-		appModelIDsByLane[laneName] = lo.Uniq(appIDs)
-	}
-	for laneName, appIDs := range helmIDsByLane {
-		helmIDsByLane[laneName] = lo.Uniq(appIDs)
 	}
 
 	cache := make(latestStatusCache)
 
-	for laneName, appIDs := range appModelIDsByLane {
+	for laneName, appIDsByEnv := range appModelIDsByLane {
 		// AppModel 应用可能存在一键构建部署记录；优先根据记录关联关系和创建时间选择真正最新的状态。
-		buildByApp, err := s.BuildAutoDeployRecordStore.ListLatestByApps(ctx, appIDs, laneName)
+		buildByApp, err := s.BuildAutoDeployRecordStore.ListLatestByApps(ctx, appIDsByEnv, laneName)
 		if err != nil {
 			return nil, errors.Wrapf(err, "list latest build auto deploy records for lane %s", laneName)
 		}
-		deployByApp, err := s.AppModelDeployRecordStore.ListLatestByApps(ctx, appIDs, laneName)
+		deployByApp, err := s.AppModelDeployRecordStore.ListLatestByApps(ctx, appIDsByEnv, laneName)
 		if err != nil {
 			return nil, errors.Wrapf(err, "list latest appmodel deploy records for lane %s", laneName)
 		}
-		for _, appID := range appIDs {
+		for _, appID := range lo.Uniq(append(lo.Keys(buildByApp), lo.Keys(deployByApp)...)) {
 			for envName, status := range mergeAppModelStatuses(buildByApp[appID], deployByApp[appID]) {
 				cache[latestStatusKey{laneName: laneName, appID: appID, envName: envName}] = status
 			}
 		}
 	}
 
-	for laneName, appIDs := range helmIDsByLane {
+	for laneName, appIDsByEnv := range helmIDsByLane {
 		// Helm 应用没有一键构建部署记录，直接读取 Helm 部署记录即可。
-		recordsByApp, err := s.HelmDeployRecordStore.ListLatestByApps(ctx, appIDs, laneName)
+		recordsByApp, err := s.HelmDeployRecordStore.ListLatestByApps(ctx, appIDsByEnv, laneName)
 		if err != nil {
 			return nil, errors.Wrapf(err, "list latest helm deploy records for lane %s", laneName)
 		}
@@ -536,13 +547,14 @@ func (s *DeployStatusService) GetLatestDeployStatus(
 	}
 }
 
-// ListLatestByAppLane 批量获取应用在指定泳道下各环境的最新部署状态与 AppModel 部署记录。
-// 仅支持 AppModel 类型应用（trpc/taf）；通过两次批量查询完成，复杂度与环境数无关。
+// ListLatestByAppLane 批量获取应用在指定泳道、环境下的最新部署状态与 AppModel 部署记录。
+// 仅支持 AppModel 类型应用（trpc/taf），环境列表为空时不查询。
 //
 // Args:
 //   - appID 应用 ID
 //   - appType 应用类型
 //   - laneName 泳道名称，空字符串表示默认（基线）泳道
+//   - envNames 要查询的环境名称
 //
 // Returns:
 //   - map[envName]*LatestDeployStatus，无部署记录的环境不出现在 map 中
@@ -551,18 +563,22 @@ func (s *DeployStatusService) GetLatestDeployStatus(
 func (s *DeployStatusService) ListLatestByAppLane(
 	ctx context.Context,
 	appID, appType, laneName string,
+	envNames []string,
 ) (map[string]*LatestDeployStatus, map[string]*appmodel.Record, error) {
 	if !app.IsAppModelType(appType) {
 		return nil, nil, ErrUnsupportedAppType
 	}
 
-	// 一次聚合拉齐该泳道下各环境最新的一键构建部署记录与 AppModel 部署记录。
-	buildByApp, err := s.BuildAutoDeployRecordStore.ListLatestByApps(ctx, []string{appID}, laneName)
+	appIDsByEnv := make(map[string][]string, len(envNames))
+	for _, envName := range envNames {
+		appIDsByEnv[envName] = []string{appID}
+	}
+	buildByApp, err := s.BuildAutoDeployRecordStore.ListLatestByApps(ctx, appIDsByEnv, laneName)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "list latest build auto deploy records")
 	}
 	buildByEnv := buildByApp[appID]
-	deployByApp, err := s.AppModelDeployRecordStore.ListLatestByApps(ctx, []string{appID}, laneName)
+	deployByApp, err := s.AppModelDeployRecordStore.ListLatestByApps(ctx, appIDsByEnv, laneName)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "list latest appmodel deploy records")
 	}

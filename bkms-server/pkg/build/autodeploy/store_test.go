@@ -20,6 +20,7 @@ package autodeploy_test
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/TencentBlueKing/gopkg/stringx"
@@ -190,7 +191,14 @@ var _ = Describe("RecordStoreMongo", func() {
 			otherStagNew.AppID = otherAppID
 			Expect(store.Create(ctx, otherStagNew)).To(Succeed())
 
-			latest, err := store.ListLatestByApps(ctx, []string{appID, otherAppID}, trafficLaneName)
+			otherProd := newRecord("prod", "other-prod", trafficLaneName)
+			otherProd.AppID = otherAppID
+			Expect(store.Create(ctx, otherProd)).To(Succeed())
+			Expect(store.Create(ctx, newRecord("unrequested", "outside", trafficLaneName))).To(Succeed())
+
+			latest, err := store.ListLatestByApps(ctx, map[string][]string{
+				"stag": {appID, appID, otherAppID}, "prod": {appID}, "unrequested": nil,
+			}, trafficLaneName)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(latest).To(HaveLen(2))
 			Expect(latest[appID]).To(HaveLen(2))
@@ -200,16 +208,38 @@ var _ = Describe("RecordStoreMongo", func() {
 			Expect(latest[otherAppID]["stag"].ImageTag).To(Equal("other-stag-v2"))
 		})
 
+		It("should return no records for an empty scope", func() {
+			Expect(store.Create(ctx, newRecord("stag", "v1", trafficLaneName))).To(Succeed())
+			latest, err := store.ListLatestByApps(ctx, nil, trafficLaneName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latest).To(BeEmpty())
+		})
+
+		It("should include all environments across query batches", func() {
+			appIDsByEnv := make(map[string][]string)
+			for i := range 101 {
+				envName := "env-" + strconv.Itoa(i)
+				appIDsByEnv[envName] = []string{appID}
+				Expect(store.Create(ctx, newRecord(envName, envName, trafficLaneName))).To(Succeed())
+			}
+			latest, err := store.ListLatestByApps(ctx, appIDsByEnv, trafficLaneName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latest[appID]).To(HaveLen(101))
+			for envName, record := range latest[appID] {
+				Expect(record.ImageTag).To(Equal(envName))
+			}
+		})
+
 		It("should only return records of the given traffic lane", func() {
 			Expect(store.Create(ctx, newRecord("stag", "base-v1", trafficLaneName))).To(Succeed())
 			Expect(store.Create(ctx, newRecord("stag", "lane-v1", "feature-lane"))).To(Succeed())
 
-			latest, err := store.ListLatestByApps(ctx, []string{appID}, trafficLaneName)
+			latest, err := store.ListLatestByApps(ctx, map[string][]string{"stag": {appID}}, trafficLaneName)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(latest).To(HaveLen(1))
 			Expect(latest[appID]["stag"].ImageTag).To(Equal("base-v1"))
 
-			laneLatest, err := store.ListLatestByApps(ctx, []string{appID}, "feature-lane")
+			laneLatest, err := store.ListLatestByApps(ctx, map[string][]string{"stag": {appID}}, "feature-lane")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(laneLatest).To(HaveLen(1))
 			Expect(laneLatest[appID]["stag"].ImageTag).To(Equal("lane-v1"))
@@ -224,7 +254,7 @@ var _ = Describe("RecordStoreMongo", func() {
 			other.AppID = otherAppID
 			Expect(store.Create(ctx, other)).To(Succeed())
 
-			latest, err := store.ListLatestByApps(ctx, []string{appID}, trafficLaneName)
+			latest, err := store.ListLatestByApps(ctx, map[string][]string{"stag": {appID}}, trafficLaneName)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(latest).To(HaveLen(1))
 			Expect(latest).To(HaveKey(appID))
@@ -233,7 +263,11 @@ var _ = Describe("RecordStoreMongo", func() {
 		})
 
 		It("should omit apps that have no record", func() {
-			latest, err := store.ListLatestByApps(ctx, []string{"non-existent-app"}, trafficLaneName)
+			latest, err := store.ListLatestByApps(
+				ctx,
+				map[string][]string{"stag": {"non-existent-app"}},
+				trafficLaneName,
+			)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(latest).To(BeEmpty())
 		})

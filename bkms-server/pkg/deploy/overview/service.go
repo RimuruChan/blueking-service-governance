@@ -152,8 +152,7 @@ func (s *Service) GetOverview(ctx context.Context, application *bkmsapp.Applicat
 
 // loadEnvRowSources 批量读取组装表格行所需的各数据源。
 //
-// 三组查询互不依赖，并发发起以省去逐个叠加的 DB 往返；任一失败即整体失败，
-// 因为缺任何一组都无法给出完整的总览。
+// 部署记录只查询已关联的环境；自动扩缩容配置与这组查询并行获取。
 func (s *Service) loadEnvRowSources(
 	ctx context.Context,
 	application *bkmsapp.Application,
@@ -169,23 +168,22 @@ func (s *Service) loadEnvRowSources(
 	g.Go(func() error {
 		var err error
 		trackedEnvs, err = s.listTrackedEnvs(gctx, application)
-		return err
-	})
-	g.Go(func() error {
-		var err error
-		autoscalingByEnv, err = s.listAutoscalingConfigsByEnv(gctx, application.ID)
-		return err
-	})
-	g.Go(func() error {
-		// 批量结果可能含已不在 AppIDs 中的历史环境，assembleEnvRows 只按 trackedEnvs 取用。
-		var err error
+		if err != nil {
+			return err
+		}
 		statusesByEnv, deployByEnv, err = s.deployStatusService.ListLatestByAppLane(
 			gctx, application.ID, application.Type, defaultTrafficLaneName,
+			lo.Map(trackedEnvs, func(env envmodel.Environment, _ int) string { return env.Name }),
 		)
 		if err != nil {
 			return errors.Wrap(err, "list latest deploy statuses")
 		}
 		return nil
+	})
+	g.Go(func() error {
+		var err error
+		autoscalingByEnv, err = s.listAutoscalingConfigsByEnv(gctx, application.ID)
+		return err
 	})
 	if err := g.Wait(); err != nil {
 		return nil, err
