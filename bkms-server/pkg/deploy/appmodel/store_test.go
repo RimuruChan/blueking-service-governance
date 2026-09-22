@@ -196,26 +196,6 @@ var _ = Describe("RecordStoreMongo", func() {
 			Expect(err).To(HaveOccurred())
 		})
 
-		It("should list latest record per env for one traffic lane", func() {
-			_, err := store.Create(ctx, &recordA)
-			Expect(err).NotTo(HaveOccurred())
-			time.Sleep(5 * time.Millisecond)
-			_, err = store.Create(ctx, &recordB)
-			Expect(err).NotTo(HaveOccurred())
-
-			otherEnv := recordA
-			otherEnv.EnvName = "prod-" + stringx.Random(4)
-			otherEnv.ImageTag = "prod-v1"
-			_, err = store.Create(ctx, &otherEnv)
-			Expect(err).NotTo(HaveOccurred())
-
-			latestByEnv, err := store.ListLatestByApp(ctx, appID, trafficLaneName)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(latestByEnv).To(HaveLen(2))
-			Expect(latestByEnv[envName].ImageTag).To(Equal("v1.0.1"))
-			Expect(latestByEnv[otherEnv.EnvName].ImageTag).To(Equal("prod-v1"))
-		})
-
 		It("should filter by envName correctly", func() {
 			// 为 staging 环境创建记录
 			recordA.EnvName = "staging"
@@ -324,6 +304,103 @@ var _ = Describe("RecordStoreMongo", func() {
 				[]appmodel.Status{appmodel.StatusDeployed},
 			)
 			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Context("ListLatestByApps", func() {
+		// Create 会把 CreatedAt 写成 time.Now()。BSON DateTime 只有毫秒精度，
+		// 连续插入可能落在同一毫秒，导致 $sort + $first 取「最新」不稳定。
+		// 创建后再显式回写 createdAt，用明确时间差拉开新旧记录，避免 CI 抖动影响结果。
+		persistCreatedAt := func(id string, createdAt time.Time) {
+			GinkgoHelper()
+			objID, err := bson.ObjectIDFromHex(id)
+			Expect(err).NotTo(HaveOccurred())
+			_, err = database.Client().Database(database.Name()).Collection("app_model_deploy_records").UpdateByID(
+				ctx, objID, bson.M{"$set": bson.M{"createdAt": createdAt}},
+			)
+			Expect(err).NotTo(HaveOccurred())
+		}
+
+		It("should return the newest record per app and env", func() {
+			otherAppID := "test-app-" + stringx.Random(6)
+			now := time.Now().UTC().Truncate(time.Millisecond)
+
+			idA, err := store.Create(ctx, &recordA)
+			Expect(err).NotTo(HaveOccurred())
+			persistCreatedAt(idA, now.Add(-2*time.Second))
+
+			recordB.ImageTag = "v1.0.1"
+			_, err = store.Create(ctx, &recordB)
+			Expect(err).NotTo(HaveOccurred())
+
+			prod := recordA
+			prod.EnvName = "production"
+			prod.ImageTag = "prod-v1"
+			_, err = store.Create(ctx, &prod)
+			Expect(err).NotTo(HaveOccurred())
+
+			otherStag := recordA
+			otherStag.AppID = otherAppID
+			otherStag.ImageTag = "other-stag-v1"
+			idOther, err := store.Create(ctx, &otherStag)
+			Expect(err).NotTo(HaveOccurred())
+			persistCreatedAt(idOther, now.Add(-time.Second))
+
+			otherStagNew := otherStag
+			otherStagNew.ImageTag = "other-stag-v2"
+			_, err = store.Create(ctx, &otherStagNew)
+			Expect(err).NotTo(HaveOccurred())
+
+			latest, err := store.ListLatestByApps(ctx, []string{appID, otherAppID}, trafficLaneName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latest).To(HaveLen(2))
+			Expect(latest[appID]).To(HaveLen(2))
+			Expect(latest[appID][envName].ImageTag).To(Equal("v1.0.1"))
+			Expect(latest[appID]["production"].ImageTag).To(Equal("prod-v1"))
+			Expect(latest[otherAppID]).To(HaveLen(1))
+			Expect(latest[otherAppID][envName].ImageTag).To(Equal("other-stag-v2"))
+		})
+
+		It("should only return records of the given traffic lane", func() {
+			recordA.TrafficLaneName = trafficLaneName
+			recordA.ImageTag = "base-v1"
+			_, err := store.Create(ctx, &recordA)
+			Expect(err).NotTo(HaveOccurred())
+
+			recordB.TrafficLaneName = "feature-lane"
+			recordB.ImageTag = "lane-v1"
+			_, err = store.Create(ctx, &recordB)
+			Expect(err).NotTo(HaveOccurred())
+
+			latest, err := store.ListLatestByApps(ctx, []string{appID}, trafficLaneName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latest).To(HaveLen(1))
+			Expect(latest[appID][envName].ImageTag).To(Equal("base-v1"))
+
+			laneLatest, err := store.ListLatestByApps(ctx, []string{appID}, "feature-lane")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(laneLatest).To(HaveLen(1))
+			Expect(laneLatest[appID][envName].ImageTag).To(Equal("lane-v1"))
+		})
+
+		It("should not return records of apps not in the list", func() {
+			otherAppID := "other-app-" + stringx.Random(6)
+
+			_, err := store.Create(ctx, &recordA)
+			Expect(err).NotTo(HaveOccurred())
+
+			other := recordA
+			other.AppID = otherAppID
+			other.ImageTag = "other-v1"
+			_, err = store.Create(ctx, &other)
+			Expect(err).NotTo(HaveOccurred())
+
+			latest, err := store.ListLatestByApps(ctx, []string{appID}, trafficLaneName)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latest).To(HaveLen(1))
+			Expect(latest).To(HaveKey(appID))
+			Expect(latest).NotTo(HaveKey(otherAppID))
+			Expect(latest[appID][envName].ImageTag).To(Equal("v1.0.0"))
 		})
 	})
 
