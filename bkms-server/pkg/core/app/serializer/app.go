@@ -22,8 +22,11 @@ package serializer
 import (
 	"time"
 
+	"github.com/samber/lo"
+
 	build "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
+	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/serializer" // register env_name validator
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/overview"
 	deploystatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/status"
 	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
@@ -137,6 +140,8 @@ type AppDetailOutputObj struct {
 	Type string `json:"type"`
 	// 应用显示名称
 	DisplayName string `json:"displayName"`
+	// 可见标准环境名称；未配置时为空数组
+	VisibleEnvNames []string `json:"visibleEnvNames"`
 	// 创建人
 	Creator string `json:"creator"`
 	// 构建配置
@@ -155,14 +160,15 @@ func (o *AppDetailOutputObj) FromModel(
 	components []ComponentOutputObj,
 ) *AppDetailOutputObj {
 	*o = AppDetailOutputObj{
-		ID:          app.ID,
-		WorkspaceID: app.WorkspaceID,
-		Name:        app.Name,
-		Type:        app.Type,
-		DisplayName: app.DisplayName,
-		Creator:     app.Creator,
-		BuildConfig: new(BuildConfigOutputObj).FromModel(buildConfig),
-		HelmSpec:    new(HelmSpecOutputObj).FromModel(app.HelmSpec),
+		ID:              app.ID,
+		WorkspaceID:     app.WorkspaceID,
+		Name:            app.Name,
+		Type:            app.Type,
+		DisplayName:     app.DisplayName,
+		VisibleEnvNames: lo.Ternary(app.VisibleEnvNames == nil, []string{}, app.VisibleEnvNames),
+		Creator:         app.Creator,
+		BuildConfig:     new(BuildConfigOutputObj).FromModel(buildConfig),
+		HelmSpec:        new(HelmSpecOutputObj).FromModel(app.HelmSpec),
 	}
 	if appModel != nil {
 		o.AppModelSpec = new(AppModelSpecOutputObj).FromModel(appModel, components)
@@ -398,6 +404,16 @@ func (o *AppInfoOutputObj) FromModel(
 type UpdateAppDisplayNameInput struct {
 	// 待更新的应用显示名
 	DisplayName string `json:"displayName" binding:"required"`
+}
+
+// -----------------------------------------------------------------------------
+// UpdateAppVisibleEnvs
+// -----------------------------------------------------------------------------
+
+// UpdateAppVisibleEnvsInput is the JSON body for replacing visible standard env names.
+type UpdateAppVisibleEnvsInput struct {
+	// 可见标准环境名称；空数组表示清空配置
+	VisibleEnvNames []string `json:"visibleEnvNames" binding:"omitempty,unique,dive,env_name"`
 }
 
 // -----------------------------------------------------------------------------

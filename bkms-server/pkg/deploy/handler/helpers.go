@@ -24,6 +24,7 @@ import (
 	"fmt"
 
 	"github.com/gin-gonic/gin"
+	"github.com/samber/lo"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
@@ -50,6 +51,25 @@ func (h *Handler) validateHelmDeployAppEnv(
 		return nil, nil, bkerrs.Wrapf(err, bkerrs.ErrCodeNotFound, "get workspace %s env %s", app.WorkspaceID, envName)
 	}
 	return app, env, nil
+}
+
+// checkVisibleEnv 按应用可见环境名单拦截部署目标环境。
+// 名单为空表示未配置，不做限制；应用自己的特性环境无需写入名单，始终允许。
+// 仅用于创建部署和 precheck，卸载、回滚、查记录不做此校验。
+func checkVisibleEnv(app *bkmsapp.Application, env *bkmsenv.Environment) error {
+	if len(app.VisibleEnvNames) == 0 {
+		return nil
+	}
+	if env.IsFeatureEnv() && env.OwnerAppID == app.ID {
+		return nil
+	}
+	if lo.Contains(app.VisibleEnvNames, env.Name) {
+		return nil
+	}
+	return bkerrs.New(
+		bkerrs.ErrCodeInvalidRequest,
+		fmt.Sprintf("environment %q is not in the application's visible environments", env.Name),
+	)
 }
 
 // validateAppModelDeployAppEnv 是 AppModel 部署相关 handler 的统一前置校验
