@@ -430,6 +430,145 @@
           </template>
         </TableColumn>
 
+        <TableColumn
+          field="latestPublish"
+          :label="$t('热更新')"
+          min-width="120"
+        >
+          <template #default="{ row }: { row: AppInstanceOutputObj }">
+            <Popover
+              v-if="row.latestPublish"
+              placement="top"
+              :popover-delay="[80, 80]"
+              theme="light"
+              :width="560"
+            >
+              <span class="inline-flex items-center cursor-default border-b border-dashed border-[#979BA5]">
+                <StatusDotIcon
+                  v-if="row.latestPublish.status === 'success' || row.latestPublish.status === 'failed'"
+                  :icon="row.latestPublish.status === 'success' ? 'normal' : 'abnormal'"
+                  :size="12"
+                />
+                {{ getPublishStatusLabel(row.latestPublish.status) }}
+              </span>
+              <template #content>
+                <div class="w-full min-w-0 px-[4px]">
+                  <div class="mb-[12px] flex items-center text-[14px] whitespace-nowrap">
+                    <span class="font-bold text-[#313238] shrink-0">{{ $t('热更新') }}</span>
+                    <span
+                      class="text-[#979BA5] text-[12px] ml-[10px] truncate"
+                      :title="row.id"
+                      >{{ row.id }}</span
+                    >
+                  </div>
+                  <div class="text-[12px] text-[#4D4F56] mb-[12px]">
+                    <i class="bkms-icon bkms-icon-circle-info text-[14px] mr-[4px]"></i>
+                    {{ $t('展示该实例最近一次通过 bkms-cli 的热更新概要') }}
+                  </div>
+                  <div class="py-[4px]">
+                    <DetailItem
+                      :label="$t('二进制')"
+                      :label-width="70"
+                    >
+                      <div
+                        v-if="row.latestPublish.binaryName"
+                        class="group inline-flex items-center gap-[4px]"
+                      >
+                        <span>{{ row.latestPublish.binaryName }}</span>
+                        <Copy
+                          class="shrink-0 cursor-pointer text-[#3A84FF] opacity-0 transition group-hover:opacity-100"
+                          :title="$t('复制')"
+                          @click.stop="copyText(row.latestPublish.binaryName)"
+                        />
+                      </div>
+                      <span v-else>--</span>
+                    </DetailItem>
+                    <DetailItem
+                      :label="$t('摘要')"
+                      :label-width="70"
+                    >
+                      <Popover
+                        v-if="row.latestPublish.md5"
+                        disable-teleport
+                        ext-cls="publish-nested-popover"
+                        placement="top"
+                        theme="dark"
+                      >
+                        <div class="group inline-flex items-center gap-[4px]">
+                          <span class="cursor-pointer border-b border-dashed border-[#979ba5]">
+                            {{ row.latestPublish.md5.slice(0, 8) }}
+                          </span>
+                          <Copy
+                            class="shrink-0 cursor-pointer text-[#3A84FF] opacity-0 transition group-hover:opacity-100"
+                            :title="$t('复制')"
+                            @click.stop="copyText(row.latestPublish.md5)"
+                          />
+                        </div>
+                        <template #content>
+                          <div class="break-all leading-[20px]">{{ row.latestPublish.md5 }}</div>
+                        </template>
+                      </Popover>
+                      <span v-else>--</span>
+                    </DetailItem>
+                    <DetailItem
+                      :label="$t('操作人')"
+                      :label-width="70"
+                    >
+                      {{ row.latestPublish.operator || '--' }}
+                    </DetailItem>
+                    <DetailItem
+                      :label="$t('更新时间')"
+                      :label-width="70"
+                    >
+                      {{ row.latestPublish.updatedAt ? formatTimeByTimezone(row.latestPublish.updatedAt) : '--' }}
+                    </DetailItem>
+                    <DetailItem
+                      :label="$t('状态')"
+                      :label-width="70"
+                    >
+                      <span class="inline-flex items-center">
+                        <StatusDotIcon
+                          v-if="row.latestPublish.status === 'success' || row.latestPublish.status === 'failed'"
+                          :icon="row.latestPublish.status === 'success' ? 'normal' : 'abnormal'"
+                          :size="12"
+                        />
+                        {{ getPublishResultLabel(row.latestPublish.status) }}
+                      </span>
+                    </DetailItem>
+                    <DetailItem
+                      v-if="row.latestPublish.status === 'failed' && row.latestPublish.message"
+                      class="fail-reason-item"
+                      :label="$t('失败原因')"
+                      :label-width="70"
+                    >
+                      <Popover
+                        disable-teleport
+                        ext-cls="publish-nested-popover"
+                        placement="top"
+                        theme="dark"
+                        :width="400"
+                      >
+                        <div class="group flex min-w-0 items-center gap-[4px]">
+                          <span class="block min-w-0 truncate">{{ row.latestPublish.message }}</span>
+                          <Copy
+                            class="shrink-0 cursor-pointer text-[#3A84FF] opacity-0 transition group-hover:opacity-100"
+                            :title="$t('复制')"
+                            @click.stop="copyText(row.latestPublish.message)"
+                          />
+                        </div>
+                        <template #content>
+                          <div class="break-all leading-[20px]">{{ row.latestPublish.message }}</div>
+                        </template>
+                      </Popover>
+                    </DetailItem>
+                  </div>
+                </div>
+              </template>
+            </Popover>
+            <span v-else>--</span>
+          </template>
+        </TableColumn>
+
         <!-- Restart 列 -->
         <TableColumn
           field="restartCount"
@@ -570,8 +709,9 @@
 
   import { Table, TableColumn } from '@blueking/table';
   import { Button, Checkbox, Dropdown, Popover, Tag } from 'bkui-vue';
-  import { AngleDownLine, RightShape } from 'bkui-vue/lib/icon';
+  import { AngleDownLine, Copy, RightShape } from 'bkui-vue/lib/icon';
   import { AppInstanceOutputObj } from '~/@types/v1/instance';
+  import { copyText, formatTimeByTimezone } from '~/common/util';
   import CustomFilter from '~/components/custom-filter.vue';
   import HoverCopy from '~/components/hover-copy.vue';
   import StatusDotIcon from '~/components/status-dot-icon.vue';
@@ -653,15 +793,26 @@
 
   const { getResourceText, getResourceTips } = useResourceSpecDisplay();
 
-  // 列设置：资源规格等新增列默认不勾选，用户可在表格右上角列设置中开启。
+  // 列设置：热更新、资源规格列默认不勾选，用户可在表格右上角列设置中主动开启。
   // 列勾选与行高（size）偏好均持久化，刷新后恢复。
-  // 多环境模式下按环境名区分列设置，v-for 渲染的多个表格互不共享。
-  const tableSettingsId = computed(() => `instance-table-${props.envName || 'default'}`);
+  // 所有环境共用列设置，任一环境的配置调整都会同步到其他环境表格。
+  const tableSettingsId = 'instance-table';
   const { settings, handleSettingChange } = useTableSettings(tableSettingsId, {
     defaultChecked: ['id', 'image', 'ip', 'nodeIP', 'status', 'isHealthy', 'polarisStatus', 'restartCount', 'age'],
     disabled: ['id'],
   });
 
+  function getPublishResultLabel(status?: string) {
+    if (status === 'success') return window.i18n.t('成功');
+    if (status === 'failed') return window.i18n.t('失败');
+    return status || '--';
+  }
+
+  function getPublishStatusLabel(status?: string) {
+    if (status === 'success') return window.i18n.t('已更新');
+    if (status === 'failed') return window.i18n.t('更新失败');
+    return status || '--';
+  }
   // 特性环境
   const isFeatureEnv = computed(() => props.envKind === 'feature');
 
@@ -926,6 +1077,14 @@
 </script>
 
 <style lang="postcss" scoped>
+  :deep(.publish-nested-popover.bk-popover.bk-pop2-content .bk-pop2-arrow) {
+    background-color: #26323d !important;
+  }
+
+  .fail-reason-item :deep(> div:last-child) {
+    min-width: 0;
+  }
+
   .env-instance-table:first-child {
     .env-header {
       border-top: 1px solid #e8eaec;
