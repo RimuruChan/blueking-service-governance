@@ -195,12 +195,13 @@ var _ = Describe("App serializers", func() {
 		output := new(serializer.AppDetailOutputObj).FromModel(app, buildConfig, appModel, components)
 
 		Expect(output).To(Equal(&serializer.AppDetailOutputObj{
-			ID:          "app-id",
-			WorkspaceID: "workspace-1",
-			Name:        "demo-app",
-			Type:        "trpc",
-			DisplayName: "Demo App",
-			Creator:     "tester",
+			ID:              "app-id",
+			WorkspaceID:     "workspace-1",
+			Name:            "demo-app",
+			Type:            "trpc",
+			DisplayName:     "Demo App",
+			VisibleEnvNames: []string{},
+			Creator:         "tester",
 			BuildConfig: &serializer.BuildConfigOutputObj{
 				SourceType: "pipeline",
 				TagConfig: &serializer.TagConfigOutputObj{
@@ -254,6 +255,21 @@ var _ = Describe("App serializers", func() {
 		Expect(output.BuildConfig).To(BeNil())
 		Expect(output.HelmSpec).To(BeNil())
 		Expect(output.AppModelSpec).To(BeNil())
+		Expect(output.VisibleEnvNames).To(Equal([]string{}))
+	})
+
+	It("maps configured visible env names onto app detail output", func() {
+		app := &bkmsapp.Application{
+			ID:              "app-id",
+			WorkspaceID:     "workspace-1",
+			Name:            "demo-app",
+			Type:            bkmsapp.AppTypeTRPC,
+			VisibleEnvNames: []string{"test", "stag"},
+		}
+
+		output := new(serializer.AppDetailOutputObj).FromModel(app, nil, nil, nil)
+
+		Expect(output.VisibleEnvNames).To(Equal([]string{"test", "stag"}))
 	})
 
 	It("maps build config output from code repository source", func() {

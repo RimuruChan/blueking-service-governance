@@ -1,0 +1,42 @@
+meta {
+  name: 04-update-visible-envs
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{serviceURL}}/apps/{{visEnvAppID}}/visible-envs
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "visibleEnvNames": [
+      "{{visEnvListedEnvName}}",
+      "{{visEnvListedEnvName}}",
+      "  {{visEnvListedEnvName2}}  ",
+      ""
+    ]
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body: isJson
+}
+
+tests {
+  // AC-005：重复项去重、空串丢弃、前后空格裁剪，返回落库后的名单
+  test("should normalize and persist the visible env names", () => {
+    expect(res.body.data.visibleEnvNames).to.deep.equal([
+      bru.getVar("visEnvListedEnvName"),
+      bru.getVar("visEnvListedEnvName2")
+    ]);
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
