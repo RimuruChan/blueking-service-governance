@@ -76,6 +76,35 @@ var _ = Describe("ScopedEnvVarStoreMongo", func() {
 		diApp.RequireStop()
 	})
 
+	It("rejects copying a sensitive value over an existing non-sensitive target", func() {
+		source := envmodel.Environment{WorkspaceID: workspaceID, Name: "source"}
+		target := envmodel.Environment{
+			WorkspaceID: workspaceID,
+			Name:        "feature",
+			Kind:        envmodel.EnvironmentKindFeature,
+		}
+		sourceID, err := store.Create(ctx, envvars.ScopedEnvVar{
+			WorkspaceID: workspaceID, ScopeType: envvartypes.ScopeTypeEnv, ScopeValue: source.Name,
+			Key: "SECRET", Value: "source-secret", Description: "source description", IsSensitive: true,
+		})
+		Expect(err).NotTo(HaveOccurred())
+		targetID, err := store.CreateSimpleEnvScopeVar(ctx, target, "SECRET", "target-value", "target description")
+		Expect(err).NotTo(HaveOccurred())
+		before, err := store.GetByID(ctx, workspaceID, targetID)
+		Expect(err).NotTo(HaveOccurred())
+
+		Expect(store.CopyEnvVars(ctx, source, target)).To(MatchError(envvars.ErrScopedEnvVarKeyConflict))
+		after, err := store.GetByID(ctx, workspaceID, targetID)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(*after).To(Equal(*before))
+		Expect(after.IsSensitive).To(BeFalse())
+		Expect(after.Value).To(Equal("target-value"))
+		sourceVar, err := store.GetByID(ctx, workspaceID, sourceID)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(sourceVar.Value).To(Equal("source-secret"))
+		Expect(sourceVar.IsSensitive).To(BeTrue())
+	})
+
 	Context("workspace scope", func() {
 		var testEnvVar envvars.ScopedEnvVar
 

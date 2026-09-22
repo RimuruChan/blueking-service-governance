@@ -38,6 +38,9 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/model/initdata"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars"
+	exporter "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/export"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/import"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/preview"
 	envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
 )
 
@@ -49,6 +52,9 @@ var _ = Describe("UnifiedEnvVarsReader", func() {
 		workspaceID string
 		environment envmodel.Environment
 		reader      *envvars.UnifiedEnvVarsReader
+		previewSvc  *preview.ImportPreviewService
+		importSvc   *importer.Service
+		exportSvc   *exporter.Service
 	)
 
 	BeforeEach(func() {
@@ -60,7 +66,9 @@ var _ = Describe("UnifiedEnvVarsReader", func() {
 			depenvvars.FxModule,
 			polaris.FxModule,
 			polarisenvvars.FxModule,
-			fx.Populate(&store, &reader),
+			appmodel.FxModule,
+			fx.Provide(preview.NewPreviewService, importer.NewService, exporter.NewService),
+			fx.Populate(&store, &reader, &previewSvc, &importSvc, &exportSvc),
 		)
 		diApp.RequireStart()
 
@@ -96,6 +104,60 @@ var _ = Describe("UnifiedEnvVarsReader", func() {
 			{Source: envvartypes.EnvVarSourceScopedEnvType, Key: "SHARED_KEY", Value: "envtype-value"},
 		}
 	}
+
+	It("uses feature env imports in deployment variables without changing the source env", func() {
+		seedScopedEnvVars(ctx, store, workspaceID)
+		featureEnv := environment
+		featureEnv.Name = "feat-env"
+		featureEnv.Kind = envmodel.EnvironmentKindFeature
+		featureEnv.OwnerAppID = "feature-app"
+		featureEnv.SourceEnvID = bson.NewObjectID()
+		app := &bkmsapp.Application{ID: featureEnv.OwnerAppID, WorkspaceID: workspaceID, Type: bkmsapp.AppTypeTRPC}
+
+		featureVarID, err := store.CreateSimpleEnvScopeVar(ctx, featureEnv, "SHARED_KEY", "feature-old", "")
+		Expect(err).NotTo(HaveOccurred())
+		_, err = store.Create(ctx, envvars.ScopedEnvVar{
+			WorkspaceID: workspaceID, ScopeType: envvartypes.ScopeTypeEnv, ScopeValue: featureEnv.Name,
+			Key: "FEATURE_SECRET", Value: "secret-value", IsSensitive: true,
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		content := "SHARED_KEY=feature-new\nFEATURE_ONLY=enabled\n"
+		result, err := previewSvc.PreviewEnv(ctx, featureEnv, content)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result.Summary.New).To(Equal(1))
+		Expect(result.Summary.Overwrite).To(Equal(1))
+		saved, err := store.GetByID(ctx, workspaceID, featureVarID)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(saved.Value).To(Equal("feature-old"))
+
+		Expect(importSvc.ImportEnv(ctx, featureEnv, content)).To(Succeed())
+		vars, err := envvars.BuildAppEnvVars(ctx, app, nil, &featureEnv, reader)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(vars.ToMap()).To(HaveKeyWithValue("SHARED_KEY", "feature-new"))
+		Expect(vars.ToMap()).To(HaveKeyWithValue("FEATURE_ONLY", "enabled"))
+		Expect(vars.ToMap()).To(HaveKeyWithValue("FEATURE_SECRET", "secret-value"))
+		Expect(vars.ToMap()).NotTo(HaveKey("ENV_ONLY_KEY"))
+
+		exported, err := exportSvc.ExportEnv(ctx, featureEnv)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(exported).To(ContainSubstring("SHARED_KEY=feature-new"))
+		Expect(exported).To(ContainSubstring("FEATURE_ONLY=enabled"))
+		Expect(exported).NotTo(ContainSubstring("FEATURE_SECRET"))
+		Expect(exported).NotTo(ContainSubstring("secret-value"))
+		Expect(exported).NotTo(ContainSubstring("ENV_ONLY_KEY"))
+
+		sourceVars, err := envvars.BuildAppEnvVars(ctx, app, nil, &environment, reader)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(sourceVars.ToMap()).To(HaveKeyWithValue("SHARED_KEY", "env-value"))
+		Expect(sourceVars.ToMap()).NotTo(HaveKey("FEATURE_ONLY"))
+		Expect(sourceVars.ToMap()).NotTo(HaveKey("FEATURE_SECRET"))
+
+		Expect(store.DeleteByID(ctx, workspaceID, featureVarID)).To(Succeed())
+		vars, err = envvars.BuildAppEnvVars(ctx, app, nil, &featureEnv, reader)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(vars.ToMap()).To(HaveKeyWithValue("SHARED_KEY", "envtype-value"))
+	})
 
 	It("should list env background vars sorted by source priority", func() {
 		seedScopedEnvVars(ctx, store, workspaceID)

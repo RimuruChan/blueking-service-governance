@@ -10810,6 +10810,7 @@ const docTemplate = `{
                         "BkUserCredential": []
                     }
                 ],
+                "description": "copyEnvVars 为可选参数，只有传 true 才复制来源环境的自定义变量；不传或传 false 时不复制。",
                 "consumes": [
                     "application/json"
                 ],
@@ -23998,6 +23999,10 @@ const docTemplate = `{
                 "sourceEnvID"
             ],
             "properties": {
+                "copyEnvVars": {
+                    "description": "是否复制来源环境直接配置的自定义环境变量；未传时不复制",
+                    "type": "boolean"
+                },
                 "displayName": {
                     "description": "特性环境展示名称",
                     "type": "string"
