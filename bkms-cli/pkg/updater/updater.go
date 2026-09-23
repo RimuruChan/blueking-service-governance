@@ -16,10 +16,11 @@
  * to the current version of the project delivered to anyone in the future.
  */
 
-// Package updater checks for and applies bkms-cli updates from GitHub Releases.
+// Package updater installs verified releases from the configured distribution endpoints.
 package updater
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -28,32 +29,32 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/Masterminds/semver/v3"
 	selfupdate "github.com/creativeprojects/go-selfupdate"
+	binaryupdate "github.com/creativeprojects/go-selfupdate/update"
 	"github.com/pkg/errors"
 
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/config"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version"
 )
 
 const (
-	cliTagPrefix     = "bkms-cli/"
-	checksumFilename = "checksums.txt"
-	maxBinarySize    = 512 * 1024 * 1024
+	cliTagPrefix    = "bkms-cli/"
+	maxBinarySize   = 512 * 1024 * 1024
+	maxChecksumSize = 1024 * 1024
 )
 
-// updateSource is injected at build time as owner/repository.
-var updateSource = ""
-
 var (
-	// ErrUpdateNotConfigured indicates that the binary has no usable update source.
+	// ErrUpdateNotConfigured indicates an invalid update source configuration.
 	ErrUpdateNotConfigured = errors.New("self-update is not configured for this build")
-	// ErrInvalidVersion indicates that the current or remote version is not valid SemVer.
+	// ErrInvalidVersion indicates an invalid current or published version.
 	ErrInvalidVersion = errors.New("invalid update version")
-	// ErrNoRelease indicates that no release asset matches the current platform.
+	// ErrNoRelease indicates that the version file or a release asset was not found.
 	ErrNoRelease = errors.New("no compatible release found")
-	// ErrBinaryTooLarge indicates that a release asset exceeds the supported size.
-	ErrBinaryTooLarge = errors.New("update binary exceeds size limit")
+	// ErrDownloadTooLarge indicates a download exceeds its size limit.
+	ErrDownloadTooLarge = errors.New("update download exceeds size limit")
 )
 
 // Info describes the result of an update check.
@@ -81,143 +82,137 @@ func pathLooksLikeNPMInstall(p string) bool {
 	return strings.Contains(normalized, "/node_modules/")
 }
 
-// Check reports whether this binary has a newer GitHub release.
+// Check reads the stable CLI version without using the GitHub API.
 func Check(ctx context.Context) (Info, error) {
 	c, err := newClient()
 	if err != nil {
 		return Info{}, err
 	}
-	info, _, err := c.detect(ctx)
-	return info, err
+	return c.check(ctx)
 }
 
-// Update installs a newer GitHub release when one is available.
+// Update installs a newer release after checksum verification.
 func Update(ctx context.Context) (Info, error) {
 	c, err := newClient()
 	if err != nil {
 		return Info{}, err
 	}
-	info, release, err := c.detect(ctx)
+	info, err := c.check(ctx)
 	if err != nil || !info.Available {
 		return info, err
 	}
-	if err = validateBinarySize(int64(release.AssetByteSize)); err != nil {
-		return info, err
-	}
-
 	executable, err := selfupdate.ExecutablePath()
 	if err != nil {
 		return info, errors.Wrap(err, "locate executable")
 	}
-	if err := c.updater.UpdateTo(ctx, release, executable); err != nil {
-		return info, errors.Wrap(normalizeBinarySizeError(err), "apply update")
-	}
-	return info, nil
+	return info, c.install(ctx, info.LatestVersion, executable)
 }
 
 type client struct {
-	updater    *selfupdate.Updater
-	repository selfupdate.Repository
+	source     config.UpdateSource
+	httpClient *http.Client
 }
 
 func newClient() (*client, error) {
-	source := strings.TrimSpace(updateSource)
-	if source == "" {
-		return nil, errors.Wrap(ErrUpdateNotConfigured, "update source is empty")
-	}
-	slug := selfupdate.ParseSlug(source)
-	if _, _, err := slug.GetSlug(); err != nil {
-		return nil, errors.Wrapf(ErrUpdateNotConfigured, "invalid GitHub repository %q", source)
-	}
-
-	ghSource, err := selfupdate.NewGitHubSource(selfupdate.GitHubConfig{})
+	source, err := config.G.UpdateSource()
 	if err != nil {
-		return nil, errors.Wrap(err, "create GitHub source")
+		return nil, errors.Wrapf(ErrUpdateNotConfigured, "invalid update configuration: %v", err)
 	}
-	instance, err := selfupdate.NewUpdater(selfupdate.Config{
-		Source:    maxBytesSource{Source: ghSource, limit: maxBinarySize},
-		Validator: &selfupdate.ChecksumValidator{UniqueFilename: checksumFilename},
-		Filters:   []string{assetFilter()},
-	})
-	if err != nil {
-		return nil, errors.Wrap(err, "create updater")
-	}
-	return &client{updater: instance, repository: slug}, nil
+	return &client{source: source, httpClient: &http.Client{Timeout: 5 * time.Minute}}, nil
 }
 
-func assetFilter() string {
-	ext := `tar\.gz`
-	if runtime.GOOS == "windows" {
-		ext = "zip"
-	}
-	return fmt.Sprintf(`^bkms-cli_.+_%s_%s\.%s$`, runtime.GOOS, runtime.GOARCH, ext)
-}
-
-func (c *client) detect(ctx context.Context) (Info, *selfupdate.Release, error) {
+func (c *client) check(ctx context.Context) (Info, error) {
 	current, err := parseVersion(version.Version)
 	if err != nil {
-		return Info{}, nil, errors.Wrap(err, "parse current version")
+		return Info{}, errors.Wrap(err, "parse current version")
 	}
-	release, found, err := c.updater.DetectLatest(ctx, c.repository)
+	data, err := c.download(ctx, c.source.LatestVersionURL, 128)
 	if err != nil {
-		return Info{}, nil, errors.Wrap(err, "detect latest release")
+		return Info{}, err
 	}
-	if !found {
-		return Info{}, nil, ErrNoRelease
-	}
-	latest, err := parseVersion(release.Version())
+	latest, err := semver.StrictNewVersion(strings.TrimSpace(string(data)))
 	if err != nil {
-		return Info{}, nil, errors.Wrap(err, "parse latest version")
+		return Info{}, errors.Wrapf(ErrInvalidVersion, "invalid latest.txt: %v", err)
+	}
+	if latest.Prerelease() != "" || latest.Metadata() != "" {
+		return Info{}, errors.Wrap(ErrInvalidVersion, "latest.txt must contain a stable version")
 	}
 	return Info{
 		CurrentVersion: current.String(),
 		LatestVersion:  latest.String(),
 		Available:      latest.GreaterThan(current),
-	}, release, nil
+	}, nil
 }
 
-// maxBytesSource limits downloaded release assets before go-selfupdate buffers them.
-type maxBytesSource struct {
-	selfupdate.Source
-	limit int64
+func archiveName(releaseVersion string) string {
+	extension := "tar.gz"
+	if runtime.GOOS == "windows" {
+		extension = "zip"
+	}
+	return fmt.Sprintf("bkms-cli_%s_%s_%s.%s", releaseVersion, runtime.GOOS, runtime.GOARCH, extension)
 }
 
-func (s maxBytesSource) DownloadReleaseAsset(
-	ctx context.Context,
-	release *selfupdate.Release,
-	assetID int64,
-) (io.ReadCloser, error) {
-	body, err := s.Source.DownloadReleaseAsset(ctx, release, assetID)
+func (c *client) install(ctx context.Context, releaseVersion, executable string) error {
+	asset := archiveName(releaseVersion)
+	checksums, err := c.download(ctx, c.source.DownloadURL(releaseVersion, "checksums.txt"), maxChecksumSize)
+	if err != nil {
+		return err
+	}
+	data, err := c.download(ctx, c.source.DownloadURL(releaseVersion, asset), maxBinarySize)
+	if err != nil {
+		return err
+	}
+	validator := selfupdate.ChecksumValidator{UniqueFilename: "checksums.txt"}
+	if err = validator.Validate(asset, data, checksums); err != nil {
+		return errors.Wrap(err, "verify release checksum")
+	}
+	binary, err := selfupdate.DecompressCommand(
+		bytes.NewReader(data), asset, "bkms-cli", runtime.GOOS, runtime.GOARCH,
+	)
+	if err != nil {
+		return errors.Wrap(err, "extract release binary")
+	}
+	if closer, ok := binary.(io.Closer); ok {
+		defer closer.Close()
+	}
+	limited := http.MaxBytesReader(nil, io.NopCloser(binary), maxBinarySize)
+	return errors.Wrap(binaryupdate.Apply(limited, binaryupdate.Options{TargetPath: executable}), "replace executable")
+}
+
+func (c *client) download(ctx context.Context, url string, limit int64) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
-	return http.MaxBytesReader(nil, body, s.limit), nil
+	req.Header.Set("User-Agent", version.UserAgent())
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, errors.Wrapf(err, "download %s", url)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, errors.Wrapf(ErrNoRelease, "download %s: HTTP 404", url)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("download %s: HTTP %d", url, resp.StatusCode)
+	}
+	if resp.ContentLength > limit {
+		return nil, errors.Wrapf(ErrDownloadTooLarge, "%s exceeds %d bytes", url, limit)
+	}
+	body := http.MaxBytesReader(nil, resp.Body, limit)
+	data, err := io.ReadAll(body)
+	var sizeError *http.MaxBytesError
+	if errors.As(err, &sizeError) {
+		return nil, errors.Wrapf(ErrDownloadTooLarge, "%s exceeds %d bytes", url, limit)
+	}
+	return data, errors.Wrapf(err, "read %s", url)
 }
 
 func parseVersion(value string) (*semver.Version, error) {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return nil, errors.Wrap(ErrInvalidVersion, "version is empty")
-	}
-	normalized := strings.TrimPrefix(value, cliTagPrefix)
+	normalized := strings.TrimPrefix(strings.TrimSpace(value), cliTagPrefix)
 	parsed, err := semver.StrictNewVersion(strings.TrimPrefix(normalized, "v"))
 	if err != nil {
 		return nil, errors.Wrapf(ErrInvalidVersion, "version %q: %v", value, err)
 	}
 	return parsed, nil
-}
-
-func validateBinarySize(size int64) error {
-	if size > maxBinarySize {
-		return errors.Wrapf(ErrBinaryTooLarge, "%d bytes exceeds %d-byte limit", size, maxBinarySize)
-	}
-	return nil
-}
-
-func normalizeBinarySizeError(err error) error {
-	var sizeError *http.MaxBytesError
-	if errors.As(err, &sizeError) {
-		return errors.Wrapf(ErrBinaryTooLarge, "exceeds %d-byte limit", sizeError.Limit)
-	}
-	return err
 }

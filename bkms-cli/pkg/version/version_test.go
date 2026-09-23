@@ -21,6 +21,7 @@ package version
 import (
 	"fmt"
 	"runtime"
+	"runtime/debug"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -45,4 +46,63 @@ var _ = Describe("UserAgent", func() {
 		Entry("strips leading v", "v1.2.3", "1.2.3"),
 		Entry("empty version uses dev", "", "dev"),
 	)
+})
+
+var _ = Describe("Build metadata", func() {
+	BeforeEach(func() {
+		oldVersion, oldHash, oldTime, oldChannel := Version, GitHash, BuildTime, BuildChannel
+		DeferCleanup(func() {
+			Version, GitHash, BuildTime, BuildChannel = oldVersion, oldHash, oldTime, oldChannel
+		})
+		Version, GitHash, BuildTime, BuildChannel = "", "", "", ""
+	})
+
+	DescribeTable("uses Go module versions for display and HTTP requests",
+		func(moduleVersion, expected string) {
+			resolveBuildInfo(&debug.BuildInfo{Main: debug.Module{Version: moduleVersion}})
+			Expect(Version).To(Equal(expected))
+			Expect(BuildChannel).To(Equal("go"))
+			Expect(GitHash).To(Equal("unknown"))
+			Expect(BuildTime).To(Equal("unknown"))
+			Expect(GetVersion()).To(ContainSubstring("Version:   " + expected))
+			Expect(UserAgent()).To(HavePrefix("bkms-cli/" + expected + " "))
+		},
+		Entry("tagged release", "v1.2.3", "1.2.3"),
+		Entry("pseudo version", "v1.2.4-0.20260910000000-abcdef123456", "1.2.4-0.20260910000000-abcdef123456"),
+	)
+
+	It("preserves all explicitly injected release metadata", func() {
+		Version, GitHash, BuildTime, BuildChannel = "2.0.0", "release-hash", "build-time", "release"
+		resolveBuildInfo(&debug.BuildInfo{
+			Main:     debug.Module{Version: "v1.2.3"},
+			Settings: []debug.BuildSetting{{Key: "vcs.revision", Value: "source-hash"}},
+		})
+		Expect(Version).To(Equal("2.0.0"))
+		Expect(GitHash).To(Equal("release-hash"))
+		Expect(BuildTime).To(Equal("build-time"))
+		Expect(BuildChannel).To(Equal("release"))
+	})
+
+	It("uses local VCS revision without mistaking commit time for build time", func() {
+		resolveBuildInfo(&debug.BuildInfo{
+			Main: debug.Module{Version: "(devel)"},
+			Settings: []debug.BuildSetting{
+				{Key: "vcs.revision", Value: "source-hash"},
+				{Key: "vcs.time", Value: "2026-09-10T00:00:00Z"},
+			},
+		})
+		Expect(Version).To(Equal("dev"))
+		Expect(BuildChannel).To(Equal("dev"))
+		Expect(GitHash).To(Equal("source-hash"))
+		Expect(BuildTime).To(Equal("unknown"))
+	})
+
+	It("has usable defaults when build information is unavailable", func() {
+		resolveBuildInfo(nil)
+		Expect(Version).To(Equal("dev"))
+		Expect(BuildChannel).To(Equal("dev"))
+		Expect(GitHash).To(Equal("unknown"))
+		Expect(BuildTime).To(Equal("unknown"))
+		Expect(UserAgent()).To(HavePrefix("bkms-cli/dev "))
+	})
 })

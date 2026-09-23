@@ -20,8 +20,10 @@
 package version
 
 import (
+	"cmp"
 	"fmt"
 	"runtime"
+	"runtime/debug"
 	"strings"
 )
 
@@ -34,7 +36,35 @@ var (
 	BuildTime = ""
 	// GoVersion Go 版本号
 	GoVersion = runtime.Version()
+	// BuildChannel is injected as release for prebuilt distributions.
+	BuildChannel = ""
 )
+
+func init() {
+	info, _ := debug.ReadBuildInfo()
+	resolveBuildInfo(info)
+}
+
+func resolveBuildInfo(info *debug.BuildInfo) {
+	moduleVersion, revision, channel := "dev", "unknown", "dev"
+	if info != nil {
+		if info.Main.Version != "" && info.Main.Version != "(devel)" {
+			moduleVersion = strings.TrimPrefix(info.Main.Version, "v")
+			channel = "go"
+		}
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				revision = cmp.Or(setting.Value, revision)
+			}
+		}
+	}
+
+	// Explicit build flags take precedence over Go module metadata.
+	Version = cmp.Or(Version, moduleVersion)
+	GitHash = cmp.Or(GitHash, revision)
+	BuildTime = cmp.Or(BuildTime, "unknown")
+	BuildChannel = cmp.Or(BuildChannel, channel)
+}
 
 // UserAgent 返回访问 bkms-server 时使用的 User-Agent。
 func UserAgent() string {

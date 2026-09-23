@@ -21,6 +21,7 @@ package update
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -28,17 +29,18 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/updater"
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version"
 )
 
 const (
 	updateCheckTimeout = 15 * time.Second
 	npmUpgradeCommand  = "npm i -g @blueking/bkms-cli@latest"
+	goUpgradeCommand   = "go install github.com/TencentBlueKing/blueking-service-governance/bkms-cli@latest"
 )
 
 // NewCmd creates the self-update command.
 func NewCmd() *cobra.Command {
-	var checkOnly bool
-	var force bool
+	var checkOnly, force bool
 
 	cmd := &cobra.Command{
 		Use:   "update",
@@ -51,48 +53,68 @@ func NewCmd() *cobra.Command {
 			cmdutil.SkipAuthAnnotationKey: "true",
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			viaNPM := updater.InstalledViaNPM()
-			if viaNPM && !checkOnly && !force {
-				console.Info("This bkms-cli was installed via npm. Upgrade with:")
-				console.Info("  %s", npmUpgradeCommand)
-				console.Info("Or use --force to replace the binary from GitHub Releases.")
-				return nil
-			}
-
-			var (
-				info updater.Info
-				err  error
-			)
-			if checkOnly {
-				checkContext, cancel := context.WithTimeout(cmd.Context(), updateCheckTimeout)
-				defer cancel()
-				info, err = updater.Check(checkContext)
-			} else {
-				info, err = updater.Update(cmd.Context())
-			}
-			if err != nil {
-				return err
-			}
-
-			switch {
-			case !info.Available:
-				console.Info("bkms-cli %s is up to date", info.CurrentVersion)
-			case checkOnly && viaNPM && !force:
-				console.Info(
-					"bkms-cli %s is available (current: %s); upgrade with: %s",
-					info.LatestVersion,
-					info.CurrentVersion,
-					npmUpgradeCommand,
-				)
-			case checkOnly:
-				console.Info("bkms-cli %s is available (current: %s)", info.LatestVersion, info.CurrentVersion)
-			default:
-				console.Info("bkms-cli updated from %s to %s", info.CurrentVersion, info.LatestVersion)
-			}
-			return nil
+			return runUpdate(cmd.Context(), checkOnly, force)
 		},
 	}
 	cmd.Flags().BoolVar(&checkOnly, "check", false, "check for updates without installing")
-	cmd.Flags().BoolVar(&force, "force", false, "force self-update even when installed via npm")
+	cmd.Flags().BoolVar(&force, "force", false, "allow replacing npm or Go builds from the configured update source")
 	return cmd
+}
+
+func runUpdate(ctx context.Context, checkOnly, force bool) error {
+	upgradeCommand := managedUpgradeCommand(updater.InstalledViaNPM(), version.BuildChannel)
+	if upgradeCommand != "" && !checkOnly && !force {
+		console.Info("Upgrade this installation with:")
+		console.Info("  %s", upgradeCommand)
+		console.Info("Or use --force to replace the binary from the configured update source.")
+		return nil
+	}
+	if version.Version == "dev" {
+		return fmt.Errorf("development build has no release version; install a release with: %s", goUpgradeCommand)
+	}
+	if checkOnly {
+		return checkUpdate(ctx, upgradeCommand)
+	}
+
+	info, err := updater.Update(ctx)
+	if err != nil {
+		return err
+	}
+	if info.Available {
+		console.Info("bkms-cli updated from %s to %s", info.CurrentVersion, info.LatestVersion)
+	} else {
+		console.Info("bkms-cli %s is up to date", info.CurrentVersion)
+	}
+	return nil
+}
+
+func checkUpdate(ctx context.Context, upgradeCommand string) error {
+	ctx, cancel := context.WithTimeout(ctx, updateCheckTimeout)
+	defer cancel()
+
+	info, err := updater.Check(ctx)
+	if err != nil {
+		return err
+	}
+	if !info.Available {
+		console.Info("bkms-cli %s is up to date", info.CurrentVersion)
+		return nil
+	}
+
+	console.Info("bkms-cli %s is available (current: %s)", info.LatestVersion, info.CurrentVersion)
+	if upgradeCommand != "" {
+		console.Info("Upgrade with: %s", upgradeCommand)
+	}
+	return nil
+}
+
+func managedUpgradeCommand(viaNPM bool, channel string) string {
+	switch {
+	case viaNPM:
+		return npmUpgradeCommand
+	case channel == "release":
+		return ""
+	default:
+		return goUpgradeCommand
+	}
 }
