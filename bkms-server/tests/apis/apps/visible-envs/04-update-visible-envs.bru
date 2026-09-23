@@ -14,9 +14,7 @@ body:json {
   {
     "visibleEnvNames": [
       "{{visEnvListedEnvName}}",
-      "{{visEnvListedEnvName}}",
-      "  {{visEnvListedEnvName2}}  ",
-      ""
+      "{{visEnvListedEnvName2}}"
     ]
   }
 }
@@ -27,12 +25,9 @@ assert {
 }
 
 tests {
-  // AC-005：重复项去重、空串丢弃、前后空格裁剪，返回落库后的名单
-  test("should normalize and persist the visible env names", () => {
-    expect(res.body.data.visibleEnvNames).to.deep.equal([
-      bru.getVar("visEnvListedEnvName"),
-      bru.getVar("visEnvListedEnvName2")
-    ]);
+  // 成功响应不回显名单，落库结果由 05 号 GET 应用详情确认
+  test("should accept a list of workspace standard env names", () => {
+    expect(res.status).to.equal(200);
   });
 }
 

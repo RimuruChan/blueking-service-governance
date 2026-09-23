@@ -22,9 +22,9 @@ assert {
 }
 
 tests {
-  // F-001：空数组表示清空配置，之后按「未配置」处理
-  test("should clear the visible env names", () => {
-    expect(res.body.data.visibleEnvNames).to.deep.equal([]);
+  // 空数组表示清空配置。成功响应不回显名单，清空后的行为由 15 号 precheck 确认
+  test("should accept an empty list", () => {
+    expect(res.status).to.equal(200);
   });
 }
 
