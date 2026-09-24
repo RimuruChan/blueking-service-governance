@@ -43,6 +43,9 @@ import (
 
 const featureEnvNamePrefix = "feat"
 
+// ErrInvalidFeatureEnvInput 表示创建特性环境的入参不符合业务约束。
+var ErrInvalidFeatureEnvInput = errors.New("invalid feature environment input")
+
 // featureEnvCleanupTimeout 限制创建失败后的清理耗时，清理运行在与请求解绑的 context 上。
 const featureEnvCleanupTimeout = 10 * time.Second
 
@@ -198,7 +201,11 @@ func ListAppFeatEnvs(
 // - 按需复制来源环境的自定义变量；之后双方独立修改，不持续同步；
 func (s *FeatureEnvService) Create(ctx context.Context, input CreateFeatureEnvInput) (*model.Environment, error) {
 	if err := validate.Struct(input); err != nil {
-		return nil, errors.Wrap(formatError(err), "validate create feature environment input")
+		return nil, errors.Wrapf(
+			ErrInvalidFeatureEnvInput,
+			"validate create feature environment input: %v",
+			formatError(err),
+		)
 	}
 
 	index, err := s.featureEnvCounterStore.Next(ctx, input.App.ID)
@@ -277,12 +284,22 @@ func (s *FeatureEnvService) copyEnvVars(ctx context.Context, source, target mode
 	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), featureEnvCleanupTimeout)
 	defer cancel()
 	if cleanupErr := runDeleteHooks(cleanupCtx, target); cleanupErr != nil {
-		return errors.Wrapf(err, "copy variables to feature environment %s; clean up environment dependencies: %v",
-			target.Name, cleanupErr)
+		return errors.Wrapf(
+			cleanupErr,
+			"copy variables failed (%v); clean up dependencies for feature environment %s (id: %s); delete this environment before retrying",
+			err,
+			target.Name,
+			target.ID.Hex(),
+		)
 	}
 	if cleanupErr := s.environmentStore.Delete(cleanupCtx, target.ID); cleanupErr != nil {
-		return errors.Wrapf(err, "copy variables to feature environment %s; delete environment: %v",
-			target.Name, cleanupErr)
+		return errors.Wrapf(
+			cleanupErr,
+			"copy variables failed (%v); delete feature environment %s (id: %s); delete this environment before retrying",
+			err,
+			target.Name,
+			target.ID.Hex(),
+		)
 	}
 	return errors.Wrapf(err, "copy variables from environment %s to feature environment %s", source.Name, target.Name)
 }

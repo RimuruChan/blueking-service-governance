@@ -305,9 +305,10 @@ var _ = Describe("FeatureEnvService", func() {
 
 		bkmsenv.ResetHooksForTest()
 		allowCleanup := false
+		cleanupErr := errors.New("cleanup failed")
 		Expect(bkmsenv.RegisterDeleteHook("test.cleanup_failure", func(context.Context, model.Environment) error {
 			if !allowCleanup {
-				return errors.New("cleanup failed")
+				return cleanupErr
 			}
 			return nil
 		})).To(BeTrue())
@@ -317,8 +318,13 @@ var _ = Describe("FeatureEnvService", func() {
 			App: app, SourceEnv: sourceEnv, DisplayName: "cleanup failure", CopyEnvVars: true,
 		})
 		Expect(err).To(MatchError(ContainSubstring("cleanup failed")))
-		retainedEnv, err := envStore.GetByWorkspaceAndName(ctx, app.WorkspaceID, namespace)
-		Expect(err).NotTo(HaveOccurred())
+		Expect(errors.Is(err, cleanupErr)).To(BeTrue())
+		Expect(errors.Is(err, envvars.ErrScopedEnvVarKeyConflict)).To(BeFalse())
+		Expect(err.Error()).To(ContainSubstring("delete this environment before retrying"))
+		Expect(err.Error()).To(ContainSubstring(namespace))
+		retainedEnv, getErr := envStore.GetByWorkspaceAndName(ctx, app.WorkspaceID, namespace)
+		Expect(getErr).NotTo(HaveOccurred())
+		Expect(err.Error()).To(ContainSubstring(retainedEnv.ID.Hex()))
 		remaining, err := variableStore.List(ctx, app.WorkspaceID, envvars.WithScopes(envvartypes.ScopeEnv(namespace)))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(remaining).To(HaveLen(2))
@@ -435,6 +441,7 @@ var _ = Describe("FeatureEnvService", func() {
 
 	It("reports required fields using their input field names", func() {
 		_, err := service.Create(ctx, bkmsenv.CreateFeatureEnvInput{})
+		Expect(errors.Is(err, bkmsenv.ErrInvalidFeatureEnvInput)).To(BeTrue())
 		Expect(err).To(MatchError(And(
 			ContainSubstring("App is required"),
 			ContainSubstring("SourceEnv is required"),

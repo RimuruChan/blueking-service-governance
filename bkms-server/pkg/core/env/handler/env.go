@@ -21,6 +21,7 @@ package handler
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	"github.com/spf13/cast"
 
@@ -196,6 +197,7 @@ func (h *Handler) CreateEnv(c *gin.Context) {
 //	@Param			body	body		serializer.CreateFeatureEnvInput		true	"创建特性环境请求"
 //	@Success		200		{object}	serializer.CreateFeatureEnvOutput
 //	@Failure		400		{object}	bkerrs.GinErrorOutput
+//	@Failure		500		{object}	bkerrs.GinErrorOutput
 //	@Router			/apps/{appID}/feat-envs [post]
 func (h *Handler) CreateFeatureEnv(c *gin.Context) {
 	var uriInput serializer.AppURIInput
@@ -237,7 +239,11 @@ func (h *Handler) CreateFeatureEnv(c *gin.Context) {
 		if abortIfEnvClusterNamespaceOccupied(c, err) {
 			return
 		}
-		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidRequest, "create feature environment"))
+		code := bkerrs.ErrCodeInternalServerError
+		if errors.Is(err, bkmsenv.ErrInvalidFeatureEnvInput) {
+			code = bkerrs.ErrCodeInvalidRequest
+		}
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, code, "create feature environment"))
 		return
 	}
 

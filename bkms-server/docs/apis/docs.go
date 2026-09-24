@@ -10851,6 +10851,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/bkerrs.GinErrorOutput"
                         }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
                     }
                 }
             }
