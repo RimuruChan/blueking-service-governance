@@ -29,10 +29,10 @@ import (
 	"github.com/TencentBlueKing/bk-apigateway-sdks/core/define"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/apm"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/metrics"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/apm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/metrics"
 )
 
 // ErrReportNotFound 巡检报告不存在, 通常是因为对应集群没有安装 kube-insight 组件

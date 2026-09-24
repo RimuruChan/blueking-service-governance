@@ -26,10 +26,10 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam/role"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	cloudapiiam "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/iam"
-	cloudapiiamtypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/iam/types"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam/role"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	cloudapiiam "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/iam"
+	cloudapiiamtypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/iam/types"
 )
 
 // fakeIAMClient is an in-memory IAMClient used for IAMService unit tests.

@@ -33,7 +33,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/xeipuuv/gojsonschema"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
 )
 
 // Do initialize service data into database

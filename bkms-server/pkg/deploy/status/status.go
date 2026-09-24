@@ -27,12 +27,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/autodeploy"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/helm"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/trafficmanager"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/autodeploy"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/helm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/trafficmanager"
 )
 
 // StatusUnknown 表示无法解析的部署状态

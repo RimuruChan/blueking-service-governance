@@ -24,7 +24,7 @@ import (
 	"github.com/TencentBlueKing/gopkg/stringx"
 	"github.com/onsi/gomega"
 
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
 )
 
 // HelmApplicationStores 创建 Helm 应用所需的 store 集合

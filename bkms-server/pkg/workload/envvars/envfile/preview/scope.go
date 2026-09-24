@@ -23,9 +23,9 @@ import (
 
 	pkgerrors "github.com/pkg/errors"
 
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	parserpkg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/parser"
-	envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	parserpkg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/parser"
+	envvartypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
 )
 
 // RecordResolution 承载单条记录的元数据解析结果。

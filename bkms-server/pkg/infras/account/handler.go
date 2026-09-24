@@ -27,8 +27,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/usertoken"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/usertoken"
 )
 
 const tokenRequestTimeout = 10 * time.Second

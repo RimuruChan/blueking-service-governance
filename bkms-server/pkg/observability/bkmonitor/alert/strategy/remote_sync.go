@@ -28,10 +28,10 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"golang.org/x/sync/errgroup"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	bkmapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	bkmapi "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
 )
 
 // SyncToRemote 将告警策略的最新状态同步到蓝鲸监控远端，并回写远端引用。

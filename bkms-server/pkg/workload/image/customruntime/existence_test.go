@@ -28,10 +28,10 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	infrasreg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/registry"
-	bkmsreg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/registry"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	infrasreg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/registry"
+	bkmsreg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
 )
 
 var _ = Describe("ExistenceChecker", func() {

@@ -22,8 +22,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component/devmode"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component/devmode"
 )
 
 var _ = Describe("DevMode Component TAF", func() {

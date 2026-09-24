@@ -21,9 +21,9 @@ package serializer
 import (
 	"time"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/utils/timex"
-	bkmapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
-	alertevent "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/alert/event"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/utils/timex"
+	bkmapi "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
+	alertevent "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/alert/event"
 )
 
 // AlertQueryInput 告警事件查询参数

@@ -31,11 +31,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	cloudbkci "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkci"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	cloudbkci "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkci"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
 )
 
 const (

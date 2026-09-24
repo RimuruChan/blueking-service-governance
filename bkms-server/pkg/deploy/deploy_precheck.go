@@ -23,12 +23,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/envvarrefs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/workload"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/envvarrefs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/workload"
 )
 
 const deployPreCheckImage = "precheck.invalid/bkms:latest"

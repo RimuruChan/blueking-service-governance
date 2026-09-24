@@ -26,16 +26,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/updater"
-	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/updater"
+	cmdutil "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/cmd"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/console"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/version"
 )
 
 const (
 	updateCheckTimeout = 15 * time.Second
 	npmUpgradeCommand  = "npm i -g @blueking/bkms-cli@latest"
-	goUpgradeCommand   = "go install github.com/TencentBlueKing/blueking-service-governance/bkms-cli@latest"
+	goUpgradeCommand   = "go install github.com/RimuruChan/blueking-service-governance/bkms-cli@latest"
 )
 
 // NewCmd creates the self-update command.

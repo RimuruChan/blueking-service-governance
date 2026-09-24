@@ -28,8 +28,8 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/envx"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/pathx"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/envx"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/pathx"
 )
 
 // 以下变量值可通过环境变量指定

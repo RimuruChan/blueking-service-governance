@@ -26,8 +26,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
-	httpresp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/http"
-	bkciapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkci"
+	httpresp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/http"
+	bkciapi "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkci"
 )
 
 // WriteDownloadBuildLogs 通用日志下载逻辑（应用构建与 Helm Chart 构建共用）。

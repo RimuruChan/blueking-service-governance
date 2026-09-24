@@ -26,11 +26,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	svccfg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/utils/crypto"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	bkciapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkci"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	svccfg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/utils/crypto"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	bkciapi "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkci"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
 )
 
 var _ = Describe("EnsureCredential", func() {

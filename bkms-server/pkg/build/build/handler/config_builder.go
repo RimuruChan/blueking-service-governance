@@ -19,10 +19,10 @@
 package handler
 
 import (
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci"
-	buildserializer "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/build/serializer"
-	imagebuild "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci"
+	buildserializer "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/build/serializer"
+	imagebuild "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/image"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
 )
 
 // buildConfigFromInput converts the request payload into a persisted build

@@ -23,8 +23,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
-	bkmsreg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
+	bkmsreg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/registry"
 )
 
 // GetWorkspaceImageRegistry 获取工作区当前使用的镜像仓库

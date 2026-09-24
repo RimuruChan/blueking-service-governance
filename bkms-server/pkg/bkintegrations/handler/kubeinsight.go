@@ -23,11 +23,11 @@ import (
 	"github.com/mitchellh/mapstructure"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/kubeinsight"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/kubeinsight"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
 )
 
 // GetLatestEnvReport 获取最新环境巡检报告

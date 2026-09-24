@@ -27,9 +27,9 @@ import (
 	. "github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 
-	. "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
-	bkmsreg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/registry"
+	. "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
+	bkmsreg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/registry"
 )
 
 var _ = Describe("GetWorkspaceImageRegistry", func() {

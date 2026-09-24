@@ -34,8 +34,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/gvr"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/testutil"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/gvr"
 )
 
 var _ = Describe("Client", func() {

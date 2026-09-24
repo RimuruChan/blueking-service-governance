@@ -27,12 +27,12 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/samber/lo"
 
-	build "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/overview"
-	deploystatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/status"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	build "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/image"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/overview"
+	deploystatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/status"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 )
 
 var _ = Describe("App deploy status serializers", func() {

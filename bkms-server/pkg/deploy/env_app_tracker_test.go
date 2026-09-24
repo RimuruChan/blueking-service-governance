@@ -28,10 +28,10 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
-	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/trafficmanager"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
+	bkmsenv "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/trafficmanager"
 )
 
 var _ = Describe("isEmptyOrBaselineLane", func() {

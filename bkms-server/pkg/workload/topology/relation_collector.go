@@ -26,7 +26,7 @@ import (
 	"github.com/TencentBlueKing/gopkg/mapx"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	k8skind "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
+	k8skind "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
 )
 
 // RelationCollector 从 Kubernetes 非结构化资源对象中收集扩展关系

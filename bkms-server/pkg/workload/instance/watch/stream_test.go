@@ -36,8 +36,8 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	k8swatch "k8s.io/apimachinery/pkg/watch"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/watch/plugin"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/instance/watch/plugin"
 )
 
 var testParams = RunParams{DeployID: "deploy-1", ResourceVersion: "100"}

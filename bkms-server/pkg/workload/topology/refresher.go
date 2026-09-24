@@ -30,12 +30,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/helm"
-	k8sclient "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/client"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/discovery"
-	k8skind "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/helm"
+	k8sclient "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/discovery"
+	k8skind "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
 )
 
 // 并发控制相关常量，用于 Refresher 和 Builder 中 errgroup.SetLimit

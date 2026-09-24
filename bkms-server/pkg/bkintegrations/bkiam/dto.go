@@ -35,7 +35,7 @@
 //   - cmd/migration/refresh_workspace_bkmonitor_perms.go
 package bkiam
 
-import "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam/role"
+import "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam/role"
 
 // Role is the user role with permission. It is an alias of role.Role so
 // that callers under pkg/bkintegrations/bkiam can use a single canonical Go

@@ -32,12 +32,12 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
-	infrasreg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/registry"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/taskq"
-	bkmsreg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/registry"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
+	infrasreg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/taskq"
+	bkmsreg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
 )
 
 var _ = Describe("TagQueryManager", func() {

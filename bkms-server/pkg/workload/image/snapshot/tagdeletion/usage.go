@@ -24,11 +24,11 @@ import (
 	"github.com/samber/lo"
 	helmrelease "helm.sh/helm/v3/pkg/release"
 
-	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
-	helmdeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/helm"
-	infrahelm "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/helm"
-	k8skind "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
-	trafficMgr "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/trafficmanager"
+	appmodeldeploy "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
+	helmdeploy "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/helm"
+	infrahelm "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/helm"
+	k8skind "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
+	trafficMgr "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/trafficmanager"
 )
 
 // -----------------------------------------------------------------------------

@@ -28,13 +28,13 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	depenvvars "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/envvars"
-	depmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/workload/defaults"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars"
-	envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	depenvvars "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice/envvars"
+	depmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/workload/defaults"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars"
+	envvartypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
 )
 
 var _ = Describe("ListBuiltinVars", func() {

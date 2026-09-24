@@ -25,7 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/stringx"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/stringx"
 )
 
 // ParseYAMLFile reads and parses a YAML file into the target struct.

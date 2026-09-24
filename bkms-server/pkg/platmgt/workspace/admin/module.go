@@ -21,9 +21,9 @@ package admin
 import (
 	"go.uber.org/fx"
 
-	bkmsworkspace "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/perm"
+	bkmsworkspace "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/perm"
 )
 
 // FxModule wires workspace admin test dependencies via uber fx.

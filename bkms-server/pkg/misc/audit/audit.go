@@ -24,9 +24,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
 )
 
 // AddOperationRecord 添加操作记录，返回新记录的 ID（hex）和错误信息

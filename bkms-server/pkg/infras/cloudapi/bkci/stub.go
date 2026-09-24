@@ -30,9 +30,9 @@ import (
 
 	"github.com/TencentBlueKing/gopkg/stringx"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/tof"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/tof"
 )
 
 // StubApiClient 测试用的蓝盾 API 客户端实现，返回模拟数据

@@ -24,14 +24,14 @@ import (
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/alert/serializer"
-	alertstrategy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/alert/strategy"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
-	ginperm "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
-	slz "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/networking/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/misc/audit"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/alert/serializer"
+	alertstrategy "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/alert/strategy"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	ginperm "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
+	slz "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/networking/serializer"
 )
 
 // ListAlertStrategies 查询应用下的告警策略列表

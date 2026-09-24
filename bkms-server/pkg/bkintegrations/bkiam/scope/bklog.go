@@ -19,9 +19,9 @@
 package scope
 
 import (
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam/scope/template"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/iam/types"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam/scope/template"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/iam/types"
 )
 
 // BKLogRoleScopesGenerator 是 bk-log 角色权限范围生成器

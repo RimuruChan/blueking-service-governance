@@ -29,9 +29,9 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.39.0"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/version"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/version"
 )
 
 const (

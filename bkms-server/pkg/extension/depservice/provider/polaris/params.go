@@ -22,7 +22,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/provider/types"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice/provider/types"
 )
 
 var validate = validator.New(validator.WithRequiredStructEnabled())

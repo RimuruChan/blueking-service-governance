@@ -22,7 +22,7 @@ package app
 import (
 	"context"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
 )
 
 // ResolveAppID 将用户输入的 app 标识解析为确定的 app ID。

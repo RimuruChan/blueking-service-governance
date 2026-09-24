@@ -26,7 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/cfgrender"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/cfgrender"
 )
 
 var _ = Describe("validateVolumeMountPaths", func() {

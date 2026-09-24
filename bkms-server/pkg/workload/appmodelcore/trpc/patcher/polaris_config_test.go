@@ -27,12 +27,12 @@ import (
 	"go.uber.org/fx/fxtest"
 	"gopkg.in/yaml.v3"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
-	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/trpc/patcher"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env"
+	bkmsenv "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/trpc/patcher"
 )
 
 var _ = Describe("PolarisRegistryPatcher", func() {

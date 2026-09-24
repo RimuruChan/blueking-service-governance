@@ -21,11 +21,11 @@ package env
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
-	handler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/env"
-	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/output"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
+	handler "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/handler/env"
+	cmdutil "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/cmd"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/console"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/output"
 )
 
 // NewListCmd 创建 app env list 子命令，仅查询当前应用的特性环境。

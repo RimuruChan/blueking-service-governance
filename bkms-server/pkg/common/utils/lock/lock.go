@@ -25,8 +25,8 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/redis"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/redis"
 )
 
 // RedisLock redis 锁，用于控制并发操作

@@ -27,7 +27,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/utils/dbutil"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/utils/dbutil"
 )
 
 // The name of the MongoDB collection for storing app config files.

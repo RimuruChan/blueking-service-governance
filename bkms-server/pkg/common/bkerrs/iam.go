@@ -23,8 +23,8 @@ import (
 
 	"github.com/spf13/cast"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/perm"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/perm"
 )
 
 // WrapIAMNoPermission 包装为 IAM 无权限错误

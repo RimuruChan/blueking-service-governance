@@ -25,8 +25,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/utils/lock"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/redis"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/utils/lock"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/redis"
 )
 
 var _ = Describe("RedisLock", func() {

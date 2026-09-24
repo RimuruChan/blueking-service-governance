@@ -23,8 +23,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/bkmonitor"
 )
 
 var _ = Describe("GetApmServiceName", func() {

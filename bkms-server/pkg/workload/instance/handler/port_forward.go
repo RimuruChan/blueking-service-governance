@@ -27,16 +27,16 @@ import (
 	"github.com/coder/websocket"
 	"github.com/gin-gonic/gin"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/perm"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/metrics"
-	pfwhitelist "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/platmgt/portforward"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/misc/portforward"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	bkmsenv "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/perm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/misc/audit"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/metrics"
+	pfwhitelist "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/platmgt/portforward"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/misc/portforward"
 )
 
 // 注意：websocket.Accept 与 Gin 中间件的兼容性要求：

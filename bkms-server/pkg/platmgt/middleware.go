@@ -23,9 +23,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	platmgtadmin "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/platmgt/admin"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	platmgtadmin "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/platmgt/admin"
 )
 
 // RequirePlatformRole returns a middleware that ensures current user has one of the allowed platform roles.

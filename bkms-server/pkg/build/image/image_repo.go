@@ -24,7 +24,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
 )
 
 // ImageRepoInfo 镜像仓库信息

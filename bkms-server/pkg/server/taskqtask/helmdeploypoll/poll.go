@@ -27,13 +27,13 @@ import (
 	"github.com/samber/lo"
 	helmrelease "helm.sh/helm/v3/pkg/release"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	helmdeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/helm"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/helm"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/taskq"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/metrics"
-	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	helmdeploy "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/helm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/helm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/taskq"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/misc/audit"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/metrics"
+	storereg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/registry"
 )
 
 // handle asynq 入口：store 未初始化则 ErrStopRetry

@@ -28,8 +28,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/metrics"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/metrics"
 )
 
 // 单条 SSE 写入的超时；每次写前重置，只约束这一次 Write，不承担连接总时长

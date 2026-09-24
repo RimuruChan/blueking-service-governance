@@ -21,7 +21,7 @@ package hostport
 import (
 	"go.uber.org/fx"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
 )
 
 // FxModule provides HostPort store and env-state manager for tests / DI.

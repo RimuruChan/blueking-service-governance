@@ -27,11 +27,11 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
-	depsvcmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
-	polarisinfra "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/polaris"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
+	depsvcmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
+	polarisinfra "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/polaris"
 )
 
 var _ = Describe("PolarisPlatformManager", func() {

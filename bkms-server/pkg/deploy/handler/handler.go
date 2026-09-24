@@ -20,8 +20,8 @@
 package handler
 
 import (
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
-	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
+	storereg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/registry"
 )
 
 // Handler 处理部署相关 Gin API 请求

@@ -25,7 +25,7 @@ import (
 
 	"github.com/samber/lo"
 
-	envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
+	envvartypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
 )
 
 // AppEnvVarService manages app-defined workload env vars stored in AppModel.

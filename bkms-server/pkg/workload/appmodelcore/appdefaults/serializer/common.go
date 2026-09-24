@@ -4,8 +4,8 @@ package serializer
 import (
 	"time"
 
-	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appdefaults"
+	_ "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appdefaults"
 )
 
 // WorkspaceURIInput binds a workspace-scoped path.

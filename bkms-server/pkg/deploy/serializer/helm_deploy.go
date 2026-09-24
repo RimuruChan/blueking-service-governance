@@ -22,8 +22,8 @@ package serializer
 import (
 	"time"
 
-	helmdeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/helm"
-	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
+	helmdeploy "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/helm"
+	_ "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
 )
 
 // HelmDeployURIInput 是 Helm 应用部署 API 共用的路径参数。

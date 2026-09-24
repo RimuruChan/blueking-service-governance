@@ -24,8 +24,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	bkciapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkci"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	bkciapi "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkci"
 )
 
 // helmRepoCredentialID Helm 仓库凭证 ID（固定值，所有工作空间使用相同名称，蓝盾凭证管理按项目隔离）

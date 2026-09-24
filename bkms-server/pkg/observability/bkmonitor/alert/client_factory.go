@@ -18,7 +18,7 @@
 
 package alert
 
-import bkmapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
+import bkmapi "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
 
 // ClientFactory 根据当前操作人创建蓝鲸监控客户端。
 //

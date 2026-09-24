@@ -22,19 +22,19 @@ require-template-schema-exists: true
 template: testify
 template-schema: '{{.Template}}.schema.json'
 packages:
-  github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env:
+  github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env:
     config:
       pkgname: env_test
     interfaces:
       FeatureEnvNamespaceInitializer:
-  github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth:
+  github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth:
     interfaces:
       AuthBackend:
-  github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/usertoken:
+  github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/usertoken:
     interfaces:
       TokenClient:
         config:
           filename: mocks.go
-  github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/misc/portforward:
+  github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/misc/portforward:
     interfaces:
       PodClient:

@@ -29,9 +29,9 @@ import (
 	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
 )
 
 // builtinCreator 内置组件的创建者名称

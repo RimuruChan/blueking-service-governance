@@ -23,8 +23,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/constant"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/constant"
 )
 
 // Precheck 根据应用类型路由到对应的部署前检查接口。

@@ -28,7 +28,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam/migrate/migrations"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam/migrate/migrations"
 )
 
 // MongoConfig describes the MongoDB connection used to persist the

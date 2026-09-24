@@ -23,8 +23,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
-	resourcessection "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/resources"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	resourcessection "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/resources"
 )
 
 // GetEnv gets app spec for a specific environment.

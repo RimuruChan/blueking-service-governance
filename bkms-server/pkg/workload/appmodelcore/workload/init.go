@@ -22,12 +22,12 @@ package workload
 import (
 	"sync"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/standard"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/taf"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/trpc"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/workload/plugin"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/standard"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/taf"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/trpc"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/workload/plugin"
 )
 
 var initOnce sync.Once

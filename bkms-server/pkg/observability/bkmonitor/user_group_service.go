@@ -26,11 +26,11 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	bkmapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/perm"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	bkmapi "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/perm"
 )
 
 // ErrNoticeGroupNotFound 告警组不存在的语义错误，调用方可据此跳过。

@@ -24,10 +24,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
-	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/output"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
+	cmdutil "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/cmd"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/console"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/output"
 )
 
 // NewGetCmd returns a Command instance for 'app get' sub command

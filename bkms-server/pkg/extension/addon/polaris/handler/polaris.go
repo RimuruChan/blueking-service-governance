@@ -26,17 +26,17 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/instancestats"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
-	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/polarisapply"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/instancestats"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/misc/audit"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
+	storereg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/taskqtask/polarisapply"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars"
 )
 
 // Handler handles Gin polaris-config API requests.

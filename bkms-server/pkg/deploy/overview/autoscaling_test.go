@@ -27,8 +27,8 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/sync/semaphore"
 
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
 )
 
 var _ = Describe("autoscaling helpers", func() {

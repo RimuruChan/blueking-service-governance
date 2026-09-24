@@ -23,7 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/bscpcfg"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/bscpcfg"
 )
 
 var _ = Describe("MergePodSpecMap", func() {

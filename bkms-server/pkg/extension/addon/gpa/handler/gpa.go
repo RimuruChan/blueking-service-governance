@@ -23,13 +23,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/gpa/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
-	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/gpa/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/misc/audit"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
+	storereg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/registry"
 )
 
 // Handler handles Gin GPA config API requests.

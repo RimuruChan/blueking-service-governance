@@ -28,7 +28,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/test/e2e/framework"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/test/e2e/framework"
 )
 
 // appspecTestdataPath 返回 testdata/appspec/ 目录下指定文件的绝对路径

@@ -31,17 +31,17 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/pkg/errors"
 
-	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/alertstrategysync"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/appmodeldeploypoll"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/buildpoll"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/chartbuildpoll"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/depsvcredis"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/example"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/helmdeploypoll"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/polarisapply"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/workspace"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
+	storereg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/taskqtask/alertstrategysync"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/taskqtask/appmodeldeploypoll"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/taskqtask/buildpoll"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/taskqtask/chartbuildpoll"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/taskqtask/depsvcredis"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/taskqtask/example"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/taskqtask/helmdeploypoll"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/taskqtask/polarisapply"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/taskqtask/workspace"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
 )
 
 // Setup 初始化各业务任务 handler 所需依赖, 并将 handler 挂载到给定的 mux。

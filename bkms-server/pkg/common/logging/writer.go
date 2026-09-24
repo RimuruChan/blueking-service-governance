@@ -26,7 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/natefinch/lumberjack.v2"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
 )
 
 const (

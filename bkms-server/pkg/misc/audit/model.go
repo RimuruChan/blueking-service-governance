@@ -24,7 +24,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
 )
 
 // AccessType 访问类型

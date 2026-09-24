@@ -24,7 +24,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/render"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/render"
 )
 
 // SourceType identifies a workload render source.

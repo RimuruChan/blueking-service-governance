@@ -25,12 +25,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/misc/audit"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
 )
 
 // CreateWorkspaceComponent 创建工作空间组件。

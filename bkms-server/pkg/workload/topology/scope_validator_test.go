@@ -28,10 +28,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	k8sclient "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/client"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/discovery"
-	k8skind "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
+	k8sclient "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/discovery"
+	k8skind "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
 )
 
 var _ = Describe("ScopeValidator", func() {

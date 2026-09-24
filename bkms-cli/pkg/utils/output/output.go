@@ -30,7 +30,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 )
 
 // Format 定义支持的数据序列化输出格式

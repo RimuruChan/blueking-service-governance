@@ -31,10 +31,10 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
-	imagebuild "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	bkmsreg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/registry"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
+	imagebuild "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/image"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	bkmsreg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
 )
 
 func platformPersistConfig(builder, runner string) *imagebuild.Config {

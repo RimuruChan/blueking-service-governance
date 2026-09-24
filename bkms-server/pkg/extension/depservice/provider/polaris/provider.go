@@ -31,9 +31,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/tidwall/gjson"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/httpcli"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/provider/types"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/metrics"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/httpcli"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice/provider/types"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/metrics"
 )
 
 // Provider implements ServiceProvider for Polaris

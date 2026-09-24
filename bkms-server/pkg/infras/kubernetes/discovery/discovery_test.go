@@ -23,10 +23,10 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
-	k8sgvr "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/gvr"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/redis"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/testutil"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
+	k8sgvr "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/gvr"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/redis"
 )
 
 var _ = Describe("Discovery", func() {

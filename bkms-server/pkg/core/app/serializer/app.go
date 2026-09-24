@@ -22,13 +22,13 @@ package serializer
 import (
 	"time"
 
-	build "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/overview"
-	deploystatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/status"
-	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
-	envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
+	build "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/image"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/overview"
+	deploystatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/status"
+	_ "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	envvartypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
 )
 
 // -----------------------------------------------------------------------------

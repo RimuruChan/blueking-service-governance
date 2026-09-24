@@ -25,7 +25,7 @@ import (
 
 	"github.com/go-resty/resty/v2"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
 )
 
 // RestyLogger 将 resty 日志转发到统一日志封装。

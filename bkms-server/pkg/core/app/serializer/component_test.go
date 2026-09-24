@@ -23,9 +23,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 )
 
 var _ = Describe("App component serializers", func() {

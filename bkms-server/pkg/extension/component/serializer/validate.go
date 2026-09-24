@@ -24,7 +24,7 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component"
 )
 
 var componentDefNamePattern = regexp.MustCompile("^[a-zA-Z](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?$")

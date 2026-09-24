@@ -26,8 +26,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
 )
 
 var _ = Describe("NewManager", func() {

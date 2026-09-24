@@ -25,10 +25,10 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
-	dbmigration "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database/migration"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
+	dbmigration "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database/migration"
 )
 
 const (

@@ -23,8 +23,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/config"
-	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/config"
+	cmdutil "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 )
 
 // NewCmdView returns a Command instance for 'config view' sub command

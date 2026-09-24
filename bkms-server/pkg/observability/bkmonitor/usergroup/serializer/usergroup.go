@@ -19,9 +19,9 @@
 package serializer
 
 import (
-	bkmapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
-	bkmusergroup "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/usergroup"
-	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
+	bkmapi "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
+	bkmusergroup "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/usergroup"
+	_ "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
 )
 
 // UserGroupURIInput 告警组路径参数。

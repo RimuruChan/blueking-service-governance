@@ -25,7 +25,7 @@ import (
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
 )
 
 // preferredFrameworkDefNames 选主 def 时优先认这些名字。

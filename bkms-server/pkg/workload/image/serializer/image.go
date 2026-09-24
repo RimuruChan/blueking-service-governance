@@ -21,14 +21,14 @@ package serializer
 import (
 	"time"
 
-	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
-	helmdeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/helm"
-	deploytypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/types"
-	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/promotion"
-	workloadruntime "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/runtime"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/snapshot/tagdeletion"
+	appmodeldeploy "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
+	helmdeploy "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/helm"
+	deploytypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/types"
+	_ "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/promotion"
+	workloadruntime "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/runtime"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/snapshot/tagdeletion"
 )
 
 // AppURIInput is the path input for APIs scoped by application.

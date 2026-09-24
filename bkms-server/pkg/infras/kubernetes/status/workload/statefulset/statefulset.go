@@ -20,8 +20,8 @@
 package statefulset
 
 import (
-	k8sstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload"
+	k8sstatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload"
 )
 
 // Parse 解析 StatefulSet 的综合状态

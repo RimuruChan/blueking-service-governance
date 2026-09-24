@@ -24,8 +24,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	bkmapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	bkmapi "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
 )
 
 // Service 提供应用仪表盘绑定管理能力。

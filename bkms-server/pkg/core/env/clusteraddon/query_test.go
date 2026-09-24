@@ -30,12 +30,12 @@ import (
 	helmrelease "helm.sh/helm/v3/pkg/release"
 	"helm.sh/helm/v3/pkg/repo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil"
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	clusteraddon "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/helm"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/testutil"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	clusteraddon "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/helm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
 )
 
 var _ = Describe("Query", func() {

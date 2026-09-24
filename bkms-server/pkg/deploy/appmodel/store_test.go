@@ -27,8 +27,8 @@ import (
 	. "github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
 )
 
 var _ = Describe("RecordStoreMongo", func() {

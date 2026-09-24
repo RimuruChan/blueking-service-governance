@@ -29,7 +29,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
-	deploytypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/types"
+	deploytypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/types"
 )
 
 // collectionName 应用部署记录表名

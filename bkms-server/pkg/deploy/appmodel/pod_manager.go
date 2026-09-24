@@ -32,11 +32,11 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	k8sclient "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/client"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/gvr"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/workload/defaults"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	k8sclient "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/gvr"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/workload/defaults"
 )
 
 // podManager Pod 管理器，负责 Pod 的查询、分类和删除操作

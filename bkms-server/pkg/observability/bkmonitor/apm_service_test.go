@@ -28,14 +28,14 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil"
-	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
-	. "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars"
-	envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/testutil"
+	bkmsenv "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
+	. "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/bkmonitor"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars"
+	envvartypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
 )
 
 var _ = Describe("ApmService", func() {

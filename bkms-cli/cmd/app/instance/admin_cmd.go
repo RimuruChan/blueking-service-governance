@@ -24,12 +24,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/constant"
-	handler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/instance"
-	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/output"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/params"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/constant"
+	handler "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/handler/instance"
+	cmdutil "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/cmd"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/output"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/params"
 )
 
 // adminCmdItem 用于将 []string 格式化为表格输出

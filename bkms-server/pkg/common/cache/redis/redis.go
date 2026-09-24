@@ -27,8 +27,8 @@ import (
 	"github.com/go-redis/cache/v9"
 	"github.com/redis/go-redis/v9"
 
-	bkmscache "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/cache"
-	bkmsredis "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/redis"
+	bkmscache "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/cache"
+	bkmsredis "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/redis"
 )
 
 // CacheKeyPrefix 模块名对应的 Cache Key 前缀

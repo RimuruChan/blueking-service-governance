@@ -22,7 +22,7 @@ package bkmonitor
 import (
 	"fmt"
 
-	bkmapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
+	bkmapi "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
 )
 
 // ========== 指标定义 ==========

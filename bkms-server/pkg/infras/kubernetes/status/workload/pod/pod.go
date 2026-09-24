@@ -26,8 +26,8 @@ import (
 	"github.com/mitchellh/mapstructure"
 	v1 "k8s.io/api/core/v1"
 
-	k8sstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload"
+	k8sstatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload"
 )
 
 // Parser Pod 状态解析器

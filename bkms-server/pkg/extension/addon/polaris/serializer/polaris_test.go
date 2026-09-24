@@ -28,9 +28,9 @@ import (
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/instancestats"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/instancestats"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/polaris/serializer"
 )
 
 var _ = Describe("PolarisConfigOutputObj", func() {

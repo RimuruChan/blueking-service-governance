@@ -21,7 +21,7 @@ package service
 import (
 	"github.com/samber/lo"
 
-	bscpapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bscp"
+	bscpapi "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bscp"
 )
 
 // DiffScopes 计算当前 Scope 与目标 Scope 的增量 diff。

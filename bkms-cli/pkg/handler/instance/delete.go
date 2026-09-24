@@ -23,7 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
 )
 
 // DeleteInstances 批量删除应用实例（Pod）。

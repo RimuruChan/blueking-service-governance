@@ -30,7 +30,7 @@ import (
 	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
 )
 
 // builtinCompCreator is the creator/updater name for built-in components.

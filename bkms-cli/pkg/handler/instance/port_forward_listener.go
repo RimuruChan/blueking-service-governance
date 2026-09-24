@@ -27,7 +27,7 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/semaphore"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
 )
 
 // RunPortForwardListener 启动本地 TCP listener 并管理端口转发生命周期。

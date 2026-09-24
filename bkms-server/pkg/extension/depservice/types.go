@@ -21,8 +21,8 @@ package depservice
 import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/provider/types"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice/provider/types"
 )
 
 // CreateServiceInstanceParams 创建服务实例的参数

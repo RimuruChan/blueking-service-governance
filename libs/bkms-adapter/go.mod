@@ -1,4 +1,4 @@
-module github.com/TencentBlueKing/blueking-service-governance/libs/bkms-adapter
+module github.com/RimuruChan/blueking-service-governance/libs/bkms-adapter
 
 go 1.25.7
 

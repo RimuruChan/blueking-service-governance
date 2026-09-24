@@ -22,8 +22,8 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/serializer"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/serializer"
 )
 
 // 占位声明，用于让 swag 能在本文件解析 swagger 注释中引用的 serializer 类型

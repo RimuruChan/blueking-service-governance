@@ -29,11 +29,11 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/provider/fake"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/provider/types"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/testutil"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice/provider/fake"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice/provider/types"
 )
 
 // fakeProvisionParams 满足 types.ProvisionParams，供 CreateServiceInstance 入参使用。

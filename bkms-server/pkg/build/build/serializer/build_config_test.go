@@ -26,8 +26,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/build/serializer"
-	imagebuild "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/build/serializer"
+	imagebuild "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/image"
 )
 
 const testOverflowCommandCount = imagebuild.MaxPlatformBuildCommandCount + 1

@@ -25,8 +25,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/constant"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/constant"
 )
 
 // ListDeploy 查询部署记录，支持多环境（逗号分隔）。

@@ -22,8 +22,8 @@ package helm
 import (
 	"github.com/pkg/errors"
 
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	bkmsenv "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
 )
 
 // validateApp 校验应用信息

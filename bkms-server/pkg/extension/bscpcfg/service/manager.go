@@ -27,13 +27,13 @@ import (
 	"github.com/samber/lo"
 	"github.com/spf13/cast"
 
-	svccfg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	bscpapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bscp"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/metrics"
-	bscpworkload "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/bscpcfg"
+	svccfg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	bscpapi "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bscp"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/metrics"
+	bscpworkload "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/bscpcfg"
 )
 
 // Manager 应用配置管理业务管理器。

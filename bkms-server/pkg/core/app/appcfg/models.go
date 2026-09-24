@@ -26,9 +26,9 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bscp"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bscp"
 )
 
 // AppConfigFileDef 配置文件的逻辑身份，存储在 app_config_file_defs 集合。

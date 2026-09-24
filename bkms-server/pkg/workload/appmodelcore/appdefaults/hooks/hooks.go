@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 
-	bkmsworkspace "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appdefaults"
+	bkmsworkspace "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appdefaults"
 )
 
 // CleanupRulesByWorkspaceHookName identifies the callback that removes a

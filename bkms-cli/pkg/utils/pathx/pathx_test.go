@@ -25,7 +25,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/pathx"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/pathx"
 )
 
 var _ = Describe("TestPathx", func() {

@@ -29,11 +29,11 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam/role"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
-	bkmsworkspace "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/perm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam/role"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/testutil"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
+	bkmsworkspace "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/perm"
 )
 
 var _ = Describe("WorkspaceAdminService", func() {

@@ -25,8 +25,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	bkmsenv "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
 )
 
 // PolarisEnvStateManager 管理 PolarisConfig 的环境部署快照、权重生命周期和动态下发结果。

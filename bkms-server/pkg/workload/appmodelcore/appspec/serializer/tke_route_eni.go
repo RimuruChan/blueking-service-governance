@@ -18,7 +18,7 @@
 
 package serializer
 
-import "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
+import "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
 
 // AppSpecTkeRouteEniInput is the input structure of the tkeRouteEni section.
 type AppSpecTkeRouteEniInput struct {

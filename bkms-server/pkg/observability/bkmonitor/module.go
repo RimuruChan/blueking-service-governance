@@ -22,11 +22,11 @@ package bkmonitor
 import (
 	"go.uber.org/fx"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/alert/event"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/alert/strategy"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/dashboard"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/alert/event"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/alert/strategy"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/dashboard"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars"
 )
 
 // FxModule provides bkmonitor related dependencies via uber fx.

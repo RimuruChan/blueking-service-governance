@@ -23,12 +23,12 @@ import (
 
 	"github.com/pkg/errors"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/taskq"
-	alertstrategy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/alert/strategy"
-	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/taskq"
+	alertstrategy "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/alert/strategy"
+	storereg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/registry"
 )
 
 // handleSync 同步应用在指定环境/泳道下的告警策略到蓝鲸监控远端。

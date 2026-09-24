@@ -24,7 +24,7 @@ import (
 
 	"github.com/hibiken/asynq"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/taskq"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/taskq"
 )
 
 // Initialization 工作空间初始化的 asynq 任务类型

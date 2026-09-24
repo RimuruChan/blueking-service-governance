@@ -19,7 +19,7 @@
 // Package devmode 提供开发模式组件支持
 package devmode
 
-import "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
+import "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env"
 
 // 环境类型常量，用于判断是否允许启用开发模式
 const (

@@ -26,7 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
 )
 
 // defaultEnvLabel 用于 CLI 展示默认配置，避免直接展示空环境名。

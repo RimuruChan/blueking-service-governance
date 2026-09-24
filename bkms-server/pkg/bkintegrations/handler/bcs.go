@@ -24,13 +24,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	slz "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bcs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkci"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	slz "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bcs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkci"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
 )
 
 // ListBCSAuthorizedProjects 获取有权限的 BCS 项目列表

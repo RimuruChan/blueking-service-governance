@@ -25,16 +25,16 @@ import (
 	"github.com/gin-gonic/gin"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
-	devmode "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component/devmode"
-	k8sclient "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/client"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/watch"
-	polarisplugin "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/watch/plugin/polaris"
-	publishplugin "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/watch/plugin/publish"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
+	devmode "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component/devmode"
+	k8sclient "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/instance/watch"
+	polarisplugin "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/instance/watch/plugin/polaris"
+	publishplugin "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/instance/watch/plugin/publish"
 )
 
 // WatchAppInstances 订阅应用实例投影变更（SSE）

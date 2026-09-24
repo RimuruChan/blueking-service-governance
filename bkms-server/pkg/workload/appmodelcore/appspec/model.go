@@ -19,14 +19,14 @@
 package appspec
 
 import (
-	annotationssection "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/annotations"
-	devmodesection "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/devmode"
-	labelssection "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/labels"
-	lifecyclesection "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/lifecycle"
-	probesection "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/probe"
-	resourcessection "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/resources"
-	tkerouteenisection "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/tke_route_eni"
-	updatestrategysection "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/updatestrategy"
+	annotationssection "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/annotations"
+	devmodesection "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/devmode"
+	labelssection "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/labels"
+	lifecyclesection "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/lifecycle"
+	probesection "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/probe"
+	resourcessection "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/resources"
+	tkerouteenisection "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/tke_route_eni"
+	updatestrategysection "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/updatestrategy"
 )
 
 const (

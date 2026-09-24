@@ -26,9 +26,9 @@ import (
 	"github.com/samber/lo"
 	"gopkg.in/yaml.v3"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/helm"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/helm"
 )
 
 // GetSupportedActions 根据当前安装状态返回支持的操作列表

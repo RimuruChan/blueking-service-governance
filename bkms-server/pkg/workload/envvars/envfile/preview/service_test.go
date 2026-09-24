@@ -29,17 +29,17 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
-	build "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
-	coreapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	depmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
-	envvarsstore "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars"
-	parserpkg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/parser"
-	previewpkg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/preview"
-	envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
+	build "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/image"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
+	coreapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	depmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	envvarsstore "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars"
+	parserpkg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/parser"
+	previewpkg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/preview"
+	envvartypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
 )
 
 var _ = Describe("ImportPreviewService", func() {

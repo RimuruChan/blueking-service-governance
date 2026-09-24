@@ -27,7 +27,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"gopkg.in/yaml.v3"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/config"
 )
 
 // NOTE: fmt 仍用于 ginkgo.Fail 中的 Sprintf，日志输出已统一使用 Logf

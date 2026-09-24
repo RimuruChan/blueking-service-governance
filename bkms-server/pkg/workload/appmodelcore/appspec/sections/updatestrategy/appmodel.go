@@ -19,7 +19,7 @@
 package updatestrategy
 
 import (
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 )
 
 // FromAppModel builds the section from an AppModel.

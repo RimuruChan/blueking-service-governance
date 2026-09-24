@@ -28,7 +28,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
-	devmode "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component/devmode"
+	devmode "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component/devmode"
 )
 
 var _ = Describe("PublishRecordStoreMongo", func() {

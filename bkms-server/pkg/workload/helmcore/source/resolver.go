@@ -23,11 +23,11 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkrepo"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/helmcore/credential"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkrepo"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/helmcore/credential"
 )
 
 // ResolveConfig 根据应用的 HelmSource.RepoType，将不同类型的配置统一转换为 HelmRepoConfig

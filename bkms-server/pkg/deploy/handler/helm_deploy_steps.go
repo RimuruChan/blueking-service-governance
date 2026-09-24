@@ -26,16 +26,16 @@ import (
 
 	"github.com/pkg/errors"
 
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	deploypkg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy"
-	helmdeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/helm"
-	networkingdeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/networking"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/secret"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/helm"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	bkmsenv "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	deploypkg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy"
+	helmdeploy "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/helm"
+	networkingdeploy "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/networking"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/secret"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/helm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars"
 )
 
 // attachHelmDeployRecordsValues 给部署记录添加 Values 相关信息。

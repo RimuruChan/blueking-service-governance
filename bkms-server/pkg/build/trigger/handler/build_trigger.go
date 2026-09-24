@@ -26,10 +26,10 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/trigger"
-	triggerserializer "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/trigger/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/trigger"
+	triggerserializer "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/trigger/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
 )
 
 var _ trigger.Handler = (*Handler)(nil)

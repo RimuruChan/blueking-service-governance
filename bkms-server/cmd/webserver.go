@@ -31,22 +31,22 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/docs/apis" // register swagger docs
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/perm"
-	polarisInfra "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/polaris"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/redis"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/taskq"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/apm"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/metrics"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server"
-	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/workload"
+	_ "github.com/RimuruChan/blueking-service-governance/bkms-server/docs/apis" // register swagger docs
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/perm"
+	polarisInfra "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/polaris"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/redis"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/taskq"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/apm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/metrics"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server"
+	storereg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/workload"
 )
 
 // apmShutdownTimeout 限制进程退出时等待 APM tracer provider 优雅关闭的最长时间

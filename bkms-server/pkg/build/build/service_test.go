@@ -26,14 +26,14 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 
-	imagebuild "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/customruntime"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/registry"
-	workloadruntime "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/runtime"
+	imagebuild "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/image"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/customruntime"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/registry"
+	workloadruntime "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/runtime"
 )
 
 var _ = Describe("Service build validation", func() {

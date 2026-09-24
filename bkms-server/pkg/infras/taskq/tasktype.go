@@ -30,7 +30,7 @@ import (
 	"github.com/hibiken/asynq"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
 )
 
 // 内建哨兵错误: 业务 handler 直接返回(或用 errors.Wrap 包装)即可控制重试行为,

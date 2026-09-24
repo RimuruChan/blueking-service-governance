@@ -22,7 +22,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/params"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/params"
 )
 
 var _ = Describe("NormalizeInstIDs", func() {

@@ -28,9 +28,9 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/constant"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/constant"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 )
 
 // CreateDeploy 创建部署，支持多环境（逗号分隔）

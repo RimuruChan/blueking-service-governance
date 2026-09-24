@@ -25,11 +25,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkrepo"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/helmcore/credential"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkrepo"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/helmcore/credential"
 )
 
 // mockBkciProjectStore 是 bkci.ProjectStore 的 mock 实现

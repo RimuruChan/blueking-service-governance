@@ -26,11 +26,11 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
-	polarisInfra "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/polaris"
-	instancelogsvc "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/instancelog"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
+	polarisInfra "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/polaris"
+	instancelogsvc "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/instancelog"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
 )
 
 func int64Ptr(v int64) *int64 {

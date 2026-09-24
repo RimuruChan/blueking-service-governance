@@ -28,7 +28,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/samber/lo"
 
-	bkmmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor"
+	bkmmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/bkmonitor"
 )
 
 var (

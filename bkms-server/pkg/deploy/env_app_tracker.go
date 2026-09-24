@@ -21,9 +21,9 @@ package deploy
 import (
 	"context"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/trafficmanager"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/trafficmanager"
 )
 
 // TrackEnvAddApp 记录应用尝试部署到环境，部署成功轮询时也可幂等补写

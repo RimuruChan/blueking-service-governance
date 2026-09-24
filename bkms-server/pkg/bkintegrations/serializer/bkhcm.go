@@ -18,7 +18,7 @@
 
 package serializer
 
-import "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkhcm"
+import "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkhcm"
 
 // --- bk-hcm URI 参数 ---
 

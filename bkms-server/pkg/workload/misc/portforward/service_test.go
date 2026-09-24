@@ -27,8 +27,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	appmodeldeploy "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
 )
 
 var _ = Describe("Service", func() {

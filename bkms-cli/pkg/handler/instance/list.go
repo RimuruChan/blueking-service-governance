@@ -26,7 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
 )
 
 // ListInstances 获取应用在指定环境下的全部实例，并自动处理分页。

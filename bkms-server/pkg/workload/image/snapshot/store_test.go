@@ -26,8 +26,8 @@ import (
 	. "github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/registry"
 )
 
 var _ = Describe("SnapshotStoreMongo", func() {

@@ -2,7 +2,7 @@
 
 ---
 
-[![license](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](LICENSE) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/TencentBlueKing/blueking-service-governance/pulls)
+[![license](https://img.shields.io/badge/license-MIT-brightgreen.svg?style=flat)](LICENSE) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/RimuruChan/blueking-service-governance/pulls)
 
 [简体中文](README.md) | English
 

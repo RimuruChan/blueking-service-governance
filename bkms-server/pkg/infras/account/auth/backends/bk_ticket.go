@@ -26,7 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/httpcli"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/httpcli"
 )
 
 // BkTicketAuthBackend 用于上云版本的用户登录和信息获取。

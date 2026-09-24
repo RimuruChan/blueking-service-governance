@@ -21,7 +21,7 @@ package bkrepo
 import (
 	"context"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
 )
 
 // StubApiClient 测试用的蓝盾制品库 API 客户端实现，返回模拟数据

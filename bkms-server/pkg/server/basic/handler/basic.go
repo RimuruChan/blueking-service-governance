@@ -22,10 +22,10 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/version"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/basic/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/version"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/basic/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/registry"
 )
 
 // Handler 是 basic 模块的 Gin handler。

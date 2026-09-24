@@ -30,8 +30,8 @@ import (
 	"github.com/samber/lo"
 	"github.com/spf13/cast"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/httpcli"
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/httpcli"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
 )
 
 // TokenClient is the interface for managing user access tokens.

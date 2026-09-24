@@ -26,8 +26,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	bkmsreg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	bkmsreg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/registry"
 )
 
 var _ = Describe("ResolveImageRepoInfo", func() {

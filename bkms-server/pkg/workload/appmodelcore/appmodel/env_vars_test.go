@@ -28,13 +28,13 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
-	imagebuild "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
-	svccfg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/utils/crypto"
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	imagebuild "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/image"
+	svccfg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/utils/crypto"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 )
 
 var _ = Describe("AppEnvVarService", func() {

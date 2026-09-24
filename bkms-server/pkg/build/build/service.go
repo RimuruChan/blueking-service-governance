@@ -29,15 +29,15 @@ import (
 	"github.com/samber/lo"
 	"github.com/spf13/cast"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci/pipelineparam"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci/pipelinevar"
-	imgbuild "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
-	workloadruntime "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/runtime"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci/pipelineparam"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci/pipelinevar"
+	imgbuild "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/image"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	workloadruntime "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/runtime"
 )
 
 // ErrWorkspaceImageCredentialMissing 本次会拉取自定义镜像，但工作空间生效镜像源没有蓝盾凭证

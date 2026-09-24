@@ -25,9 +25,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component"
 )
 
 var _ = Describe("Workspace component serializers", func() {

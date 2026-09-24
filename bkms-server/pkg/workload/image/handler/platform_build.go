@@ -23,11 +23,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
-	workloadruntime "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/runtime"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	workloadruntime "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/runtime"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
 )
 
 // ListPlatformBuildImages 获取平台通用构建镜像列表

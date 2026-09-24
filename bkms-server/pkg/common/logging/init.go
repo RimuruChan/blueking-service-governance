@@ -27,7 +27,7 @@ import (
 	"github.com/pkg/errors"
 	slogmulti "github.com/samber/slog-multi"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
 )
 
 // InitDefaultLogger 初始化并注册全局默认 logger（通过 slog.SetDefault）。

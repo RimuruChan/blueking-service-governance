@@ -26,7 +26,7 @@ import (
 	"github.com/TencentBlueKing/gopkg/collection/set"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	k8sworkload "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/workload"
+	k8sworkload "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/workload"
 )
 
 // ResourceKey 资源信息

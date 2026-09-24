@@ -28,7 +28,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
-	. "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
+	. "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
 )
 
 var _ = Describe("ResourceSnapshotStoreMongo", func() {

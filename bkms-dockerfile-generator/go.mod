@@ -1,4 +1,4 @@
-module github.com/TencentBlueKing/blueking-service-governance/bkms-dockerfile-generator
+module github.com/RimuruChan/blueking-service-governance/bkms-dockerfile-generator
 
 go 1.25.7
 

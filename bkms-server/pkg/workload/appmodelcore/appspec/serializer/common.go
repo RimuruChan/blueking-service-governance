@@ -19,7 +19,7 @@
 // Package serializer defines Gin input and output serializers for AppSpec APIs.
 package serializer
 
-import _ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
+import _ "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
 
 // AppURIInput is the path input for APIs scoped by application.
 type AppURIInput struct {

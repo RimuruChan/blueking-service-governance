@@ -23,9 +23,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
-	handler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/env"
-	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
+	handler "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/handler/env"
+	cmdutil "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 )
 
 // NewEnvCmd returns a Command instance for 'envvar export env' sub command.

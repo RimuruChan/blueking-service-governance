@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
 )
 
 // StartCommandOutput is the output structure for start command view.

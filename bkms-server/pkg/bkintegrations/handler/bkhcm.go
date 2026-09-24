@@ -22,11 +22,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 
-	slz "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkhcm"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	slz "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkhcm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
 )
 
 // ListBkHCMRegions 查询 bk-hcm 地域列表

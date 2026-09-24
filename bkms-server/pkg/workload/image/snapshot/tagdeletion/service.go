@@ -30,16 +30,16 @@ import (
 	"golang.org/x/sync/errgroup"
 	helmrelease "helm.sh/helm/v3/pkg/release"
 
-	build "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/utils/credentials"
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
-	helmdeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/helm"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/registry"
-	trafficMgr "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/trafficmanager"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/promotion"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
+	build "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/image"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/utils/credentials"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	appmodeldeploy "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
+	helmdeploy "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/helm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/registry"
+	trafficMgr "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/trafficmanager"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/promotion"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
 )
 
 // ImageUsage 表示某个镜像标签当前仍被哪些工作负载引用。

@@ -19,7 +19,7 @@
 // Package serializer 提供 arrangement 模块 Gin v2 API 的请求和响应结构。
 package serializer
 
-import "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/helmcore/arrangement"
+import "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/helmcore/arrangement"
 
 // PlaceholderVarOutputObj 是占位符变量的输出对象。
 type PlaceholderVarOutputObj struct {

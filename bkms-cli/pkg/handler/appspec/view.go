@@ -25,8 +25,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/output"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/output"
 )
 
 // ViewHandler 查询并输出指定 section 配置，支持多种输出格式。

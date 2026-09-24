@@ -23,10 +23,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/provider/types"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/taskq"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/depsvcredis"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice/provider/types"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/taskq"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/taskqtask/depsvcredis"
 )
 
 // Provider 实现 ServiceProvider 接口，通过投递 asynq task 实现异步 Redis 生命周期管理。

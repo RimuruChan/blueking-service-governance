@@ -23,7 +23,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-dockerfile-generator/cmd"
+	"github.com/RimuruChan/blueking-service-governance/bkms-dockerfile-generator/cmd"
 )
 
 func main() {

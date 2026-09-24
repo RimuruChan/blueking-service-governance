@@ -21,9 +21,9 @@ package env
 import (
 	"github.com/spf13/cobra"
 
-	envhandler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/env"
-	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
+	envhandler "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/handler/env"
+	cmdutil "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/cmd"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/console"
 )
 
 // NewCreateCmd returns a Command instance for 'env create' sub command

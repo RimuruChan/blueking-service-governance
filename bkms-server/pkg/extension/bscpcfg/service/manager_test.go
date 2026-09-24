@@ -27,9 +27,9 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/service"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/service"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
 )
 
 var _ = Describe("Manager", func() {

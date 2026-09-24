@@ -24,12 +24,12 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
-	parserpkg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/parser"
-	previewsvc "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/preview"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
+	parserpkg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/parser"
+	previewsvc "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/preview"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/serializer"
 )
 
 func (h *Handler) newImportPreviewService() *previewsvc.ImportPreviewService {

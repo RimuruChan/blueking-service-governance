@@ -21,7 +21,7 @@ package lifecycle
 import (
 	"github.com/go-playground/validator/v10"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 )
 
 // RegisterValidation registers validators used by this section.

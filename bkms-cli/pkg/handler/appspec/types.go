@@ -18,7 +18,7 @@
 
 package appspec
 
-import "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
+import "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
 
 // ResourcesInput 资源规格 YAML 输入结构
 type ResourcesInput struct {

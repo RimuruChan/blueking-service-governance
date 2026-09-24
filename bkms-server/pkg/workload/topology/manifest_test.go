@@ -25,8 +25,8 @@ import (
 	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	k8smanifest "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/manifest"
-	envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
+	k8smanifest "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/manifest"
+	envvartypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
 )
 
 var _ = Describe("BuildNodeManifest", func() {

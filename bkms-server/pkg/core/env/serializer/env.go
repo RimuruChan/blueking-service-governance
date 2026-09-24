@@ -27,11 +27,11 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/samber/lo"
 
-	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/status"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/trafficmanager"
-	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
+	bkmsenv "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/status"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/trafficmanager"
+	_ "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
 )
 
 // envNamePattern 匹配以小写字母开头，且只包含小写字母、数字、连字符的字符串

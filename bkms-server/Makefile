@@ -12,9 +12,9 @@ GO_BUILD=CGO_ENABLED=0 go build -trimpath
 export PACKAGE_PATH=${WORKSPACE}/build
 export CONFIGS_PATH=${WORKSPACE}/configs
 
-LDFLAGS="-X github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/version.Version=${VERSION} \
-	-X github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/version.GitHash=${GIT_HASH} \
-	-X github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/version.BuildTime=${BUILD_TIME}"
+LDFLAGS="-X github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/version.Version=${VERSION} \
+	-X github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/version.GitHash=${GIT_HASH} \
+	-X github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/version.BuildTime=${BUILD_TIME}"
 
 .DEFAULT_GOAL := help
 

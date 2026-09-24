@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/misc/audit"
 )
 
 // WorkspaceURIInput is the path input for APIs scoped by workspace.

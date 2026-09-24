@@ -20,9 +20,9 @@ $(LOCALBIN):
 BUILD_TIME=${shell date +%Y-%m-%dT%H:%M:%S%z}
 
 LDFLAGS="-s -w \
-	-X github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version.Version=${VERSION} \
-	-X github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version.GitHash=${GIT_HASH} \
-	-X github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version.BuildTime=${BUILD_TIME}"
+	-X github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/version.Version=${VERSION} \
+	-X github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/version.GitHash=${GIT_HASH} \
+	-X github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/version.BuildTime=${BUILD_TIME}"
 
 GORELEASER_ENV = VERSION=$(VERSION)
 

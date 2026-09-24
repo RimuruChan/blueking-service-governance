@@ -25,9 +25,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	devmode "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component/devmode"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
-	watchplugin "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/watch/plugin"
+	devmode "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component/devmode"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
+	watchplugin "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/instance/watch/plugin"
 )
 
 // pluginName 写入事件的 plugin 字段，前端据此落到 latestPublish

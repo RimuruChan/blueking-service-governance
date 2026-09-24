@@ -10,7 +10,7 @@
 
 如果想为 blueking-service-governance 项目贡献功能与特性，请参考以下步骤：
 
-- 检查已有的 [Issues](https://github.com/TencentBlueKing/blueking-service-governance/issues) 中是否有与需要的功能 **相关或近似**
+- 检查已有的 [Issues](https://github.com/RimuruChan/blueking-service-governance/issues) 中是否有与需要的功能 **相关或近似**
   的，若存在则请在该 issue 中进行讨论
 - 若不存在相关的 issue，您可以创建新的 issue 来描述你的功能需求，蓝鲸团队会定期检查并参与讨论
 - 若团队认同该功能，则需要您在 issue 中进一步补充相关设计、实现细节、测试用例等信息
@@ -19,7 +19,7 @@
 
 如果是首次向蓝鲸项目提交代码，您还需要签署 [腾讯贡献者许可协议](https://bk-cla.bktencent.com/TencentBlueKing/blueking-service-governance)
 
-- 提交 [Pull Request](https://github.com/TencentBlueKing/blueking-service-governance/pulls) 到 main 分支并关联对应的 issue，PR
+- 提交 [Pull Request](https://github.com/RimuruChan/blueking-service-governance/pulls) 到 main 分支并关联对应的 issue，PR
   中应包含代码、文档及单元测试
 - 蓝鲸团队将及时对 PR 内容进行 Review，在通过后合并到 main 分支中
 
@@ -81,7 +81,7 @@ git commit -m 'fix: 修复部署页面展示异常问题'
 
 ## Issues
 
-蓝鲸团队使用 [Issues](https://github.com/TencentBlueKing/blueking-service-governance/issues) 进行 bug、特性追踪。
+蓝鲸团队使用 [Issues](https://github.com/RimuruChan/blueking-service-governance/issues) 进行 bug、特性追踪。
 
 当提交相关的 bug 时，请查找已存在或者相似的 issue 以保证不存在重复的情况。
 

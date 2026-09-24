@@ -23,11 +23,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
-	publishhandler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/publish"
-	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/output"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
+	publishhandler "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/handler/publish"
+	cmdutil "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/cmd"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/console"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/output"
 )
 
 // newHistoryCmd 创建 publish history 子命令

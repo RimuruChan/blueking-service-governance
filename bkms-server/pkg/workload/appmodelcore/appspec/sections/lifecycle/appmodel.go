@@ -18,7 +18,7 @@
 
 package lifecycle
 
-import "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+import "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 
 // FromAppModel builds the lifecycle section from an AppModel.
 func FromAppModel(am *appmodel.AppModel) *Spec {

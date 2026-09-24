@@ -1,9 +1,9 @@
 package serializer
 
 import (
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appdefaults"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
-	appspecserializer "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appdefaults"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
+	appspecserializer "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/serializer"
 )
 
 // ResourcesSpecInput is a complete resources section used by a rule.

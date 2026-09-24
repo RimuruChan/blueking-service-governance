@@ -21,19 +21,19 @@ package topology
 import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	k8skind "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
-	k8sstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status"
-	gpastatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/autoscaler/gpa"
-	hpastatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/autoscaler/hpa"
-	ingstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/network/ingress"
-	polarisstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/network/polaris"
-	dsstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/daemonset"
-	deploystatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/deployment"
-	gamedeploystatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/gamedeployment"
-	gamestsstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/gamestatefulset"
-	podstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/pod"
-	rsstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/replicaset"
-	stsstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/statefulset"
+	k8skind "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
+	k8sstatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status"
+	gpastatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/autoscaler/gpa"
+	hpastatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/autoscaler/hpa"
+	ingstatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/network/ingress"
+	polarisstatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/network/polaris"
+	dsstatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/daemonset"
+	deploystatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/deployment"
+	gamedeploystatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/gamedeployment"
+	gamestsstatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/gamestatefulset"
+	podstatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/pod"
+	rsstatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/replicaset"
+	stsstatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/statefulset"
 )
 
 // getResourceStatus 计算资源的综合状态评估结果

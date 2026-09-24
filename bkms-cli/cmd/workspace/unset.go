@@ -22,8 +22,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/config"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/console"
 )
 
 // NewUnsetCmd returns a Command instance for 'workspace unset' sub command

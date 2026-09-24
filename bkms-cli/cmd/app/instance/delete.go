@@ -24,12 +24,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
-	instancehandler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/instance"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
-	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/params"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
+	instancehandler "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/handler/instance"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/clierr"
+	cmdutil "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/cmd"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/console"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/params"
 )
 
 // NewInstanceDeleteCmd returns a Command instance for 'app instance delete' sub command

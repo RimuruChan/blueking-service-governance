@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	bkmmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor"
-	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
+	bkmmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/bkmonitor"
+	_ "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
 )
 
 // DefaultInterval 默认汇聚周期（秒）

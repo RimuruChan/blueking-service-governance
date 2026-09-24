@@ -23,9 +23,9 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/gvr"
-	k8skind "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
-	k8sstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/gvr"
+	k8skind "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
+	k8sstatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status"
 )
 
 // podTemplate 构造带单个容器的 Pod 模板

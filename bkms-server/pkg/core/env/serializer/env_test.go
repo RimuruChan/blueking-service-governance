@@ -27,11 +27,11 @@ import (
 	. "github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/status"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/trafficmanager"
+	bkmsenv "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/status"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/trafficmanager"
 )
 
 // newObjectID creates a deterministic ObjectID for tests.

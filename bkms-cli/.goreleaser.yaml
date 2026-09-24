@@ -29,10 +29,10 @@ builds:
       - -trimpath
     ldflags:
       - -s -w
-      - -X github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version.Version={{ .Env.VERSION }}
-      - -X github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version.GitHash={{ .FullCommit }}
-      - -X github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version.BuildTime={{ .Date }}
-      - -X github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version.BuildChannel=release
+      - -X github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/version.Version={{ .Env.VERSION }}
+      - -X github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/version.GitHash={{ .FullCommit }}
+      - -X github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/version.BuildTime={{ .Date }}
+      - -X github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/version.BuildChannel=release
 
 archives:
   - formats:

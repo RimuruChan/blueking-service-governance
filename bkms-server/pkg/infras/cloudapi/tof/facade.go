@@ -24,7 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
 )
 
 // ParentDeptNotFound 指定类型的父部门不存在

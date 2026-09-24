@@ -23,9 +23,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci"
-	buildslz "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/build/serializer"
-	build "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci"
+	buildslz "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/build/serializer"
+	build "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/image"
 )
 
 // BuildConfigInput is the build configuration input.

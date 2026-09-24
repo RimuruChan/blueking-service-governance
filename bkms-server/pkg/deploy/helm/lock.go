@@ -22,8 +22,8 @@ package helm
 import (
 	"fmt"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/utils/lock"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/utils/lock"
 )
 
 // NewDeployLock 新建部署锁实例

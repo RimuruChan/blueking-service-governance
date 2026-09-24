@@ -32,7 +32,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 
-	slogresty "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging/slog-resty"
+	slogresty "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging/slog-resty"
 )
 
 // sensitiveQueryKeys 需要脱敏的关键词

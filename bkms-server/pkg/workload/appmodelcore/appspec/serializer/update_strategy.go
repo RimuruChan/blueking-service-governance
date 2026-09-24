@@ -18,7 +18,7 @@
 
 package serializer
 
-import "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
+import "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
 
 // AppSpecUpdateStrategyOutput is the JSON representation of the updateStrategy section.
 type AppSpecUpdateStrategyOutput struct {

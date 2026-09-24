@@ -26,8 +26,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client/mocks"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client/mocks"
 )
 
 var _ = Describe("Publisher", func() {

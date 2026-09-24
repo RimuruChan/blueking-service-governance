@@ -26,7 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/httpcli"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/httpcli"
 )
 
 // BkTokenAuthBackend 通过登录服务直连校验 bk_token 并获取用户信息。

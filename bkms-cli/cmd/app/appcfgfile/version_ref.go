@@ -22,7 +22,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	handler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/appcfgfile"
+	handler "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/handler/appcfgfile"
 )
 
 func registerVersionRefFlags(cmd *cobra.Command, version *int64, versionID *string) {

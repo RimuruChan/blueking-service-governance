@@ -28,11 +28,11 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/samber/lo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam/role"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/utils/lock"
-	bkmapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/perm"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/redis"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam/role"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/utils/lock"
+	bkmapi "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/perm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/redis"
 )
 
 var _ = Describe("default alert group resolution", func() {

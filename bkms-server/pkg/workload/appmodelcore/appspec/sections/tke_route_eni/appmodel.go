@@ -18,7 +18,7 @@
 
 package tkerouteeni
 
-import "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+import "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 
 // FromAppModel returns a new Spec based on the provided AppModel.
 func FromAppModel(appModel *appmodel.AppModel) *Spec {

@@ -24,8 +24,8 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice/model"
 )
 
 func (m *ServiceManager) requireBindingStore() error {

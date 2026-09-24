@@ -31,7 +31,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/metrics"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/metrics"
 )
 
 // MonitorGatewayClient 是蓝鲸监控统一客户端实现。

@@ -25,7 +25,7 @@ import (
 	tkex "github.com/Tencent/bk-bcs/bcs-scenarios/kourse/pkg/apis/tkex/v1alpha1"
 	"github.com/TencentBlueKing/gopkg/collection/set"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/workload/defaults"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/workload/defaults"
 )
 
 // GameDeploymentJSONPatchBuilder GameDeploy Patch 构建器

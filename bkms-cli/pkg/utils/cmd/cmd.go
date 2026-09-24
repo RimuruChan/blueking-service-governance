@@ -23,9 +23,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/config"
-	apphandler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/config"
+	apphandler "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/handler/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 )
 
 // SkipAuthAnnotationKey 允许在 cmd 注解中设置为 "true" 以跳过认证

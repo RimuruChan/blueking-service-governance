@@ -22,7 +22,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/tof"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/tof"
 )
 
 // Client 蓝盾 API 客户端接口

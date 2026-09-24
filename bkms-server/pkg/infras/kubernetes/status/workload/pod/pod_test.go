@@ -22,7 +22,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	podstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/pod"
+	podstatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/workload/pod"
 )
 
 var failedPodManifest = map[string]any{

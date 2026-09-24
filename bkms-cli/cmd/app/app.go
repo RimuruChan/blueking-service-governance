@@ -22,18 +22,18 @@ package app
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/appcfgfile"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/appspec"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/build"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/component"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/dashboard"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/deploy"
-	appenv "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/env"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/image"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/instance"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/polaris"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/publish"
-	appupdate "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/update"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/appcfgfile"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/appspec"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/build"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/component"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/dashboard"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/deploy"
+	appenv "github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/env"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/image"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/instance"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/polaris"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/publish"
+	appupdate "github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/update"
 )
 
 // NewCmd create env command

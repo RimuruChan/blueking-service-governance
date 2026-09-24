@@ -25,13 +25,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	cfgmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/model"
-	slz "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/serializer"
-	svc "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/service"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	cfgmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/model"
+	slz "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/serializer"
+	svc "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/service"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
 )
 
 // CreateEnvBinding 创建环境绑定（前置条件：已调用 InitMetadata）。

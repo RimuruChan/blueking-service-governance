@@ -22,10 +22,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
-	handler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/component"
-	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
+	handler "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/handler/component"
+	cmdutil "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/cmd"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/console"
 )
 
 // NewCreateCmd returns a Command instance for 'app component create' sub command

@@ -19,7 +19,7 @@
 // Package serializer defines Gin input and output serializers for HostPort APIs.
 package serializer
 
-import "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/hostport"
+import "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/hostport"
 
 // AppURIInput binds the appID path parameter.
 type AppURIInput struct {

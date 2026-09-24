@@ -26,7 +26,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
+	envvartypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
 )
 
 // ScopedEnvVar 作用域为公共类的环境变量。

@@ -21,7 +21,7 @@ package export
 import (
 	"strings"
 
-	envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
+	envvartypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
 )
 
 // RenderScopedImportTemplate renders the sample dotenv template for scoped env var import.

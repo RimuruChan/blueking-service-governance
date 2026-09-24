@@ -26,8 +26,8 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
-	extmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/bscpcfg"
+	extmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/bscpcfg"
 )
 
 // mockStore 是一个最小化的 Store mock，仅实现 GetSnapshot 方法。

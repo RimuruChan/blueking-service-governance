@@ -23,7 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component"
 )
 
 // NewComponentRefCountHooks 构建 AppModelStore 的组件引用计数 Hook。

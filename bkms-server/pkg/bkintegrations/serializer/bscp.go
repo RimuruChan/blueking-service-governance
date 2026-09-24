@@ -19,7 +19,7 @@
 package serializer
 
 import (
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bscp"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bscp"
 )
 
 // --- BSCP URI 参数 ---

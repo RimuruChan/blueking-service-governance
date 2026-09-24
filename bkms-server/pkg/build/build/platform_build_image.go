@@ -23,9 +23,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	imagebuild "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/customruntime"
-	workloadruntime "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/runtime"
+	imagebuild "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/image"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/customruntime"
+	workloadruntime "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/runtime"
 )
 
 const (

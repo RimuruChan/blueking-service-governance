@@ -25,7 +25,7 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component/portpool"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component/portpool"
 )
 
 // portPoolNamePattern 匹配以小写字母开头、小写字母或数字结尾，中间可含小写字母、数字、连字符的字符串

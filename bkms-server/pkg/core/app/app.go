@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/utils/credentials"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/utils/credentials"
 )
 
 const (

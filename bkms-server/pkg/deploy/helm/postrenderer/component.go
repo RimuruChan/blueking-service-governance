@@ -28,8 +28,8 @@ import (
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/postrender"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	helmcomp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component/helm"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	helmcomp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component/helm"
 )
 
 // ComponentPostRenderer 组件 PostRenderer

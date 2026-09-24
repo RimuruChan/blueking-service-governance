@@ -23,9 +23,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/constant"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/constant"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/console"
 )
 
 // DeleteDeploy 根据应用类型路由到对应的删除接口，执行部署删除并打印成功消息。

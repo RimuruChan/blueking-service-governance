@@ -25,9 +25,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	bkmsworkspace "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/perm"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	bkmsworkspace "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/perm"
 )
 
 const (

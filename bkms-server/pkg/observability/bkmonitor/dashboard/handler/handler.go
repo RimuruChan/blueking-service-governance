@@ -22,9 +22,9 @@ package handler
 import (
 	"errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	bkmdashboard "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/dashboard"
-	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	bkmdashboard "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/dashboard"
+	storereg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/registry"
 )
 
 // Handler handles app dashboard binding HTTP requests.

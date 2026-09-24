@@ -20,8 +20,8 @@
 package serializer
 
 import (
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
-	trpcapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/trpc"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	trpcapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/trpc"
 )
 
 // TrpcSpecInput is the tRPC spec input.

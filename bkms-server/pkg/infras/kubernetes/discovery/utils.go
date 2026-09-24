@@ -26,7 +26,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/cache"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/cache"
 )
 
 // ErrKindNotFound 目标资源类型（Kind）在集群中未注册。

@@ -25,7 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
 )
 
 // PolarisRegistryPatcher 在 tRPC 配置中注入北极星注册中心的 service 配置。

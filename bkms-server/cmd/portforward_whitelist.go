@@ -23,11 +23,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
-	pfwhitelist "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/platmgt/portforward"
-	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
+	pfwhitelist "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/platmgt/portforward"
+	storereg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/registry"
 )
 
 // NewPortForwardWhitelistCmd 创建 portforward-whitelist 父命令，用于管理 port-forward 白名单。

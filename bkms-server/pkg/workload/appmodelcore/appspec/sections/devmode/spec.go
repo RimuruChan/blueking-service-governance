@@ -23,8 +23,8 @@ import (
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	componentdevmode "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component/devmode"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
+	componentdevmode "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component/devmode"
 )
 
 // allowedWorkPaths 允许的 WorkPath 值（根据应用类型不同）

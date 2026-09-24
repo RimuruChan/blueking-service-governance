@@ -25,7 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env"
 )
 
 // ScopeType 依赖服务实例可用范围（与 envvars 包的 ScopeType 语义保持一致）

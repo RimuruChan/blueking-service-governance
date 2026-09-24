@@ -19,7 +19,7 @@
 package env
 
 import (
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
 )
 
 // IsFederationCluster 判断 clusterID 是否在配置的联邦 Host 集群 ID 列表中。

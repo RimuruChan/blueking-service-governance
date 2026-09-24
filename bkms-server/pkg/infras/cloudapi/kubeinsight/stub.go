@@ -21,7 +21,7 @@ package kubeinsight
 import (
 	"context"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
 )
 
 // stubClusterReport 本地开发时返回的固定集群巡检报告

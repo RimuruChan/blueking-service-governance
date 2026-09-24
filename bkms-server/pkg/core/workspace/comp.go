@@ -24,7 +24,7 @@ import (
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component"
 )
 
 // Component 表示工作空间级别的组件实例，仅 tRPC 应用使用。

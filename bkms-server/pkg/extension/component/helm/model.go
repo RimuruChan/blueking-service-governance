@@ -25,7 +25,7 @@ import (
 	"github.com/TencentBlueKing/gopkg/mapx"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	appcomponent "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component"
+	appcomponent "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component"
 )
 
 // helmAppComponentCollectionName MongoDB collection 名称

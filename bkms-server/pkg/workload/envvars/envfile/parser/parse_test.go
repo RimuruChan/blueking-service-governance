@@ -25,7 +25,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	parserpkg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/parser"
+	parserpkg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/parser"
 )
 
 var _ = Describe("ParseEnvFileRecords", func() {

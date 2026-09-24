@@ -22,7 +22,7 @@ package appcfgfiledef
 import (
 	"time"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
 )
 
 // --- URI / Query 输入 ---

@@ -22,12 +22,12 @@ package envvar
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/envvar/create"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/envvar/delete"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/envvar/export"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/envvar/importvar"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/envvar/list"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/envvar/update"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/envvar/create"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/envvar/delete"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/envvar/export"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/envvar/importvar"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/envvar/list"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/envvar/update"
 )
 
 // NewCmd creates the envvar command group.

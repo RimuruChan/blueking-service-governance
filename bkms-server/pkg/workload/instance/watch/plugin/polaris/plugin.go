@@ -24,9 +24,9 @@ import (
 
 	"github.com/pkg/errors"
 
-	polarisaddon "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
-	watchplugin "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/watch/plugin"
+	polarisaddon "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
+	watchplugin "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/instance/watch/plugin"
 )
 
 // pluginName 写入事件的 plugin 字段，前端据此把载荷落到实例行的北极星列

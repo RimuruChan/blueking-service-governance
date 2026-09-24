@@ -28,9 +28,9 @@ import (
 	"github.com/samber/lo"
 	"golang.org/x/sync/semaphore"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
 )
 
 // autoscalingStatusByEnv envName -> GPA 运行状态；缺 key 表示未启用 GPA 或回查失败。

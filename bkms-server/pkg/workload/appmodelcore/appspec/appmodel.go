@@ -18,7 +18,7 @@
 
 package appspec
 
-import "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+import "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 
 // FromAppModel builds an app spec from an AppModel.
 func FromAppModel(appID, envName string, appModel *appmodel.AppModel) *AppSpec {

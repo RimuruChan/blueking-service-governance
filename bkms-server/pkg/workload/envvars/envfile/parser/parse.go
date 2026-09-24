@@ -28,7 +28,7 @@ import (
 
 	pkgerrors "github.com/pkg/errors"
 
-	envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
+	envvartypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
 )
 
 // maxEnvFileContentBytes 是 `.env` 文本的最大字节数上限（1 MiB）。

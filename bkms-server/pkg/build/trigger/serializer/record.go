@@ -21,7 +21,7 @@ package serializer
 import (
 	"time"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/trigger"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/trigger"
 )
 
 // ListTriggerRecordsQueryInput is the query input for listing trigger records.

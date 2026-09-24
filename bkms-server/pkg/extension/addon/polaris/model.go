@@ -37,7 +37,7 @@ import (
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	polarisInfra "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/polaris"
+	polarisInfra "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/polaris"
 )
 
 // DefaultEnvWeight 环境未单独设置权重时使用的默认值。

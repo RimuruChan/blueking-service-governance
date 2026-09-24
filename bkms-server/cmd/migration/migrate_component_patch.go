@@ -26,10 +26,10 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	componentmigrate "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component/migrate"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	componentmigrate "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component/migrate"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
 )
 
 // NewMigrateComponentPatchCmd creates the component patch storage migration command.

@@ -1,4 +1,4 @@
-module github.com/TencentBlueKing/blueking-service-governance/bkms-cli
+module github.com/RimuruChan/blueking-service-governance/bkms-cli
 
 go 1.25.5
 

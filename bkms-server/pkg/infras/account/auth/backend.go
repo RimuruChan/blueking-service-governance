@@ -23,7 +23,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth/backends"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth/backends"
 )
 
 // AuthBackend 是用户认证接口

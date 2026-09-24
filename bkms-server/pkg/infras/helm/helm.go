@@ -30,8 +30,8 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
-	clusterdiscovery "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/discovery"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
+	clusterdiscovery "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/discovery"
 )
 
 // helmReleaseStorageDriver Helm Release 存储驱动类型（使用 Kubernetes Secret 存储）

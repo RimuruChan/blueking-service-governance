@@ -24,7 +24,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
 )
 
 const testAPIGatewayBaseURLKey = "FOR_TEST_APIGW_BASE_URL"

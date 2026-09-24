@@ -24,13 +24,13 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	appcfghooks "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg/hooks"
-	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
-	bkmsworkspace "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	alertstrategyhooks "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/alert/strategy/hooks"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
-	appdefaultshooks "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appdefaults/hooks"
-	envvarhooks "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/hooks"
+	appcfghooks "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app/appcfg/hooks"
+	bkmsenv "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env"
+	bkmsworkspace "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	alertstrategyhooks "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/bkmonitor/alert/strategy/hooks"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/registry"
+	appdefaultshooks "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appdefaults/hooks"
+	envvarhooks "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/hooks"
 )
 
 var _ = Describe("Store registry", func() {

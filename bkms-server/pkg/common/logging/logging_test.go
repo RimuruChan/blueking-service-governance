@@ -31,7 +31,7 @@ import (
 	slogmulti "github.com/samber/slog-multi"
 	"go.opentelemetry.io/otel/trace"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
 )
 
 const (

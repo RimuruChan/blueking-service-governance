@@ -20,7 +20,7 @@
 package serializer
 
 import (
-	tafapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/taf"
+	tafapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/taf"
 )
 
 // TafSpecInput is the TAF spec input.

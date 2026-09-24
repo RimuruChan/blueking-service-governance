@@ -30,9 +30,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/ctxkey"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth/backends"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/usertoken"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/ctxkey"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth/backends"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/usertoken"
 )
 
 const (

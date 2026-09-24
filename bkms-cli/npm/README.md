@@ -31,7 +31,7 @@ bkms-cli config set --bkms-base-url https://bkms.example.com
 ```json
 "bkmsCli": {
   "bkmsBaseUrl": "",
-  "releaseUrl": "https://github.com/TencentBlueKing/blueking-service-governance/releases/download/bkms-cli%2Fv{version}/{archive}"
+  "releaseUrl": "https://github.com/RimuruChan/blueking-service-governance/releases/download/bkms-cli%2Fv{version}/{archive}"
 }
 ```
 

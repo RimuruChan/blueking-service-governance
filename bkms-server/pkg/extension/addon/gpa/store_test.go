@@ -27,7 +27,7 @@ import (
 	"go.uber.org/fx"
 	"go.uber.org/fx/fxtest"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
 )
 
 // newValidConfig 构造一个合法的 GPA 配置（min=2/max=10/CPU 60%），默认环境 dev

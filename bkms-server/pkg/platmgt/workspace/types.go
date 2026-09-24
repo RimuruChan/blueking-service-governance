@@ -23,7 +23,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	bkmsworkspace "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
+	bkmsworkspace "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
 )
 
 // WorkspaceWithStats is a workspace with aggregated statistics for platform workspace listing.

@@ -28,7 +28,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/registry"
 )
 
 // MongoDB 集合名

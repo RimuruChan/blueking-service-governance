@@ -30,8 +30,8 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	helmrelease "helm.sh/helm/v3/pkg/release"
 
-	deploytypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/types"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/helm"
+	deploytypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/types"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/helm"
 )
 
 // collectionName Helm 应用部署记录表名

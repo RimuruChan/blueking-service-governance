@@ -25,7 +25,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/root"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/root"
 )
 
 func main() {

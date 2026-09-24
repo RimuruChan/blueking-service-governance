@@ -28,7 +28,7 @@ import (
 
 const (
 	DefaultUpdateLatestURL           = "https://raw.githubusercontent.com/TencentBlueKing/blueking-service-governance/main/bkms-cli/latest.txt"
-	DefaultUpdateDownloadURLTemplate = "https://github.com/TencentBlueKing/blueking-service-governance/releases/download/bkms-cli%2Fv{version}/{archive}"
+	DefaultUpdateDownloadURLTemplate = "https://github.com/RimuruChan/blueking-service-governance/releases/download/bkms-cli%2Fv{version}/{archive}"
 )
 
 // UpdateSource describes one distribution channel. Both URLs are configured together.

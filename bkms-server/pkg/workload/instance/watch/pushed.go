@@ -22,7 +22,7 @@ import (
 	"cmp"
 	"slices"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
 )
 
 // pushedInstances 记录本连接内每个实例最后一次推给前端的投影，供北极星补拉比对与重推

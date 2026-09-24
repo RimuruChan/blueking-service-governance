@@ -21,7 +21,7 @@ package serializer
 import (
 	"time"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
 )
 
 // AppConfigFileDefUpdateInput 更新配置文件 def 信息的请求体。

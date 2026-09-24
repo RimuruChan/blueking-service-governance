@@ -26,7 +26,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/provider/types"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/depservice/provider/types"
 )
 
 // Provider 是 provider.ServiceProvider 的测试替身。

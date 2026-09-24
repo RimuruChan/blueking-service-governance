@@ -19,7 +19,7 @@
 // Package bscpcfg 提供应用配置管理的对外入口（借助 BSCP 实现配置下发）
 package bscpcfg
 
-import "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/model"
+import "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/model"
 
 // 类型别名 —— 方便外部包直接使用 bscpcfg.XxxType 而无需引入 model 子包
 type (

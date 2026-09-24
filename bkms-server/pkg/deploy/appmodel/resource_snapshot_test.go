@@ -26,8 +26,8 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
-	envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
+	envvartypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
 )
 
 var _ = Describe("resource snapshot manifest YAML helpers", func() {

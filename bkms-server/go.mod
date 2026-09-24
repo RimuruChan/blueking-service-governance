@@ -1,4 +1,4 @@
-module github.com/TencentBlueKing/blueking-service-governance/bkms-server
+module github.com/RimuruChan/blueking-service-governance/bkms-server
 
 go 1.25.7
 
@@ -8,7 +8,7 @@ go 1.25.7
 replace k8s.io/kubernetes => k8s.io/kubernetes v1.32.2
 
 // bkms-adapter 通过本地 replace 固定 adapter module 来源，构建流程可在相同 module path 下切换 SDK 实现
-replace github.com/TencentBlueKing/blueking-service-governance/libs/bkms-adapter => ../libs/bkms-adapter
+replace github.com/RimuruChan/blueking-service-governance/libs/bkms-adapter => ../libs/bkms-adapter
 
 // bkrepo 目前无法支持高版本的 go-containerregistry，先显式锁定版本
 replace github.com/google/go-containerregistry => github.com/google/go-containerregistry v0.21.1
@@ -19,7 +19,7 @@ require (
 	github.com/TarsCloud/TarsGo v1.4.6
 	github.com/Tencent/bk-bcs/bcs-scenarios/kourse v0.0.0-20260714115806-149680cd142e
 	github.com/TencentBlueKing/bk-apigateway-sdks v1.1.4
-	github.com/TencentBlueKing/blueking-service-governance/libs/bkms-adapter v0.0.0
+	github.com/RimuruChan/blueking-service-governance/libs/bkms-adapter v0.0.0
 	github.com/TencentBlueKing/gopkg v1.3.0
 	github.com/TencentBlueKing/iam-go-sdk v1.0.1
 	github.com/alicebob/miniredis/v2 v2.38.0

@@ -21,8 +21,8 @@ package serializer
 import (
 	"strconv"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
-	lifecyclesection "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/lifecycle"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
+	lifecyclesection "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/lifecycle"
 )
 
 // AppSpecLifecycleOutput is the JSON representation of the lifecycle section.

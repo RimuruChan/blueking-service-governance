@@ -21,7 +21,7 @@ package testutil
 import (
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
 )
 
 var ErrKubeConfigNotFound = errors.New("test kubeconfig not found")

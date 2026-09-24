@@ -24,7 +24,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/render/migrate"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/render/migrate"
 )
 
 var _ = Describe("DraftSet YAML round-trip", func() {

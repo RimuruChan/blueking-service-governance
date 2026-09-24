@@ -24,13 +24,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	httpresp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/http"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/instancelog"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
-	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	httpresp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/http"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/instancelog"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
+	_ "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/registry"
 )
 
 // downloadAppInstanceLogsURIInput is the path input for downloading app instance logs.

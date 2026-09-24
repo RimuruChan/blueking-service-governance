@@ -21,7 +21,7 @@ package ginutils
 import (
 	"github.com/gin-gonic/gin"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
 )
 
 // BindJSON binds a JSON request body and converts binding errors to bkms errors.

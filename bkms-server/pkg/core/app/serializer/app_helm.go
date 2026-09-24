@@ -20,7 +20,7 @@
 package serializer
 
 import (
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
 )
 
 // HelmSpecInput is the Helm spec input.

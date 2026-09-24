@@ -26,12 +26,12 @@ import (
 	. "github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/autodeploy"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
-	deploypkg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy"
-	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/envvarrefs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/autodeploy"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
+	deploypkg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy"
+	appmodeldeploy "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/envvarrefs"
 )
 
 var _ = Describe("AppModel deploy serializers", func() {

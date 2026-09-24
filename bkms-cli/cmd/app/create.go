@@ -25,8 +25,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	apphandler "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/handler/app"
-	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
+	apphandler "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/handler/app"
+	cmdutil "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 )
 
 const (

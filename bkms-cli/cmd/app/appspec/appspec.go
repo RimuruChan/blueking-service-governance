@@ -22,15 +22,15 @@ package appspec
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/appspec/annotations"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/appspec/devmode"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/appspec/labels"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/appspec/lifecycle"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/appspec/probe"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/appspec/resources"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/appspec/startcommand"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/appspec/underlayip"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/app/appspec/updatestrategy"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/appspec/annotations"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/appspec/devmode"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/appspec/labels"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/appspec/lifecycle"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/appspec/probe"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/appspec/resources"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/appspec/startcommand"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/appspec/underlayip"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/app/appspec/updatestrategy"
 )
 
 // NewCmd creates the appspec command group.

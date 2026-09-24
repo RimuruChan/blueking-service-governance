@@ -22,8 +22,8 @@ package serializer
 import (
 	"time"
 
-	platmgtadmin "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/platmgt/admin"
-	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
+	platmgtadmin "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/platmgt/admin"
+	_ "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
 )
 
 // RoleBindingOutput is the JSON representation of a platform administrator role binding.

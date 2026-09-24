@@ -18,7 +18,7 @@
 
 package serializer
 
-import envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
+import envvartypes "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
 
 // ListAppEnvVarsOutput is the JSON response for listing app env vars.
 type ListAppEnvVarsOutput struct {

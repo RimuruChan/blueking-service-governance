@@ -27,10 +27,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	infrasreg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/registry"
-	bkmsreg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/registry"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	infrasreg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/registry"
+	bkmsreg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/snapshot"
 )
 
 // tag 查询与刷新的同步时间预算

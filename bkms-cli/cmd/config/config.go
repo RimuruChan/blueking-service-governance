@@ -22,7 +22,7 @@ package config
 import (
 	"github.com/spf13/cobra"
 
-	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
+	cmdutil "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 )
 
 var configLongDesc = `

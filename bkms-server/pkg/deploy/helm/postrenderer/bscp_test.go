@@ -26,7 +26,7 @@ import (
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 
-	wlbscpcfg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/bscpcfg"
+	wlbscpcfg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/bscpcfg"
 )
 
 // buildTestFragment 构建测试用的 PodFragment

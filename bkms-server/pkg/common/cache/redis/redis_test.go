@@ -26,8 +26,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	bkmscache "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/cache"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/redis"
+	bkmscache "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/cache"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/redis"
 )
 
 var _ = Describe("Cache", func() {

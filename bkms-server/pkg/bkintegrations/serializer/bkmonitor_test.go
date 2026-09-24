@@ -28,8 +28,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/samber/lo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/serializer"
-	bkmmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/bkmonitor"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/serializer"
+	bkmmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/bkmonitor"
 )
 
 var _ = Describe("BkMonitor Serializer - Response Structs", func() {

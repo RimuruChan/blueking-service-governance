@@ -21,7 +21,7 @@ package serializer
 import (
 	"time"
 
-	devmode "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component/devmode"
+	devmode "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component/devmode"
 )
 
 // PublishRecordURIInput DevMode Publish Record URI 路径参数

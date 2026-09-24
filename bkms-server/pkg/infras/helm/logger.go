@@ -23,7 +23,7 @@ import (
 
 	"helm.sh/helm/v3/pkg/action"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
 )
 
 // NewHelmDebugLogger 创建 Helm SDK DebugLog 函数

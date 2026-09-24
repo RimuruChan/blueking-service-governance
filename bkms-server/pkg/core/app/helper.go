@@ -23,8 +23,8 @@ import (
 	"sort"
 	"time"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/misc/audit"
 )
 
 // AppWithDetails app 信息 + 用户最近操作时间

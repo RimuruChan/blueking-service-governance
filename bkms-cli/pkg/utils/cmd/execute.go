@@ -24,7 +24,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/clierr"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/clierr"
 )
 
 // Execute 统一输出命令错误并返回退出码；Cobra 不再重复打印错误和 usage。

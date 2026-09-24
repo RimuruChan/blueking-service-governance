@@ -38,7 +38,7 @@ import (
 	"github.com/distribution/reference"
 	"github.com/pkg/errors"
 
-	workloadruntime "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/runtime"
+	workloadruntime "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/image/runtime"
 )
 
 // ErrCustomRuntimeImageNotFound 自定义运行时镜像记录不存在

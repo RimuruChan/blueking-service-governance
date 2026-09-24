@@ -18,7 +18,7 @@
 
 package env
 
-import "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
+import "github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
 
 // EnvVarDetailedTableRow 用于 table 展示的扁平结构体，将 ScopedEnvVarDetailed 中的嵌套字段平级展开。
 type EnvVarDetailedTableRow struct {

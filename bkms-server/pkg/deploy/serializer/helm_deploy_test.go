@@ -27,9 +27,9 @@ import (
 	. "github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	helmdeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/helm"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/helm"
+	helmdeploy "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/helm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/deploy/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/helm"
 )
 
 var _ = Describe("Helm deploy serializer validation", func() {

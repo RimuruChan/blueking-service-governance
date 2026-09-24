@@ -23,8 +23,8 @@
 package gpa
 
 import (
-	k8sstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/autoscaler/hpa"
+	k8sstatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status/autoscaler/hpa"
 )
 
 // Parse 解析 GeneralPodAutoscaler 的综合状态，当前实现直接复用 HPA 判定规则

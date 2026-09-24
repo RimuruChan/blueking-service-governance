@@ -33,8 +33,8 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/config"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/version"
 )
 
 const (

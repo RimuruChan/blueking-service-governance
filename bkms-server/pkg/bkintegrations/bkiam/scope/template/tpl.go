@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam/role"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkiam/role"
 )
 
 // scopeTemplates 角色权限范围模板

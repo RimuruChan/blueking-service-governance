@@ -26,7 +26,7 @@ import (
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
 )
 
 // GetConfigHelmRepoInfo 从全局配置获取 Helm 仓库信息

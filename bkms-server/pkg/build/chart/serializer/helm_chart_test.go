@@ -26,10 +26,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	helmbuild "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/chart"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/chart/semver"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/chart/serializer"
-	helmrepo "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/helmcore/source"
+	helmbuild "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/chart"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/chart/semver"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/chart/serializer"
+	helmrepo "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/helmcore/source"
 )
 
 var _ = Describe("Helm Chart serializer validation", func() {

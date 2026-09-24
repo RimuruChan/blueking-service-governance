@@ -16,7 +16,7 @@ bkms-cli update --check
 bkms-cli update
 ```
 
-只有远端 SemVer 严格高于当前版本时，命令才会从 [GitHub Releases](https://github.com/TencentBlueKing/blueking-service-governance/releases) 下载并替换二进制。校验失败、无写入权限或替换失败时，命令返回错误。
+只有远端 SemVer 严格高于当前版本时，命令才会从 [GitHub Releases](https://github.com/RimuruChan/blueking-service-governance/releases) 下载并替换二进制。校验失败、无写入权限或替换失败时，命令返回错误。
 
 GitHub 发布 tag 使用 `bkms-cli/vX.Y.Z`；注入的业务版本与发布资产名为不带 `v` 的 SemVer（如 `1.2.3`）。发布资产形如 `bkms-cli_1.2.3_darwin_amd64.tar.gz`（Windows 为 `.zip`）。
 

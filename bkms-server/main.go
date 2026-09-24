@@ -21,7 +21,7 @@ package main
 import (
 	_ "go.uber.org/automaxprocs"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/cmd"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/cmd"
 )
 
 // @title bkms-server Gin API

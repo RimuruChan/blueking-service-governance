@@ -22,7 +22,7 @@ package serializer
 import (
 	"time"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/gpa"
 )
 
 // -----------------------------------------------------------------------------

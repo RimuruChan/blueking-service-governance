@@ -27,7 +27,7 @@ import (
 	. "github.com/onsi/gomega"
 	pkgerrors "github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
 )
 
 var _ = Describe("Error", func() {

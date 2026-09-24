@@ -5,7 +5,7 @@ force-file-write: true
 formatter: goimports
 formatter-options:
   goimports:
-    local-prefix: github.com/TencentBlueKing/blueking-service-governance/bkms-cli
+    local-prefix: github.com/RimuruChan/blueking-service-governance/bkms-cli
     all-errors: false
     comments: true
     format-only: true
@@ -20,6 +20,6 @@ pkgname: mocks
 recursive: false
 template: testify
 packages:
-  github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client:
+  github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client:
     interfaces:
       Client:

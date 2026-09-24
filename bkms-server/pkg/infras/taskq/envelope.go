@@ -23,7 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
 )
 
 // payloadEnvelope 把身份与业务 Args 分开放进 asynq payload

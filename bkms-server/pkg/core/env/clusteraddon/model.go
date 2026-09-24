@@ -29,7 +29,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 	helmrelease "helm.sh/helm/v3/pkg/release"
 
-	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
+	envmodel "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
 )
 
 // ClusterAddonDef 集群 Addon 定义

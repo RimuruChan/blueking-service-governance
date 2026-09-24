@@ -36,8 +36,8 @@ import (
 	binaryupdate "github.com/creativeprojects/go-selfupdate/update"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/config"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/version"
 )
 
 const (

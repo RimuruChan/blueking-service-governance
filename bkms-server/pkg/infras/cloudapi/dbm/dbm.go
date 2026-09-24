@@ -34,10 +34,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/utils/httpresp"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/apm"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/metrics"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/utils/httpresp"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/apm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/metrics"
 )
 
 // apiName DBM 客户端名称，用于 metrics 上报与日志

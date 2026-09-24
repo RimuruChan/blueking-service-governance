@@ -22,7 +22,7 @@ package serializer
 import (
 	"github.com/samber/lo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component"
 )
 
 // PreviewComponentDefInput POST /component-defs/preview 请求体

@@ -19,7 +19,7 @@ irm https://raw.githubusercontent.com/TencentBlueKing/blueking-service-governanc
 npm i -g @blueking/bkms-cli
 
 # Go 1.25.5+
-go install github.com/TencentBlueKing/blueking-service-governance/bkms-cli@latest
+go install github.com/RimuruChan/blueking-service-governance/bkms-cli@latest
 ```
 
 脚本默认安装到 `~/.local/bin`（Windows 为 `%LOCALAPPDATA%\bkms-cli\bin`），请将其加入 PATH。

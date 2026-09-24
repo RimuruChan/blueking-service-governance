@@ -20,7 +20,7 @@
 package handler
 
 import (
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/registry"
 )
 
 // Handler handles Gin external platform integration API requests.

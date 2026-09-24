@@ -26,9 +26,9 @@ import (
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/postrender"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg"
-	k8skind "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
-	wlbscpcfg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/bscpcfg"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/bscpcfg"
+	k8skind "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
+	wlbscpcfg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/bscpcfg"
 )
 
 // shouldInjectBscpKinds 待注入 BSCP sidecar 的 k8s 资源类型

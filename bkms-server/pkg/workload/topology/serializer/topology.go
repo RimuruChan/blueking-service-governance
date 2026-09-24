@@ -23,9 +23,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/clusterresources"
-	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/topology"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/clusterresources"
+	_ "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/topology"
 )
 
 // AppEnvURIInput is the path input for APIs scoped by application and environment.

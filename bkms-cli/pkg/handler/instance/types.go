@@ -26,7 +26,7 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
 )
 
 // defaultPortForwardLocalAddress 默认侦听地址

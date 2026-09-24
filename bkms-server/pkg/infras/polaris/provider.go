@@ -27,10 +27,10 @@ import (
 	"context"
 	"sync"
 
-	polarisadapter "github.com/TencentBlueKing/blueking-service-governance/libs/bkms-adapter/polaris"
+	polarisadapter "github.com/RimuruChan/blueking-service-governance/libs/bkms-adapter/polaris"
 	"github.com/pkg/errors"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
 )
 
 // Instance 北极星实例信息（类型别名，保持调用方兼容）。

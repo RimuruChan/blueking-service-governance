@@ -24,11 +24,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	admin "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/platmgt/admin"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/platmgt/admin/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	admin "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/platmgt/admin"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/platmgt/admin/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
 )
 
 var _ admin.Handler = (*Handler)(nil)

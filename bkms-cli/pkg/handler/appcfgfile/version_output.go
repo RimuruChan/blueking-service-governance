@@ -22,7 +22,7 @@ import (
 	"github.com/jinzhu/copier"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/client"
 )
 
 // VersionOutput is the structured output object for app config file version data.

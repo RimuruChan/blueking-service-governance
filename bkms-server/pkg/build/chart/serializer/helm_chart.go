@@ -27,10 +27,10 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/samber/lo"
 
-	helmbuild "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/chart"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/chart/semver"
-	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
-	helmrepo "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/helmcore/source"
+	helmbuild "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/chart"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/chart/semver"
+	_ "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
+	helmrepo "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/helmcore/source"
 )
 
 var appIDPattern = regexp.MustCompile("^[a-z][a-z0-9-]*$")

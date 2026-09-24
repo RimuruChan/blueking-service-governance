@@ -37,9 +37,9 @@ import (
 	"k8s.io/client-go/openapi"
 	"k8s.io/client-go/rest"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/cache/redis"
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/cache/redis"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
 )
 
 const (

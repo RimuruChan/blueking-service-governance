@@ -21,7 +21,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-dockerfile-generator/pkg/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-dockerfile-generator/pkg/app"
 
 	"github.com/spf13/cobra"
 )

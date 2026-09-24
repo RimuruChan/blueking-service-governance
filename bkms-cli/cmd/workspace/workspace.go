@@ -22,8 +22,8 @@ package workspace
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/workspace/component"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/cmd/workspace/dashboard"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/workspace/component"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/cmd/workspace/dashboard"
 )
 
 // NewCmd create workspace command

@@ -25,7 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/model"
 )
 
 // cluster+namespace 占用检查配合 Mongo unique index 使用，调用方分两步：

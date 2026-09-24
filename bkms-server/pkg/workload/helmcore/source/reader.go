@@ -32,8 +32,8 @@ import (
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/utils/file"
-	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/utils/file"
+	bkmsapp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/app"
 )
 
 // chartFileMaxSize 单个文本文件最大读取字节数（超过则置 Content 为空，仅返回元信息）

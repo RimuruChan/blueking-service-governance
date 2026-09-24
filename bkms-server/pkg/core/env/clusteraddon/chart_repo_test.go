@@ -24,7 +24,7 @@ import (
 	"helm.sh/helm/v3/pkg/chart"
 	"helm.sh/helm/v3/pkg/repo"
 
-	clusteraddon "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
+	clusteraddon "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/env/clusteraddon"
 )
 
 var _ = Describe("RepoIndex", func() {

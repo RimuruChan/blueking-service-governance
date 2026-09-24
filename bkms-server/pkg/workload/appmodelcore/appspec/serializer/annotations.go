@@ -21,7 +21,7 @@ package serializer
 import (
 	"strings"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
 )
 
 // AppSpecAnnotationsInput is the input structure of the annotations section.

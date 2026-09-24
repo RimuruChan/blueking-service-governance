@@ -28,7 +28,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"helm.sh/helm/v3/pkg/postrender"
 
-	k8skind "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
+	k8skind "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
 )
 
 // yamlDocumentSeparator YAML 多文档分隔符

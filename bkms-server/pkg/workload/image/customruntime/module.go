@@ -21,7 +21,7 @@ package customruntime
 import (
 	"go.uber.org/fx"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/database"
 )
 
 // FxModule 提供自定义运行时镜像 Store，供单测与其他模块按需注入

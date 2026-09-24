@@ -25,7 +25,7 @@ import (
 	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/bscpcfg"
 )
 
 // MergePodSpec 相关的 sentinel error 变量

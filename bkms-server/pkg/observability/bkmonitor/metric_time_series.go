@@ -25,7 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	bkmapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
+	bkmapi "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkmonitor"
 )
 
 // monitorClientFactory 工厂函数类型

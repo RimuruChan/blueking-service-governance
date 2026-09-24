@@ -30,8 +30,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/stretchr/testify/mock"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth/backends"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/usertoken"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth/backends"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/usertoken"
 )
 
 var _ = Describe("User authentication middleware", func() {

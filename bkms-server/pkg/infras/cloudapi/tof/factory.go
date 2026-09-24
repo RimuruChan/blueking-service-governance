@@ -18,7 +18,7 @@
 
 package tof
 
-import log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+import log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
 
 // Factory 构造 Client 的工厂函数
 //

@@ -27,7 +27,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/httpcli"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/httpcli"
 )
 
 // BkTokenApigwAuthBackend 通过蓝鲸 API 网关校验 bk_token 并获取用户信息。

@@ -22,7 +22,7 @@ package polaris
 import (
 	"github.com/TencentBlueKing/gopkg/mapx"
 
-	k8sstatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status"
+	k8sstatus "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/kubernetes/status"
 )
 
 // Parse 获取状态

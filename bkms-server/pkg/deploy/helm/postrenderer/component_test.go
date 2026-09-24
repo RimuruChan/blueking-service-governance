@@ -25,7 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 	"gopkg.in/yaml.v3"
 
-	helmcomp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component/helm"
+	helmcomp "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/component/helm"
 )
 
 var _ = Describe("ComponentPostRenderer", func() {

@@ -38,7 +38,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	oteltracenoop "go.opentelemetry.io/otel/trace/noop"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
 )
 
 const (

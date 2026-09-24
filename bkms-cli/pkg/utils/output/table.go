@@ -31,7 +31,7 @@ import (
 	"charm.land/lipgloss/v2/table"
 	"github.com/samber/lo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/stringx"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/stringx"
 )
 
 // 列间距。表格不绘制任何边框，仅靠列右侧的空白区分列，与 kubectl 的输出保持一致

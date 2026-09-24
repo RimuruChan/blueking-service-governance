@@ -22,7 +22,7 @@ package serializer
 import (
 	"time"
 
-	platmgtworkspace "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/platmgt/workspace"
+	platmgtworkspace "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/platmgt/workspace"
 )
 
 // ListWorkspacesQuery is the query input for listing platform workspaces.

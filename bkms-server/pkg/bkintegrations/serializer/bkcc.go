@@ -19,7 +19,7 @@
 package serializer
 
 import (
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/cmdb"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/cmdb"
 )
 
 // --- BKCC Output ---

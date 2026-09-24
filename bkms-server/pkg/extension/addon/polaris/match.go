@@ -22,7 +22,7 @@ import (
 	"cmp"
 	"slices"
 
-	polarisInfra "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/polaris"
+	polarisInfra "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/polaris"
 )
 
 // MatchedInstance 按 Pod IP + 服务端口命中的一条北极星实例

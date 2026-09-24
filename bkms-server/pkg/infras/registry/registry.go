@@ -38,7 +38,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
-	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	log "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/logging"
 )
 
 // ImageDetail 包含指定的 TAG 镜像的详细信息

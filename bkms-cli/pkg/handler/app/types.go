@@ -22,7 +22,7 @@ package app
 import (
 	"reflect"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/stringx"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/utils/stringx"
 )
 
 const (

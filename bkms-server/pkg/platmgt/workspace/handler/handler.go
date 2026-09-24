@@ -25,12 +25,12 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/samber/lo"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	bkmsworkspace "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
-	platmgtworkspace "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/platmgt/workspace"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/platmgt/workspace/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
-	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	bkmsworkspace "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/core/workspace"
+	platmgtworkspace "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/platmgt/workspace"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/platmgt/workspace/serializer"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils"
+	storereg "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/registry"
 )
 
 var _ platmgtworkspace.Handler = (*GinHandler)(nil)

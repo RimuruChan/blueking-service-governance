@@ -18,7 +18,7 @@
 
 package serializer
 
-import "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/preview"
+import "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/envvars/envfile/preview"
 
 // EnvVarImportPreviewScopeOutputObj 单条预览中的 scope 输出。
 type EnvVarImportPreviewScopeOutputObj struct {

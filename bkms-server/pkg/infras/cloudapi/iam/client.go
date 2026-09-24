@@ -35,9 +35,9 @@ import (
 	iamsdk "github.com/TencentBlueKing/iam-go-sdk"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/iam/types"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/apm"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/config"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/iam/types"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/observability/apm"
 )
 
 // 蓝鲸 IAM 网关相关常量

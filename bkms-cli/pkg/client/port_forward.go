@@ -34,7 +34,7 @@ import (
 	"github.com/coder/websocket"
 	"github.com/pkg/errors"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/version"
+	"github.com/RimuruChan/blueking-service-governance/bkms-cli/pkg/version"
 )
 
 const (

@@ -23,7 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/utils/dbutil"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/utils/dbutil"
 )
 
 var _ = Describe("dbutil", func() {

@@ -22,14 +22,14 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
-	bkciproject "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci"
-	helmchartbuild "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/chart"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/chart/serializer"
-	buildlog "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/log"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	bkciapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkci"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
+	bkciproject "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci"
+	helmchartbuild "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/chart"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/chart/serializer"
+	buildlog "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/build/log"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	bkciapi "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkci"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
 )
 
 type buildLogDeps struct {

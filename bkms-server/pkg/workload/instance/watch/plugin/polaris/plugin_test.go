@@ -25,10 +25,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	polarisaddon "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
-	polarisinfra "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/polaris"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
-	watchplugin "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/watch/plugin"
+	polarisaddon "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
+	polarisinfra "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/infras/polaris"
+	"github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/instance/serializer"
+	watchplugin "github.com/RimuruChan/blueking-service-governance/bkms-server/pkg/workload/instance/watch/plugin"
 )
 
 // svcInstances 构造一条注册在 8080 端口的北极星服务；port 用来制造端口不匹配的场景
