@@ -26,7 +26,6 @@ import (
 
 	build "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/serializer" // register env_name validator
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/overview"
 	deploystatus "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/status"
 	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
@@ -412,8 +411,8 @@ type UpdateAppDisplayNameInput struct {
 
 // UpdateAppVisibleEnvsInput is the JSON body for replacing visible standard env names.
 type UpdateAppVisibleEnvsInput struct {
-	// 可见标准环境名称；空数组表示清空配置
-	VisibleEnvNames []string `json:"visibleEnvNames" binding:"omitempty,unique,dive,env_name"`
+	// 可见标准环境名称，必填；显式传空数组表示清空配置
+	VisibleEnvNames *[]string `json:"visibleEnvNames" binding:"required,unique,dive,uri_slug"`
 }
 
 // -----------------------------------------------------------------------------

@@ -675,12 +675,11 @@ func (h *Handler) UpdateAppVisibleEnvs(c *gin.Context) {
 	stdNames := lo.SliceToMap(stdEnvs, func(env envmodel.Environment) (string, struct{}) {
 		return env.Name, struct{}{}
 	})
-	var invalid []string
-	for _, name := range input.VisibleEnvNames {
-		if _, ok := stdNames[name]; !ok {
-			invalid = append(invalid, name)
-		}
-	}
+	names := *input.VisibleEnvNames
+	invalid := lo.Filter(names, func(name string, _ int) bool {
+		_, ok := stdNames[name]
+		return !ok
+	})
 	if len(invalid) > 0 {
 		bkerrs.AbortWithErr(c, bkerrs.Errorf(
 			bkerrs.ErrCodeInvalidRequest,
@@ -690,10 +689,6 @@ func (h *Handler) UpdateAppVisibleEnvs(c *gin.Context) {
 		return
 	}
 
-	names := input.VisibleEnvNames
-	if names == nil {
-		names = []string{}
-	}
 	if err = h.registry.AppStore.UpdateVisibleEnvNames(ctx, app, names); err != nil {
 		if errors.Is(err, bkmsapp.ErrAppNotFound) {
 			bkerrs.AbortWithErr(c, bkerrs.Errorf(bkerrs.ErrCodeNotFound, "app %s not found", uriInput.AppID))

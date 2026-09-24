@@ -116,7 +116,7 @@ func (h *Handler) preCheckDeploy(c *gin.Context, expectedAppType string) {
 		return
 	}
 	// 可见环境校验排在存在性、权限、应用类型校验之后，避免掩盖更具体的错误
-	if err = checkVisibleEnv(app, environment); err != nil {
+	if err = app.CheckVisibleEnv(environment); err != nil {
 		bkerrs.AbortWithErr(c, err)
 		return
 	}
@@ -167,7 +167,7 @@ func (h *Handler) createAppModelDeploy(c *gin.Context) {
 		bkerrs.AbortWithErr(c, err)
 		return
 	}
-	if err = checkVisibleEnv(app, environment); err != nil {
+	if err = app.CheckVisibleEnv(environment); err != nil {
 		bkerrs.AbortWithErr(c, err)
 		return
 	}
