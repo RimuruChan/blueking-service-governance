@@ -66,7 +66,7 @@ type FeatureEnvService struct {
 // FeatureEnvVarStore 提供创建特性环境时的变量复制，避免环境模块依赖变量模块。
 type FeatureEnvVarStore interface {
 	// CopyEnvVars 将来源环境的自定义变量复制到新环境，保留描述与敏感标记。
-	// 复制失败时由实现回滚自己写入的副本，调用方只需回收环境记录。
+	// 复制失败时可能留下部分副本，由调用方执行环境删除 Hook 清理。
 	CopyEnvVars(ctx context.Context, source, target model.Environment) error
 }
 
@@ -240,17 +240,8 @@ func (s *FeatureEnvService) Create(ctx context.Context, input CreateFeatureEnvIn
 	env.ID = envID
 
 	if input.CopyEnvVars {
-		if err = s.envVarStore.CopyEnvVars(ctx, *input.SourceEnv, *env); err != nil {
-			// 变量副本已由 CopyEnvVars 自行回滚，这里只需删除刚建好的环境记录。
-			// 请求取消后仍尝试清理；删除失败时保留环境，便于通过正常删除流程重试。
-			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), featureEnvCleanupTimeout)
-			defer cancel()
-			if cleanupErr := s.environmentStore.Delete(cleanupCtx, env.ID); cleanupErr != nil {
-				return nil, errors.Wrapf(err, "copy variables to feature environment %s; delete environment: %v",
-					env.Name, cleanupErr)
-			}
-			return nil, errors.Wrapf(err, "copy variables from environment %s to feature environment %s",
-				input.SourceEnv.Name, env.Name)
+		if err = s.copyEnvVars(ctx, *input.SourceEnv, *env); err != nil {
+			return nil, err
 		}
 	}
 
@@ -273,6 +264,27 @@ func (s *FeatureEnvService) Create(ctx context.Context, input CreateFeatureEnvIn
 	}
 
 	return env, nil
+}
+
+// copyEnvVars 复制来源环境的变量，失败时通过删除 Hook 清理目标环境。
+func (s *FeatureEnvService) copyEnvVars(ctx context.Context, source, target model.Environment) error {
+	err := s.envVarStore.CopyEnvVars(ctx, source, target)
+	if err == nil {
+		return nil
+	}
+
+	// 请求取消后仍尝试清理；Hook 失败时保留环境，便于通过正常删除流程重试。
+	cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), featureEnvCleanupTimeout)
+	defer cancel()
+	if cleanupErr := runDeleteHooks(cleanupCtx, target); cleanupErr != nil {
+		return errors.Wrapf(err, "copy variables to feature environment %s; clean up environment dependencies: %v",
+			target.Name, cleanupErr)
+	}
+	if cleanupErr := s.environmentStore.Delete(cleanupCtx, target.ID); cleanupErr != nil {
+		return errors.Wrapf(err, "copy variables to feature environment %s; delete environment: %v",
+			target.Name, cleanupErr)
+	}
+	return errors.Wrapf(err, "copy variables from environment %s to feature environment %s", source.Name, target.Name)
 }
 
 func validateCreateFeatureEnvInputStruct(sl validator.StructLevel) {

@@ -40,10 +40,6 @@ import (
 // ScopedEnvVarCollectionName is the MongoDB collection storing scoped env vars.
 const ScopedEnvVarCollectionName = "scoped_env_vars"
 
-// envVarCopyRollbackTimeout bounds the rollback of a failed CopyEnvVars, which runs
-// on a context detached from the caller's.
-const envVarCopyRollbackTimeout = 10 * time.Second
-
 // ErrScopedEnvVarNotFound is returned when the target scoped env var does not exist.
 var ErrScopedEnvVarNotFound = errors.New("scoped env var not found")
 
@@ -332,7 +328,7 @@ func (s *ScopedEnvVarStoreMongo) Create(ctx context.Context, envVar ScopedEnvVar
 // CopyEnvVars copies only variables directly defined in the source environment.
 // Public and built-in variables keep their existing resolution rules. The copies
 // are new records, so later edits on either side stay independent. A failed copy
-// rolls back its own inserts, leaving variables already in the target untouched.
+// may leave partial inserts; the caller must clean up through environment delete hooks.
 func (s *ScopedEnvVarStoreMongo) CopyEnvVars(ctx context.Context, source, target envmodel.Environment) error {
 	if source.WorkspaceID != target.WorkspaceID || source.Name == target.Name {
 		return errors.New("env var copy requires distinct environments in the same workspace")
@@ -346,19 +342,14 @@ func (s *ScopedEnvVarStoreMongo) CopyEnvVars(ctx context.Context, source, target
 	}
 	// Insert new records so a concurrently created key causes a conflict instead
 	// of receiving a source secret while retaining a non-sensitive target flag.
-	// IDs are generated up front so a partial write can be rolled back by ID.
 	now := time.Now()
-	ids := make([]bson.ObjectID, 0, len(vars))
 	docs := make([]any, 0, len(vars))
 	for _, item := range vars {
 		encryptedValue, encryptErr := s.encryptEnvVar(item.Value)
 		if encryptErr != nil {
 			return errors.Wrapf(encryptErr, "encrypt copied variable %s for environment %s", item.Key, target.Name)
 		}
-		id := bson.NewObjectID()
-		ids = append(ids, id)
 		docs = append(docs, ScopedEnvVar{
-			ID:          id,
 			WorkspaceID: target.WorkspaceID,
 			ScopeType:   envvartypes.ScopeTypeEnv,
 			ScopeValue:  target.Name,
@@ -374,25 +365,9 @@ func (s *ScopedEnvVarStoreMongo) CopyEnvVars(ctx context.Context, source, target
 		if mongo.IsDuplicateKeyError(err) {
 			err = ErrScopedEnvVarKeyConflict
 		}
-		if rollbackErr := s.deleteCopiedEnvVars(ctx, ids); rollbackErr != nil {
-			return errors.Wrapf(err, "copy custom variables to environment %s; roll back copies: %v",
-				target.Name, rollbackErr)
-		}
 		return errors.Wrapf(err, "copy custom variables to environment %s", target.Name)
 	}
 	return nil
-}
-
-// deleteCopiedEnvVars removes the records a failed CopyEnvVars inserted.
-// It deletes by the IDs generated for this copy only, so variables that already
-// existed in the target scope survive, and it detaches from the caller's context
-// so a cancelled request still drops the half-written copy.
-func (s *ScopedEnvVarStoreMongo) deleteCopiedEnvVars(ctx context.Context, ids []bson.ObjectID) error {
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), envVarCopyRollbackTimeout)
-	defer cancel()
-
-	_, err := s.collection.DeleteMany(ctx, bson.M{"_id": bson.M{"$in": ids}})
-	return errors.Wrap(err, "delete copied env vars")
 }
 
 // CreateSimpleEnvScopeVar creates a non-builtin, non-sensitive env-scoped var.

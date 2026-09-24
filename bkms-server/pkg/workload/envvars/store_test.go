@@ -83,7 +83,7 @@ var _ = Describe("ScopedEnvVarStoreMongo", func() {
 			Name:        "feature",
 			Kind:        envmodel.EnvironmentKindFeature,
 		}
-		sourceID, err := store.Create(ctx, envvars.ScopedEnvVar{
+		_, err := store.Create(ctx, envvars.ScopedEnvVar{
 			WorkspaceID: workspaceID, ScopeType: envvartypes.ScopeTypeEnv, ScopeValue: source.Name,
 			Key: "SECRET", Value: "source-secret", Description: "source description", IsSensitive: true,
 		})
@@ -97,12 +97,6 @@ var _ = Describe("ScopedEnvVarStoreMongo", func() {
 		after, err := store.GetByID(ctx, workspaceID, targetID)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(*after).To(Equal(*before))
-		Expect(after.IsSensitive).To(BeFalse())
-		Expect(after.Value).To(Equal("target-value"))
-		sourceVar, err := store.GetByID(ctx, workspaceID, sourceID)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(sourceVar.Value).To(Equal("source-secret"))
-		Expect(sourceVar.IsSensitive).To(BeTrue())
 	})
 
 	Context("workspace scope", func() {

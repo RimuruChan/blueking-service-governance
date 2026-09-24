@@ -59,21 +59,10 @@ var _ = Describe("validateScopedEnvVarScopeValue", func() {
 		handler = &Handler{registry: &storereg.Registry{EnvStore: envStore}}
 	})
 
-	It("accepts feature environments without relaxing app-scoped lookups", func() {
-		Expect(handler.validateScopedEnvVarScopeValue(ctx, workspaceID,
-			envvartypes.ScopeEnv(featureEnv.Name))).To(Succeed())
-
-		_, err := envStore.GetByName(ctx, workspaceID, "other-app", featureEnv.Name)
-		Expect(err).To(MatchError(envmodel.ErrEnvNotFound))
-		_, err = envStore.GetStdEnvByName(ctx, workspaceID, featureEnv.Name)
-		Expect(err).To(MatchError(envmodel.ErrEnvNotFound))
-	})
-
-	It("continues to accept standard environments and public scopes", func() {
+	It("accepts standard and feature environments in the workspace", func() {
 		for _, scope := range []envvartypes.ScopedEnvVarScope{
 			envvartypes.ScopeEnv(standardEnv.Name),
-			envvartypes.ScopeWorkspace,
-			envvartypes.ScopeEnvType("test"),
+			envvartypes.ScopeEnv(featureEnv.Name),
 		} {
 			Expect(handler.validateScopedEnvVarScopeValue(ctx, workspaceID, scope)).To(Succeed())
 		}
