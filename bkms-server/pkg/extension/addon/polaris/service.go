@@ -106,6 +106,8 @@ func (s *PolarisConfigService) Create(
 		config.ScopeEnvNames, config.EnvWeights, config.EnvDynamicWeights, nil, config.RegisterMode,
 	)
 
+	// 权重因子只存在于北极星。平台创建已在上面写入；导入路径忽略请求里的值。
+	config.EnableWeightFactor = false
 	if err := s.polarisConfigStore.Create(ctx, config); err != nil {
 		return err
 	}
@@ -117,6 +119,58 @@ func (s *PolarisConfigService) Create(
 	return s.applyImmediately(ctx, app, config, config.ScopeEnvNames)
 }
 
+// GetImportedService 查询从现有引入的北极星服务信息。
+func (s *PolarisConfigService) GetImportedService(
+	ctx context.Context,
+	name, namespace, token string,
+) (*RemotePolarisService, error) {
+	return s.platformManager.GetImportedService(ctx, name, namespace, token)
+}
+
+// UpdateImportedPolaris 修改已有北极星服务。目前只写权重因子开关，不回写本地配置。
+func (s *PolarisConfigService) UpdateImportedPolaris(
+	ctx context.Context,
+	name, namespace, token string,
+	enabled bool,
+) error {
+	return s.platformManager.UpdateImportedService(
+		ctx, name, namespace, token, &UpdateServiceParams{EnableWeightFactor: &enabled},
+	)
+}
+
+// GetRemoteServices 按配置名返回对应的北极星线上服务，同一 namespace/name 只查一次。
+// 查不到的配置对应值为 nil，不中断其余配置。
+func (s *PolarisConfigService) GetRemoteServices(
+	ctx context.Context,
+	configs []*PolarisConfig,
+) map[string]*RemotePolarisService {
+	type serviceKey struct {
+		namespace string
+		name      string
+	}
+	cached := make(map[serviceKey]*RemotePolarisService, len(configs))
+	out := make(map[string]*RemotePolarisService, len(configs))
+	for _, config := range configs {
+		if config == nil || config.Name == "" {
+			continue
+		}
+		key := serviceKey{namespace: config.PolarisNamespace, name: config.PolarisName}
+		svc, ok := cached[key]
+		if !ok {
+			var err error
+			svc, err = s.platformManager.GetService(ctx, config.PolarisName, config.PolarisNamespace)
+			if err != nil {
+				log.Errorf(ctx, "get polaris service failed, polaris=%s/%s: %v",
+					config.PolarisNamespace, config.PolarisName, err)
+				svc = nil
+			}
+			cached[key] = svc
+		}
+		out[config.Name] = svc
+	}
+	return out
+}
+
 // Update 更新北极星配置
 func (s *PolarisConfigService) Update(
 	ctx context.Context,
@@ -124,7 +178,7 @@ func (s *PolarisConfigService) Update(
 	oldConfig *PolarisConfig,
 	updateData *ConfigUpdateData,
 ) (*PolarisConfig, error) {
-	if err := s.syncManagedService(ctx, oldConfig, updateData); err != nil {
+	if err := s.syncPolarisService(ctx, oldConfig, updateData); err != nil {
 		return nil, err
 	}
 
@@ -406,9 +460,9 @@ func (s *PolarisConfigService) UpdateEnvWeight(
 	return newConfig, nil
 }
 
-// syncManagedService 把仅平台创建服务可改的字段同步到北极星。
-// 引入的服务没有 DepSvcInstID，改负责人或权重因子都会直接报错。
-func (s *PolarisConfigService) syncManagedService(
+// syncPolarisService 配置保存时把负责人、权重因子写回北极星。
+// 平台创建走依赖服务实例；从现有引入只在请求带了权重因子时用 Token 写入，不改负责人。
+func (s *PolarisConfigService) syncPolarisService(
 	ctx context.Context,
 	oldConfig *PolarisConfig,
 	updateData *ConfigUpdateData,
@@ -416,13 +470,28 @@ func (s *PolarisConfigService) syncManagedService(
 	if updateData.Operator != nil && strings.TrimSpace(*updateData.Operator) == "" {
 		return ErrOperatorEmpty
 	}
+	if oldConfig.DepSvcInstID.IsZero() {
+		if updateData.Operator != nil {
+			return ErrNotManaged
+		}
+		if updateData.EnableWeightFactor == nil {
+			return nil
+		}
+		token := oldConfig.PolarisToken
+		if updateData.PolarisToken != nil && *updateData.PolarisToken != "" {
+			token = *updateData.PolarisToken
+		}
+		return s.UpdateImportedPolaris(
+			ctx,
+			oldConfig.PolarisName,
+			oldConfig.PolarisNamespace,
+			token,
+			*updateData.EnableWeightFactor,
+		)
+	}
 	if updateData.Operator == nil && updateData.EnableWeightFactor == nil {
 		return nil
 	}
-	if oldConfig.DepSvcInstID.IsZero() {
-		return ErrNotManaged
-	}
-
 	if err := s.platformManager.UpdateService(ctx, oldConfig, &UpdateServiceParams{
 		Owners:             updateData.Operator,
 		EnableWeightFactor: updateData.EnableWeightFactor,

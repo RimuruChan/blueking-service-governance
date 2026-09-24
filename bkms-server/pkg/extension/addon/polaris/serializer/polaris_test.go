@@ -87,15 +87,14 @@ var _ = Describe("PolarisConfigOutputObj", func() {
 			Expect(out.EnvDynamicWeights).To(BeEmpty())
 		})
 
-		It("should echo both levels of the dynamic weight switches", func() {
+		It("should echo environment dynamic weight switches", func() {
 			config := polaris.PolarisConfig{
 				ScopeEnvNames:     []string{"dev", "staging"},
-				Properties:        polaris.Properties{EnableWeightFactor: true},
 				EnvDynamicWeights: map[string]bool{"dev": true, "staging": false},
 			}
 
 			out := new(serializer.PolarisConfigOutputObj).FromModel(config, nil)
-			Expect(out.EnableWeightFactor).To(BeTrue())
+			Expect(out.EnableWeightFactor).To(BeNil())
 			Expect(out.EnvDynamicWeights).To(Equal(map[string]bool{"dev": true, "staging": false}))
 		})
 
@@ -324,6 +323,58 @@ var _ = Describe("CreateAppPolarisConfigInput", func() {
 		Entry("rejects an unknown mode", lo.ToPtr("whenever"), true),
 		Entry("rejects an explicit empty mode", lo.ToPtr(""), true),
 	)
+
+	Describe("ToConfig", func() {
+		It("applies pointer defaults when optional fields are omitted", func() {
+			config := inputWithMode(nil).ToConfig("app-1")
+
+			Expect(config).To(Equal(&polaris.PolarisConfig{
+				AppID: "app-1",
+				Properties: polaris.Properties{
+					InstanceKey:      "k1",
+					PolarisName:      "polaris-1",
+					PolarisNamespace: "Test",
+					ServicePort:      8080,
+					Direct:           true,
+					KeepNotReadyPod:  true,
+					RegisterMode:     polaris.RegisterModeOnDeploy,
+				},
+			}))
+		})
+
+		It("keeps explicitly provided optional fields", func() {
+			input := inputWithMode(lo.ToPtr(polaris.RegisterModeImmediate))
+			input.PolarisToken = lo.ToPtr("token-1")
+			input.Direct = lo.ToPtr(false)
+			input.KeepNotReadyPod = lo.ToPtr(false)
+			input.EnableHealthCheck = lo.ToPtr(true)
+			input.EnableWeightFactor = lo.ToPtr(true)
+			input.ServiceLabels = map[string]string{"tier": "backend"}
+			input.Operator = lo.ToPtr("alice")
+			input.ScopeEnvNames = []string{"dev"}
+
+			config := input.ToConfig("app-1")
+
+			Expect(config).To(Equal(&polaris.PolarisConfig{
+				AppID: "app-1",
+				Properties: polaris.Properties{
+					InstanceKey:        "k1",
+					PolarisName:        "polaris-1",
+					PolarisNamespace:   "Test",
+					PolarisToken:       "token-1",
+					ServicePort:        8080,
+					Direct:             false,
+					KeepNotReadyPod:    false,
+					EnableHealthCheck:  true,
+					EnableWeightFactor: true,
+					ServiceLabels:      map[string]string{"tier": "backend"},
+					Operator:           "alice",
+					RegisterMode:       polaris.RegisterModeImmediate,
+				},
+				ScopeEnvNames: []string{"dev"},
+			}))
+		})
+	})
 })
 
 var _ = Describe("AppConfigEnvNameURIInput", func() {
@@ -375,5 +426,30 @@ var _ = Describe("GetEnvInstanceStatsOutput", func() {
 		}))
 		Expect(output.Data.TotalHealthyInstanceCount).To(Equal(int32(7)))
 		Expect(output.Data.TotalHealthyInstanceWeight).To(Equal(int32(520)))
+	})
+})
+
+var _ = Describe("ImportedPolarisServiceFromModel", func() {
+	It("should copy polaris service fields and omit token", func() {
+		out := serializer.ImportedPolarisServiceFromModel(&polaris.RemotePolarisService{
+			Name:               "porterlin-test",
+			Namespace:          "Test",
+			Owners:             "porterlin",
+			PlatformID:         "tkex-ieg-polaris-operator",
+			EnableWeightFactor: true,
+			Metadata: map[string]string{
+				"internal-min-healthy-ratio": "0.25",
+			},
+		})
+		Expect(out.Name).To(Equal("porterlin-test"))
+		Expect(out.Namespace).To(Equal("Test"))
+		Expect(out.Owners).To(Equal("porterlin"))
+		Expect(out.PlatformID).To(Equal("tkex-ieg-polaris-operator"))
+		Expect(out.EnableWeightFactor).To(BeTrue())
+		Expect(out.Metadata).To(HaveKeyWithValue("internal-min-healthy-ratio", "0.25"))
+	})
+
+	It("should return nil when the remote service is missing", func() {
+		Expect(serializer.ImportedPolarisServiceFromModel(nil)).To(BeNil())
 	})
 })

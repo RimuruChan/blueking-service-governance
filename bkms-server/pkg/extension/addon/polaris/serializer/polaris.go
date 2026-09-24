@@ -25,6 +25,7 @@ import (
 
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
@@ -116,8 +117,9 @@ type PolarisConfigOutputObj struct {
 	KeepNotReadyPod bool `json:"keepNotReadyPod"`
 	// 是否启用健康检查
 	EnableHealthCheck bool `json:"enableHealthCheck"`
-	// 是否启用权重因子（开启后才能为单个环境开启动态权重）
-	EnableWeightFactor bool `json:"enableWeightFactor"`
+	// 是否启用权重因子。向北极星实时读取，读不到时为 null。
+	// 开启后才能为单个环境开启动态权重；该值不参与 CR 组装。
+	EnableWeightFactor *bool `json:"enableWeightFactor"`
 	// 服务标签
 	ServiceLabels map[string]string `json:"serviceLabels"`
 	// 注册模式：immediate（绑定后立即注册）| on_deploy（等部署后注册）
@@ -177,28 +179,27 @@ func (o *PolarisConfigOutputObj) FromModel(config polaris.PolarisConfig, warning
 		envDynamicWeights = map[string]bool{}
 	}
 	*o = PolarisConfigOutputObj{
-		AppID:              config.AppID,
-		Name:               config.Name,
-		DepSvcInstID:       depSvcInstIDToString(config.DepSvcInstID),
-		InstanceKey:        config.InstanceKey,
-		PolarisName:        config.PolarisName,
-		PolarisNamespace:   config.PolarisNamespace,
-		PolarisToken:       config.PolarisToken,
-		ServicePort:        config.ServicePort,
-		Direct:             config.Direct,
-		KeepNotReadyPod:    config.KeepNotReadyPod,
-		EnableHealthCheck:  config.EnableHealthCheck,
-		EnableWeightFactor: config.EnableWeightFactor,
-		ServiceLabels:      config.ServiceLabels,
-		RegisterMode:       registerModeOutput(config.RegisterMode),
-		ScopeEnvNames:      config.ScopeEnvNames,
-		Operator:           config.Operator,
-		CreatedAt:          config.CreatedAt.Format(time.RFC3339),
-		UpdatedAt:          config.UpdatedAt.Format(time.RFC3339),
-		Warnings:           warnings,
-		EnvStates:          toEnvStateOutputs(&config),
-		EnvWeights:         envWeights,
-		EnvDynamicWeights:  envDynamicWeights,
+		AppID:             config.AppID,
+		Name:              config.Name,
+		DepSvcInstID:      depSvcInstIDToString(config.DepSvcInstID),
+		InstanceKey:       config.InstanceKey,
+		PolarisName:       config.PolarisName,
+		PolarisNamespace:  config.PolarisNamespace,
+		PolarisToken:      config.PolarisToken,
+		ServicePort:       config.ServicePort,
+		Direct:            config.Direct,
+		KeepNotReadyPod:   config.KeepNotReadyPod,
+		EnableHealthCheck: config.EnableHealthCheck,
+		ServiceLabels:     config.ServiceLabels,
+		RegisterMode:      registerModeOutput(config.RegisterMode),
+		ScopeEnvNames:     config.ScopeEnvNames,
+		Operator:          config.Operator,
+		CreatedAt:         config.CreatedAt.Format(time.RFC3339),
+		UpdatedAt:         config.UpdatedAt.Format(time.RFC3339),
+		Warnings:          warnings,
+		EnvStates:         toEnvStateOutputs(&config),
+		EnvWeights:        envWeights,
+		EnvDynamicWeights: envDynamicWeights,
 	}
 	return o
 }
@@ -277,9 +278,8 @@ type CreateAppPolarisConfigInput struct {
 	KeepNotReadyPod *bool `json:"keepNotReadyPod"`
 	// 是否启用健康检查，默认 false
 	EnableHealthCheck *bool `json:"enableHealthCheck"`
-	// 是否启用权重因子，默认 false。仅 createNewService 为 true 时写入北极星；
-	// 开启后北极星按实例机型标记权重因子，
-	// 各环境还需单独开启动态权重才会真正按机型分流
+	// 是否启用权重因子。仅 createNewService 为 true 时写入新建的北极星服务，不落本地。
+	// 从现有引入时忽略该字段，当前值向北极星读取。
 	EnableWeightFactor *bool `json:"enableWeightFactor"`
 	// 服务标签
 	ServiceLabels map[string]string `json:"serviceLabels"`
@@ -289,6 +289,28 @@ type CreateAppPolarisConfigInput struct {
 	// immediate 表示绑定环境后立即下发 PolarisConfig CR 与配套 Service 完成注册，
 	// 该配置不再注入环境变量和 tRPC 框架配置。创建后不可修改
 	RegisterMode *string `json:"registerMode" binding:"omitempty,oneof=immediate on_deploy"`
+}
+
+// ToConfig builds a domain config from the create request, applying pointer defaults.
+func (in CreateAppPolarisConfigInput) ToConfig(appID string) *polaris.PolarisConfig {
+	return &polaris.PolarisConfig{
+		AppID: appID,
+		Properties: polaris.Properties{
+			InstanceKey:        in.InstanceKey,
+			PolarisName:        in.PolarisName,
+			PolarisNamespace:   in.PolarisNamespace,
+			PolarisToken:       lo.FromPtr(in.PolarisToken),
+			ServicePort:        in.ServicePort,
+			Direct:             lo.FromPtrOr(in.Direct, true),
+			KeepNotReadyPod:    lo.FromPtrOr(in.KeepNotReadyPod, true),
+			EnableHealthCheck:  lo.FromPtrOr(in.EnableHealthCheck, false),
+			EnableWeightFactor: lo.FromPtrOr(in.EnableWeightFactor, false),
+			ServiceLabels:      in.ServiceLabels,
+			Operator:           lo.FromPtrOr(in.Operator, ""),
+			RegisterMode:       lo.FromPtrOr(in.RegisterMode, polaris.RegisterModeOnDeploy),
+		},
+		ScopeEnvNames: in.ScopeEnvNames,
+	}
 }
 
 // CreateAppPolarisConfigOutput is the JSON response for creating a polaris config.
@@ -317,7 +339,8 @@ type PatchAppPolarisConfigInput struct {
 	KeepNotReadyPod *bool `json:"keepNotReadyPod"`
 	// 是否启用健康检查（可选更新）
 	EnableHealthCheck *bool `json:"enableHealthCheck"`
-	// 是否启用权重因子（可选更新）；关闭只屏蔽各环境的动态权重，不清除各环境的开关取值
+	// 是否启用权重因子。传入时写回北极星，不落本地；未传表示不改。
+	// 平台创建的服务走依赖服务实例，从现有引入的服务用 Token 写回。
 	EnableWeightFactor *bool `json:"enableWeightFactor"`
 	// 服务标签（可选更新，传入时全量替换）
 	ServiceLabels map[string]string `json:"serviceLabels"`
@@ -376,6 +399,87 @@ func (o *PolarisConfigVarOutput) FromModel(v polaris.ConfigVar) *PolarisConfigVa
 type ValidateAppPolarisConfigOutput struct {
 	// 校验警告信息
 	Warnings []string `json:"warnings"`
+}
+
+// -----------------------------------------------------------------------------
+// Check imported polaris service
+// -----------------------------------------------------------------------------
+
+// GetImportedPolarisServiceInput is the JSON input for fetching an imported polaris service.
+type GetImportedPolarisServiceInput struct {
+	// 北极星实例名称
+	PolarisName string `json:"polarisName" binding:"required,min=1"`
+	// 北极星环境（命名空间）
+	PolarisNamespace string `json:"polarisNamespace" binding:"required,oneof=Test Production Development Pre-release"`
+	// 北极星 Token
+	PolarisToken string `json:"polarisToken" binding:"required,min=1"`
+}
+
+// GetImportedPolarisServiceOutput is the JSON response for an imported polaris service lookup.
+type GetImportedPolarisServiceOutput struct {
+	// 北极星线上服务信息（不含 token）
+	Service *ImportedPolarisServiceOutput `json:"service"`
+}
+
+// ImportedPolarisServiceOutput 北极星 GET /naming/v1/services 的服务字段。
+type ImportedPolarisServiceOutput struct {
+	// 服务名
+	Name string `json:"name"`
+	// 命名空间
+	Namespace string `json:"namespace"`
+	// 负责人，逗号分隔
+	Owners string `json:"owners"`
+	// 服务 metadata
+	Metadata map[string]string `json:"metadata"`
+	// 创建时间
+	Ctime string `json:"ctime"`
+	// 修改时间
+	Mtime string `json:"mtime"`
+	// 版本号
+	Revision string `json:"revision"`
+	// 所属平台 ID
+	PlatformID string `json:"platformId"`
+	// 北极星服务当前是否开启权重因子
+	EnableWeightFactor bool `json:"enableWeightFactor"`
+}
+
+// ImportedPolarisServiceFromModel 把线上北极星服务转成接口输出，不包含 token。
+func ImportedPolarisServiceFromModel(svc *polaris.RemotePolarisService) *ImportedPolarisServiceOutput {
+	if svc == nil {
+		return nil
+	}
+	metadata := svc.Metadata
+	if metadata == nil {
+		metadata = map[string]string{}
+	}
+	return &ImportedPolarisServiceOutput{
+		Name:               svc.Name,
+		Namespace:          svc.Namespace,
+		Owners:             svc.Owners,
+		Metadata:           metadata,
+		Ctime:              svc.Ctime,
+		Mtime:              svc.Mtime,
+		Revision:           svc.Revision,
+		PlatformID:         svc.PlatformID,
+		EnableWeightFactor: svc.EnableWeightFactor,
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Update imported polaris weight factor
+// -----------------------------------------------------------------------------
+
+// UpdateImportedPolarisInput is the JSON input for updating an existing polaris service.
+// 目前只支持权重因子开关。
+type UpdateImportedPolarisInput struct {
+	// 北极星实例名称
+	PolarisName string `json:"polarisName" binding:"required,min=1"`
+	// 北极星环境（命名空间）
+	PolarisNamespace string `json:"polarisNamespace" binding:"required,oneof=Test Production Development Pre-release"`
+	// 北极星 Token
+	PolarisToken string `json:"polarisToken" binding:"required,min=1"`
+	// 是否开启权重因子
+	EnableWeightFactor *bool `json:"enableWeightFactor" binding:"required"`
 }
 
 // -----------------------------------------------------------------------------

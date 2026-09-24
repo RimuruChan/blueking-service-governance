@@ -20,6 +20,7 @@
 package handler
 
 import (
+	"context"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -116,6 +117,7 @@ func (h *Handler) ListAppPolarisConfigs(c *gin.Context) {
 		)
 		return new(serializer.PolarisConfigOutputObj).FromModel(*config, warnings)
 	})
+	h.fillWithRemote(ctx, configs, outputList)
 
 	ginutils.OK(c, serializer.ListAppPolarisConfigsOutput{Data: outputList})
 }
@@ -158,24 +160,7 @@ func (h *Handler) CreateAppPolarisConfig(c *gin.Context) {
 		return
 	}
 
-	config := &polaris.PolarisConfig{
-		AppID: app.ID,
-		Properties: polaris.Properties{
-			InstanceKey:        jsonInput.InstanceKey,
-			PolarisName:        jsonInput.PolarisName,
-			PolarisNamespace:   jsonInput.PolarisNamespace,
-			PolarisToken:       polarisToken,
-			ServicePort:        jsonInput.ServicePort,
-			Direct:             lo.FromPtrOr(jsonInput.Direct, true),
-			KeepNotReadyPod:    lo.FromPtrOr(jsonInput.KeepNotReadyPod, true),
-			EnableHealthCheck:  lo.FromPtrOr(jsonInput.EnableHealthCheck, false),
-			EnableWeightFactor: lo.FromPtrOr(jsonInput.EnableWeightFactor, false),
-			ServiceLabels:      jsonInput.ServiceLabels,
-			Operator:           lo.FromPtrOr(jsonInput.Operator, ""),
-			RegisterMode:       lo.FromPtrOr(jsonInput.RegisterMode, polaris.RegisterModeOnDeploy),
-		},
-		ScopeEnvNames: jsonInput.ScopeEnvNames,
-	}
+	config := jsonInput.ToConfig(app.ID)
 
 	createErr := h.polarisConfigService().Create(ctx, app, config, jsonInput.CreateNewService)
 	// 集群同步失败时配置已经落库，仍需记录审计并把失败原因返回给调用方
@@ -183,8 +168,13 @@ func (h *Handler) CreateAppPolarisConfig(c *gin.Context) {
 		if errors.Is(createErr, polaris.ErrConfigNameExists) {
 			bkerrs.AbortWithErr(c, bkerrs.Errorf(
 				bkerrs.ErrCodeInvalidRequest,
-				"polaris config name already exists in app(%s)", uriInput.AppID,
+				"polaris config name already exists in app(%s)",
+				uriInput.AppID,
 			))
+			return
+		}
+		if polaris.IsClientRequestError(createErr) {
+			bkerrs.AbortWithErr(c, bkerrs.Wrap(createErr, bkerrs.ErrCodeInvalidRequest, createErr.Error()))
 			return
 		}
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(createErr, bkerrs.ErrCodeInternalServerError, "create polaris config"))
@@ -237,7 +227,6 @@ func (h *Handler) PatchAppPolarisConfig(c *gin.Context) {
 		bkerrs.AbortWithErr(c, err)
 		return
 	}
-
 	ctx := c.Request.Context()
 	app, err := perm.ValidateAppByID(ctx, h.registry, uriInput.AppID, perm.TypeEdit)
 	if err != nil {
@@ -258,7 +247,7 @@ func (h *Handler) PatchAppPolarisConfig(c *gin.Context) {
 		return
 	}
 
-	updateData := &polaris.ConfigUpdateData{
+	updatedConfig, updateErr := h.polarisConfigService().Update(ctx, app, existingConfig, &polaris.ConfigUpdateData{
 		InstanceKey:        jsonInput.InstanceKey,
 		ServicePort:        jsonInput.ServicePort,
 		Direct:             jsonInput.Direct,
@@ -269,9 +258,7 @@ func (h *Handler) PatchAppPolarisConfig(c *gin.Context) {
 		ScopeEnvNames:      jsonInput.ScopeEnvNames,
 		PolarisToken:       jsonInput.PolarisToken,
 		Operator:           jsonInput.Operator,
-	}
-
-	updatedConfig, updateErr := h.polarisConfigService().Update(ctx, app, existingConfig, updateData)
+	})
 	// 集群同步失败时配置已经落库，仍需记录审计并把失败原因返回给调用方
 	if updateErr != nil && !errors.Is(updateErr, polaris.ErrClusterSyncFailed) {
 		if errors.Is(updateErr, polaris.ErrConfigNotFound) {
@@ -281,8 +268,7 @@ func (h *Handler) PatchAppPolarisConfig(c *gin.Context) {
 			))
 			return
 		}
-		if errors.Is(updateErr, polaris.ErrOperatorEmpty) ||
-			errors.Is(updateErr, polaris.ErrNotManaged) {
+		if polaris.IsClientRequestError(updateErr) {
 			bkerrs.AbortWithErr(c, bkerrs.Wrap(updateErr, bkerrs.ErrCodeInvalidRequest, updateErr.Error()))
 			return
 		}
@@ -301,7 +287,6 @@ func (h *Handler) PatchAppPolarisConfig(c *gin.Context) {
 		audit.WithWorkspaceID(app.WorkspaceID),
 		audit.WithAppID(app.ID),
 	)
-
 	if updateErr != nil {
 		bkerrs.AbortWithErr(c, bkerrs.Wrapf(
 			updateErr, bkerrs.ErrCodeInternalServerError,
@@ -309,8 +294,11 @@ func (h *Handler) PatchAppPolarisConfig(c *gin.Context) {
 		))
 		return
 	}
-
-	ginutils.OK(c, new(serializer.PatchAppPolarisConfigOutput).FromModel(updatedConfig))
+	output := new(serializer.PatchAppPolarisConfigOutput).FromModel(updatedConfig)
+	h.fillWithRemote(
+		ctx, []*polaris.PolarisConfig{updatedConfig}, []*serializer.PolarisConfigOutputObj{output.Data},
+	)
+	ginutils.OK(c, output)
 }
 
 // DeleteAppPolarisConfig 删除北极星配置。
@@ -469,15 +457,7 @@ func (h *Handler) ValidateAppPolarisConfig(c *gin.Context) {
 		return
 	}
 
-	config := &polaris.PolarisConfig{
-		AppID: app.ID,
-		Properties: polaris.Properties{
-			PolarisName:      jsonInput.PolarisName,
-			PolarisNamespace: jsonInput.PolarisNamespace,
-			RegisterMode:     lo.FromPtrOr(jsonInput.RegisterMode, polaris.RegisterModeOnDeploy),
-		},
-		ScopeEnvNames: jsonInput.ScopeEnvNames,
-	}
+	config := jsonInput.ToConfig(app.ID)
 
 	warnings := polaris.CollectConfigWarnings(
 		ctx,
@@ -491,6 +471,112 @@ func (h *Handler) ValidateAppPolarisConfig(c *gin.Context) {
 	)
 
 	ginutils.OK(c, serializer.ValidateAppPolarisConfigOutput{Warnings: warnings})
+}
+
+// GetImportedPolarisService 查询从现有引入的北极星服务信息。
+// Token 无效、服务不存在或北极星不可达时返回 400。
+//
+//	@ID			GetImportedPolarisService
+//	@Summary	查询从现有引入的北极星服务信息
+//	@Tags		polaris-config
+//	@Accept		json
+//	@Produce	json
+//	@Security	BkUserInfo
+//	@Security	BkUserCredential
+//	@Param		appID	path		string										true	"应用 ID"
+//	@Param		body	body		serializer.GetImportedPolarisServiceInput	true	"请求体"
+//	@Success	200		{object}	serializer.GetImportedPolarisServiceOutput
+//	@Failure	400		{object}	bkerrs.GinErrorOutput
+//	@Router		/apps/{appID}/deps/polaris-configs/imported-service [post]
+func (h *Handler) GetImportedPolarisService(c *gin.Context) {
+	var uriInput serializer.AppURIInput
+	var jsonInput serializer.GetImportedPolarisServiceInput
+	if err := ginutils.BindURIJSON(c, &uriInput, &jsonInput); err != nil {
+		bkerrs.AbortWithErr(c, err)
+		return
+	}
+
+	ctx := c.Request.Context()
+	if _, err := perm.ValidateAppByID(ctx, h.registry, uriInput.AppID, perm.TypeEdit); err != nil {
+		bkerrs.AbortWithErr(c, err)
+		return
+	}
+
+	info, err := h.polarisConfigService().GetImportedService(
+		ctx, jsonInput.PolarisName, jsonInput.PolarisNamespace, jsonInput.PolarisToken,
+	)
+	if err != nil {
+		if polaris.IsClientRequestError(err) {
+			bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidRequest, err.Error()))
+			return
+		}
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "get imported polaris service"))
+		return
+	}
+
+	ginutils.OK(c, serializer.GetImportedPolarisServiceOutput{
+		Service: serializer.ImportedPolarisServiceFromModel(info),
+	})
+}
+
+// UpdateImportedPolaris 修改从现有引入的北极星服务。目前只支持权重因子开关。
+// Token 无效、服务不存在时返回 400；北极星不可达等上游故障返回 500。
+//
+//	@ID			UpdateImportedPolaris
+//	@Summary	修改从现有引入的北极星服务
+//	@Tags		polaris-config
+//	@Accept		json
+//	@Produce	json
+//	@Security	BkUserInfo
+//	@Security	BkUserCredential
+//	@Param		appID	path		string										true	"应用 ID"
+//	@Param		body	body		serializer.UpdateImportedPolarisInput	true	"请求体"
+//	@Success	200		{object}	nil
+//	@Failure	400		{object}	bkerrs.GinErrorOutput
+//	@Router		/apps/{appID}/deps/polaris-configs/imported-service [put]
+func (h *Handler) UpdateImportedPolaris(c *gin.Context) {
+	var uriInput serializer.AppURIInput
+	var jsonInput serializer.UpdateImportedPolarisInput
+	if err := ginutils.BindURIJSON(c, &uriInput, &jsonInput); err != nil {
+		bkerrs.AbortWithErr(c, err)
+		return
+	}
+
+	ctx := c.Request.Context()
+	app, err := perm.ValidateAppByID(ctx, h.registry, uriInput.AppID, perm.TypeEdit)
+	if err != nil {
+		bkerrs.AbortWithErr(c, err)
+		return
+	}
+
+	enabled := *jsonInput.EnableWeightFactor
+	if err = h.polarisConfigService().UpdateImportedPolaris(
+		ctx, jsonInput.PolarisName, jsonInput.PolarisNamespace, jsonInput.PolarisToken, enabled,
+	); err != nil {
+		if polaris.IsClientRequestError(err) {
+			bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidRequest, err.Error()))
+			return
+		}
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "update polaris weight factor"))
+		return
+	}
+
+	go audit.AddOperationRecordAsync(
+		c.Request.Context(),
+		audit.OperationTypeUpdate,
+		audit.ResourceTypeApp,
+		app.ID,
+		audit.WithAttribute(audit.AttributePolaris),
+		audit.WithDataAfter(map[string]any{
+			"polarisName":        jsonInput.PolarisName,
+			"polarisNamespace":   jsonInput.PolarisNamespace,
+			"enableWeightFactor": enabled,
+		}),
+		audit.WithWorkspaceID(app.WorkspaceID),
+		audit.WithAppID(app.ID),
+	)
+
+	ginutils.OK(c, nil)
 }
 
 // PutEnvWeight 更新指定环境的北极星实例权重。
@@ -572,7 +658,11 @@ func (h *Handler) PutEnvWeight(c *gin.Context) {
 		audit.WithAppID(app.ID),
 	)
 
-	ginutils.OK(c, new(serializer.PutEnvWeightOutput).FromModel(updatedConfig))
+	output := new(serializer.PutEnvWeightOutput).FromModel(updatedConfig)
+	h.fillWithRemote(
+		ctx, []*polaris.PolarisConfig{updatedConfig}, []*serializer.PolarisConfigOutputObj{output.Data},
+	)
+	ginutils.OK(c, output)
 }
 
 // GetEnvInstanceStats 获取北极星配置在各环境下的实例统计。
@@ -625,4 +715,23 @@ func (h *Handler) GetEnvInstanceStats(c *gin.Context) {
 	}
 
 	ginutils.OK(c, new(serializer.GetEnvInstanceStatsOutput).FromModel(stats))
+}
+
+// fillWithRemote 用北极星线上服务填充以北极星为准的字段，查不到时保持为空。
+func (h *Handler) fillWithRemote(
+	ctx context.Context,
+	configs []*polaris.PolarisConfig,
+	outputs []*serializer.PolarisConfigOutputObj,
+) {
+	services := h.polarisConfigService().GetRemoteServices(ctx, configs)
+	for _, out := range outputs {
+		if out == nil {
+			continue
+		}
+		svc := services[out.Name]
+		if svc == nil {
+			continue
+		}
+		out.EnableWeightFactor = lo.ToPtr(svc.EnableWeightFactor)
+	}
 }

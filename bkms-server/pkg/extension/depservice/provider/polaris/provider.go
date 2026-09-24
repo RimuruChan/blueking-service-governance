@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -36,6 +37,13 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/metrics"
 )
 
+var (
+	// ErrUnauthorized Token 无效或没有写权限。
+	ErrUnauthorized = errors.New("polaris token is invalid or has no write permission")
+	// ErrServiceNotFound 北极星上不存在对应服务。
+	ErrServiceNotFound = errors.New("polaris service not found")
+)
+
 // Provider implements ServiceProvider for Polaris
 type Provider struct {
 	httpCli *http.Client
@@ -45,6 +53,25 @@ type Provider struct {
 // Config represents the Polaris provider configuration
 type Config struct {
 	BaseURL string `mapstructure:"baseUrl"`
+}
+
+// RemoteService 北极星 GET /naming/v1/services 返回的服务对象。
+type RemoteService struct {
+	Name       string            `json:"name"`
+	Namespace  string            `json:"namespace"`
+	Metadata   map[string]string `json:"metadata"`
+	Ports      string            `json:"ports"`
+	Business   string            `json:"business"`
+	Department string            `json:"department"`
+	Comment    string            `json:"comment"`
+	Owners     string            `json:"owners"`
+	Ctime      string            `json:"ctime"`
+	Mtime      string            `json:"mtime"`
+	Revision   string            `json:"revision"`
+	PlatformID string            `json:"platform_id"`
+	CmdbMod1   string            `json:"cmdb_mod1"`
+	CmdbMod2   string            `json:"cmdb_mod2"`
+	CmdbMod3   string            `json:"cmdb_mod3"`
 }
 
 // parseConfig parses the plan config into Polaris Config
@@ -253,8 +280,26 @@ func (p *Provider) updateService(
 	return err
 }
 
-// getServiceMetadata 查询北极星服务当前 metadata，供更新时合并。
-func (p *Provider) getServiceMetadata(ctx context.Context, name, namespace string) (map[string]string, error) {
+// GetAndValidateService 拉取北极星线上服务并验证 Token 是否合法，不会实际修改服务内容
+func (p *Provider) GetAndValidateService(ctx context.Context, name, namespace, token string) (*RemoteService, error) {
+	if token == "" {
+		return nil, errors.New("token is required")
+	}
+	svc, err := p.GetService(ctx, name, namespace)
+	if err != nil {
+		return nil, err
+	}
+	if err = p.updateService(ctx, name, namespace, token, "", nil, false); err != nil {
+		return nil, errors.Wrap(err, "verify polaris token")
+	}
+	return svc, nil
+}
+
+// GetService 只读查询北极星服务完整对象，不校验 Token。
+func (p *Provider) GetService(ctx context.Context, name, namespace string) (*RemoteService, error) {
+	if name == "" || namespace == "" {
+		return nil, errors.New("name and namespace are required")
+	}
 	query := url.Values{}
 	query.Set("name", name)
 	query.Set("namespace", namespace)
@@ -265,7 +310,19 @@ func (p *Provider) getServiceMetadata(ctx context.Context, name, namespace strin
 	if err != nil {
 		return nil, err
 	}
-	return parseServiceMetadata(respBody, name, namespace)
+	return parseMatchingService(respBody, name, namespace)
+}
+
+// getServiceMetadata 查询北极星服务当前 metadata，供更新时合并。
+func (p *Provider) getServiceMetadata(ctx context.Context, name, namespace string) (map[string]string, error) {
+	svc, err := p.GetService(ctx, name, namespace)
+	if err != nil {
+		return nil, err
+	}
+	if svc.Metadata == nil {
+		return map[string]string{}, nil
+	}
+	return svc.Metadata, nil
 }
 
 // deleteService calls Polaris API to delete a service
@@ -312,18 +369,23 @@ func (p *Provider) doRequest(ctx context.Context, method, path string, body any)
 		return nil, errors.Wrap(err, "read response body")
 	}
 
-	// 非 200 状态码，尝试从 info 字段获取错误信息
-	if resp.StatusCode != http.StatusOK {
-		if info := gjson.GetBytes(respBody, "info"); info.Exists() && info.String() != "" {
-			return nil, errors.Errorf("polaris api error: %s", info.String())
-		}
-		return nil, errors.Errorf("polaris api error: status %d, body: %s", resp.StatusCode, string(respBody))
+	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+		return nil, errors.Wrap(ErrUnauthorized, polarisAPIErrorText(resp.StatusCode, respBody))
 	}
-
+	if resp.StatusCode != http.StatusOK {
+		return nil, errors.New(polarisAPIErrorText(resp.StatusCode, respBody))
+	}
 	return respBody, nil
 }
 
-func parseServiceMetadata(respBody []byte, name, namespace string) (map[string]string, error) {
+func polarisAPIErrorText(status int, body []byte) string {
+	if info := gjson.GetBytes(body, "info"); info.Exists() && info.String() != "" {
+		return "polaris api error: " + info.String()
+	}
+	return fmt.Sprintf("polaris api error: status %d, body: %s", status, string(body))
+}
+
+func parseMatchingService(respBody []byte, name, namespace string) (*RemoteService, error) {
 	services := gjson.GetBytes(respBody, "services")
 	if !services.IsArray() {
 		return nil, errors.New("invalid polaris services response")
@@ -332,21 +394,16 @@ func parseServiceMetadata(respBody []byte, name, namespace string) (map[string]s
 		if svc.Get("name").String() != name || svc.Get("namespace").String() != namespace {
 			continue
 		}
-		return gjsonObjectToStringMap(svc.Get("metadata")), nil
+		var parsed RemoteService
+		if err := json.Unmarshal([]byte(svc.Raw), &parsed); err != nil {
+			return nil, errors.Wrap(err, "decode polaris service")
+		}
+		if parsed.Metadata == nil {
+			parsed.Metadata = map[string]string{}
+		}
+		return &parsed, nil
 	}
-	return nil, errors.New("polaris service not found")
-}
-
-func gjsonObjectToStringMap(obj gjson.Result) map[string]string {
-	result := make(map[string]string)
-	if !obj.IsObject() {
-		return result
-	}
-	obj.ForEach(func(key, value gjson.Result) bool {
-		result[key.String()] = value.String()
-		return true
-	})
-	return result
+	return nil, ErrServiceNotFound
 }
 
 // mergeServiceMetadata 以 existing 为底，先写入 overlay，再删除指定键。

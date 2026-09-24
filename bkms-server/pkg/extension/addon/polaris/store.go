@@ -44,18 +44,6 @@ const (
 // envStates 不属于此列——它记录的是系统观测到的部署事实，清理时机与写入方都不同。
 var envSettingFields = []string{envWeightsField, envDynamicWeightsField}
 
-// 错误定义
-var (
-	// ErrConfigNotFound 北极星配置不存在
-	ErrConfigNotFound = errors.New("polaris config not found")
-	// ErrConfigNameExists 北极星配置名称已存在
-	ErrConfigNameExists = errors.New("polaris config name already exists")
-	// ErrOperatorEmpty 不允许将负责人清空
-	ErrOperatorEmpty = errors.New("operator cannot be empty")
-	// ErrNotManaged 仅平台创建的北极星服务允许设置需同步北极星的字段（负责人、权重因子）
-	ErrNotManaged = errors.New("field can only be set for platform-created polaris services")
-)
-
 // PolarisConfigStore 北极星配置存储接口
 type PolarisConfigStore interface {
 	// Create 创建北极星配置
@@ -201,10 +189,6 @@ func (s *PolarisConfigStoreMongo) Update(
 	}
 	if updateData.EnableHealthCheck != nil {
 		updateSet["enableHealthCheck"] = *updateData.EnableHealthCheck
-		needUpdate = true
-	}
-	if updateData.EnableWeightFactor != nil {
-		updateSet["enableWeightFactor"] = *updateData.EnableWeightFactor
 		needUpdate = true
 	}
 	if updateData.ServiceLabels != nil {

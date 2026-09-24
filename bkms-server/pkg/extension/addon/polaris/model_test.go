@@ -21,8 +21,10 @@ package polaris_test
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/pkg/errors"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
+	polarisprovider "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/depservice/provider/polaris"
 )
 
 var _ = Describe("PolarisConfig", func() {
@@ -120,4 +122,32 @@ var _ = Describe("PolarisConfig", func() {
 			Expect(config.GetEnvWeight("dev")).To(BeZero())
 		})
 	})
+})
+
+var _ = Describe("enableWeightFactorFromMetadata", func() {
+	It("should be true only when polaris metadata enables dynamic weight", func() {
+		Expect(polaris.EnableWeightFactorFromMetadata(nil)).To(BeFalse())
+		Expect(polaris.EnableWeightFactorFromMetadata(map[string]string{})).To(BeFalse())
+		Expect(polaris.EnableWeightFactorFromMetadata(map[string]string{
+			"internal-enable-dynamic-weight": "false",
+		})).To(BeFalse())
+		Expect(polaris.EnableWeightFactorFromMetadata(map[string]string{
+			"internal-enable-dynamic-weight": "true",
+		})).To(BeTrue())
+	})
+})
+
+var _ = Describe("IsClientRequestError", func() {
+	DescribeTable("classifies imported client errors",
+		func(err error, want bool) {
+			Expect(polaris.IsClientRequestError(err)).To(Equal(want))
+		},
+		Entry("unauthorized", polarisprovider.ErrUnauthorized, true),
+		Entry("service not found", polarisprovider.ErrServiceNotFound, true),
+		Entry("operator empty", polaris.ErrOperatorEmpty, true),
+		Entry("not managed", polaris.ErrNotManaged, true),
+		Entry("wrapped unauthorized", errors.Wrap(polarisprovider.ErrUnauthorized, "update imported"), true),
+		Entry("timeout is not a client error", errors.New("context deadline exceeded"), false),
+		Entry("generic polaris failure", errors.New("polaris api error: status 500"), false),
+	)
 })

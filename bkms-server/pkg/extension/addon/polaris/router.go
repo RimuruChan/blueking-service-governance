@@ -28,6 +28,8 @@ type PolarisConfigHandler interface {
 	DeleteAppPolarisConfig(c *gin.Context)
 	ListAppPolarisConfigVars(c *gin.Context)
 	ValidateAppPolarisConfig(c *gin.Context)
+	GetImportedPolarisService(c *gin.Context)
+	UpdateImportedPolaris(c *gin.Context)
 	PutEnvWeight(c *gin.Context)
 	GetEnvInstanceStats(c *gin.Context)
 }
@@ -47,6 +49,10 @@ func Register(rg *gin.RouterGroup, h PolarisConfigHandler) {
 	rg.GET("/apps/:appID/deps/polaris-configs/:configName/vars", h.ListAppPolarisConfigVars)
 	// 校验北极星配置（创建前预校验）
 	rg.POST("/apps/:appID/deps/polaris-configs/validate", h.ValidateAppPolarisConfig)
+	// 获取从现有引入的北极星服务信息
+	rg.POST("/apps/:appID/deps/polaris-configs/imported-service", h.GetImportedPolarisService)
+	// 修改从现有引入的北极星服务
+	rg.PUT("/apps/:appID/deps/polaris-configs/imported-service", h.UpdateImportedPolaris)
 
 	// 更新已部署环境的北极星实例权重
 	rg.PUT("/apps/:appID/deps/polaris-configs/:configName/envs/:envName/weight", h.PutEnvWeight)
