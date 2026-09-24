@@ -205,7 +205,7 @@ func (h *Handler) CreateHelmDeploy(c *gin.Context) {
 		bkerrs.AbortWithErr(c, err)
 		return
 	}
-	if err = checkVisibleEnv(app, env); err != nil {
+	if err = app.CheckVisibleEnv(env); err != nil {
 		bkerrs.AbortWithErr(c, err)
 		return
 	}

@@ -61,7 +61,7 @@ func validateEnvNames(ctx context.Context, cli client.Client, appID string, envN
 }
 
 // validateDeployEnvs 校验部署目标环境：先确认环境存在，再按应用可见环境名单拦截。
-// 两项校验共用同一份环境列表和应用详情，应用详情一并返回供调用方复用，避免重复请求。
+// 两项校验共用同一份环境列表；返回拉取到的应用详情，precheck 用它做类型路由。
 // 环境不存在时直接返回，不再退化成可见环境错误；拉取应用详情失败时不得跳过可见环境校验。
 func validateDeployEnvs(
 	ctx context.Context,
@@ -114,7 +114,7 @@ func checkVisibleEnvs(app *client.AppFull, envs []client.Env, envNames []string)
 	})
 	denied := lo.Filter(envNames, func(name string, _ int) bool {
 		env := envByName[name]
-		isOwnFeatureEnv := env.Kind == "feature" && env.OwnerAppID == app.ID
+		isOwnFeatureEnv := env.Kind == client.EnvKindFeature && env.OwnerAppID == app.ID
 		return !isOwnFeatureEnv && !lo.Contains(app.VisibleEnvNames, name)
 	})
 	if len(denied) == 0 {

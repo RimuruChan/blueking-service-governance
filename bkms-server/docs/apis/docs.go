@@ -32490,9 +32490,12 @@ const docTemplate = `{
         },
         "serializer.UpdateAppVisibleEnvsInput": {
             "type": "object",
+            "required": [
+                "visibleEnvNames"
+            ],
             "properties": {
                 "visibleEnvNames": {
-                    "description": "可见标准环境名称；空数组表示清空配置",
+                    "description": "可见标准环境名称，必填；显式传空数组表示清空配置",
                     "type": "array",
                     "items": {
                         "type": "string"

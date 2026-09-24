@@ -142,6 +142,45 @@ var _ = Describe("App deploy status serializers", func() {
 			"failed on the 'uri_slug' tag",
 		}),
 	)
+
+	DescribeTable(
+		"UpdateAppVisibleEnvsInput validation",
+		func(input serializer.UpdateAppVisibleEnvsInput, expectedErrSubstrings []string) {
+			err := binding.Validator.ValidateStruct(input)
+			if len(expectedErrSubstrings) == 0 {
+				Expect(err).NotTo(HaveOccurred())
+				return
+			}
+
+			Expect(err).To(HaveOccurred())
+			for _, expected := range expectedErrSubstrings {
+				Expect(err.Error()).To(ContainSubstring(expected))
+			}
+		},
+		Entry("valid env names", serializer.UpdateAppVisibleEnvsInput{
+			VisibleEnvNames: lo.ToPtr([]string{"test", "stag"}),
+		}, nil),
+		Entry("explicit empty list clears the config", serializer.UpdateAppVisibleEnvsInput{
+			VisibleEnvNames: lo.ToPtr([]string{}),
+		}, nil),
+		// 请求体缺字段或传 null 都会解出 nil，不能被当成清空
+		Entry("missing or null list", serializer.UpdateAppVisibleEnvsInput{}, []string{
+			"UpdateAppVisibleEnvsInput.VisibleEnvNames",
+			"failed on the 'required' tag",
+		}),
+		Entry("duplicate env names", serializer.UpdateAppVisibleEnvsInput{
+			VisibleEnvNames: lo.ToPtr([]string{"test", "test"}),
+		}, []string{
+			"UpdateAppVisibleEnvsInput.VisibleEnvNames",
+			"failed on the 'unique' tag",
+		}),
+		Entry("invalid env name", serializer.UpdateAppVisibleEnvsInput{
+			VisibleEnvNames: lo.ToPtr([]string{" test "}),
+		}, []string{
+			"UpdateAppVisibleEnvsInput.VisibleEnvNames[0]",
+			"failed on the 'uri_slug' tag",
+		}),
+	)
 })
 
 var _ = Describe("App serializers", func() {
