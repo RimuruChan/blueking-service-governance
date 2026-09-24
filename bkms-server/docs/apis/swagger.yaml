@@ -4967,6 +4967,11 @@ definitions:
       data:
         $ref: '#/definitions/serializer.GetEnvApmOutput'
     type: object
+  serializer.GetEnvByNameOutput:
+    properties:
+      data:
+        $ref: '#/definitions/serializer.EnvOutput'
+    type: object
   serializer.GetEnvInstanceStatsOutput:
     properties:
       data:
@@ -21015,6 +21020,37 @@ paths:
       - BkUserInfo: []
       - BkUserCredential: []
       summary: 创建部署环境
+      tags:
+      - env
+  /workspaces/{workspaceID}/envs/{envName}:
+    get:
+      operationId: GetEnvByName
+      parameters:
+      - description: 工作空间 ID
+        in: path
+        name: workspaceID
+        required: true
+        type: string
+      - description: 环境名称，支持标准环境和特性环境
+        in: path
+        name: envName
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/serializer.GetEnvByNameOutput'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/bkerrs.GinErrorOutput'
+      security:
+      - BkUserInfo: []
+      - BkUserCredential: []
+      summary: 按工作空间和名称获取环境信息
       tags:
       - env
   /workspaces/{workspaceID}/envs/{envName}/traffic-lanes:

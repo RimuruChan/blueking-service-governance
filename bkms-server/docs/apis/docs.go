@@ -18095,6 +18095,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/workspaces/{workspaceID}/envs/{envName}": {
+            "get": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "env"
+                ],
+                "summary": "按工作空间和名称获取环境信息",
+                "operationId": "GetEnvByName",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "工作空间 ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "环境名称，支持标准环境和特性环境",
+                        "name": "envName",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/serializer.GetEnvByNameOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            }
+        },
         "/workspaces/{workspaceID}/envs/{envName}/traffic-lanes": {
             "get": {
                 "security": [
@@ -26150,6 +26200,14 @@ const docTemplate = `{
             "properties": {
                 "data": {
                     "$ref": "#/definitions/serializer.GetEnvApmOutput"
+                }
+            }
+        },
+        "serializer.GetEnvByNameOutput": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/serializer.EnvOutput"
                 }
             }
         },

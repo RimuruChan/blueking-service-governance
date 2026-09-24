@@ -435,6 +435,43 @@ func (h *Handler) GetEnv(c *gin.Context) {
 	})
 }
 
+// GetEnvByName 按工作空间和名称获取标准环境或特性环境信息。
+//
+// @ID GetEnvByName
+// @Summary 按工作空间和名称获取环境信息
+// @Tags env
+// @Produce json
+// @Security BkUserInfo
+// @Security BkUserCredential
+// @Param workspaceID path string true "工作空间 ID"
+// @Param envName path string true "环境名称，支持标准环境和特性环境"
+// @Success 200 {object} serializer.GetEnvByNameOutput
+// @Failure 400 {object} bkerrs.GinErrorOutput
+// @Router /workspaces/{workspaceID}/envs/{envName} [get]
+func (h *Handler) GetEnvByName(c *gin.Context) {
+	var uriInput serializer.WorkspaceEnvNameURIInput
+	if err := ginutils.BindURI(c, &uriInput); err != nil {
+		bkerrs.AbortWithErr(c, err)
+		return
+	}
+
+	ctx := c.Request.Context()
+	if _, err := ginperm.ValidateWorkspaceByID(ctx, h.registry, uriInput.WorkspaceID, ginperm.TypeView); err != nil {
+		bkerrs.AbortWithErr(c, err)
+		return
+	}
+
+	env, err := h.registry.EnvStore.GetByWorkspaceAndName(ctx, uriInput.WorkspaceID, uriInput.EnvName)
+	if err != nil {
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidRequest, "get env by workspace and name"))
+		return
+	}
+
+	ginutils.OK(c, serializer.GetEnvByNameOutput{
+		Data: new(serializer.EnvOutput).FromModel(*env),
+	})
+}
+
 // UpdateEnvBasicInfo 更新部署环境基本信息。
 //
 //	@ID				UpdateEnvBasicInfo

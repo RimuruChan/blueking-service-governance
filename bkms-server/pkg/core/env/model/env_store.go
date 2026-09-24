@@ -390,7 +390,12 @@ func (s *EnvironmentStoreMongo) Get(ctx context.Context, envID bson.ObjectID) (*
 func (s *EnvironmentStoreMongo) GetByWorkspaceAndName(
 	ctx context.Context, workspaceID, name string,
 ) (*Environment, error) {
-	return s.findOne(ctx, bson.M{"workspaceID": workspaceID, "name": name})
+	env, err := s.findOne(ctx, bson.M{"workspaceID": workspaceID, "name": name})
+	if err != nil {
+		return nil, errors.Wrapf(err, "get environment %s in workspace %s", name, workspaceID)
+	}
+	env.Status = getEnvStatusByCluster(env.Cluster)
+	return env, nil
 }
 
 // GetByName gets an environment by workspace id and name.

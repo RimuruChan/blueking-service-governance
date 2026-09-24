@@ -458,6 +458,11 @@ type GetEnvOutput struct {
 	Data *EnvDetailOutput `json:"data"`
 }
 
+// GetEnvByNameOutput is the JSON response for looking up an environment by name.
+type GetEnvByNameOutput struct {
+	Data *EnvOutput `json:"data"`
+}
+
 // -----------------------------------------------------------------------------
 // Update env API serializers
 // -----------------------------------------------------------------------------
