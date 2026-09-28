@@ -44,6 +44,7 @@ You can filter results using the --keyword flag.`,
 			if err != nil {
 				return errors.Wrap(err, "list workspaces")
 			}
+			workspaces = filterEnabledWorkspaces(workspaces)
 			formatted, err := output.FormatData(cmd.Context(), workspaces, outputFormat)
 			if err != nil {
 				return errors.Wrap(err, "format output")
@@ -57,4 +58,15 @@ You can filter results using the --keyword flag.`,
 	output.AddFormatFlag(cmd, &outputFormat)
 
 	return cmd
+}
+
+// filterEnabledWorkspaces 过滤掉已停用（Disabled）的工作空间，仅保留启用中（Ready）的工作空间。
+func filterEnabledWorkspaces(workspaces []client.Workspace) []client.Workspace {
+	enabled := make([]client.Workspace, 0, len(workspaces))
+	for _, ws := range workspaces {
+		if ws.State == client.WorkspaceStateReady {
+			enabled = append(enabled, ws)
+		}
+	}
+	return enabled
 }
