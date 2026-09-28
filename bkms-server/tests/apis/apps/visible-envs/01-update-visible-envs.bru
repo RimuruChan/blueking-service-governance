@@ -1,7 +1,7 @@
 meta {
-  name: 04-update-visible-envs
+  name: 01-update-visible-envs
   type: http
-  seq: 4
+  seq: 1
 }
 
 put {
@@ -12,10 +12,7 @@ put {
 
 body:json {
   {
-    "visibleEnvNames": [
-      "{{visEnvListedEnvName}}",
-      "{{visEnvListedEnvName2}}"
-    ]
+    "visibleEnvNames": ["{{visEnvListedEnvName}}"]
   }
 }
 
@@ -25,7 +22,7 @@ assert {
 }
 
 tests {
-  // 成功响应不回显名单，落库结果由 05 号 GET 应用详情确认
+  // 成功响应不回显名单，落库结果由 02 号 GET 应用详情确认
   test("should accept a list of workspace standard env names", () => {
     expect(res.status).to.equal(200);
   });

@@ -1,7 +1,7 @@
 meta {
-  name: 06-reject-unknown-env-name
+  name: 03-reject-unknown-env-name
   type: http
-  seq: 6
+  seq: 3
 }
 
 put {
@@ -22,7 +22,7 @@ assert {
 }
 
 tests {
-  // AC-006：含未知 name 时整单拒绝，错误信息列出不合法的 name
+  // 含未知 name 时整单拒绝，错误信息列出不合法的 name
   test("should reject the whole update when a name is not a workspace standard env", () => {
     expect(res.body.error).to.be.an("object");
     expect(res.body.error.code).to.equal("INVALID_REQUEST");

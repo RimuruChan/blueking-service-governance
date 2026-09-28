@@ -1,7 +1,7 @@
 meta {
-  name: 12-deploy-unlisted-env
+  name: 04-deploy-unlisted-env
   type: http
-  seq: 12
+  seq: 4
 }
 
 post {
@@ -23,8 +23,7 @@ assert {
 }
 
 script:post-response {
-  // AC-002 要求「不产生新的部署记录」：拦截发生在创建记录和触达集群之前，
-  // 这里顺带查一次列表确认没有残留。
+  // 拦截发生在创建记录和触达集群之前，这里顺带查一次列表确认没有残留。
   const axios = require("axios");
   const {AUTH_HEADERS} = require("./common");
 
@@ -39,7 +38,6 @@ script:post-response {
 }
 
 tests {
-  // AC-002：已配置时部署到名单外标准环境返回 400，信息含环境名与「可见环境」
   test("should reject a deploy to an unlisted standard env", () => {
     expect(res.body.error.code).to.equal("INVALID_REQUEST");
     expect(res.body.error.message).to.contain(bru.getVar("visEnvUnlistedEnvName"));

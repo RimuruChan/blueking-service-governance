@@ -85,8 +85,6 @@ var _ = Describe("Env delete hooks from app visible envs", func() {
 		appB, err = appStore.GetApp(ctx, appB.ID)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(appB.VisibleEnvNames).To(BeEmpty())
-		// 摘掉最后一个 name 后名单为空，按 R-001 等同「未配置」，appB 不再受可见环境限制。
-		// 这是有意接受的取舍，改动此行为前先看 NewCleanupVisibleEnvNamesHook 的说明。
 	})
 
 	It("should leave other workspaces' visible env names unchanged", func() {
