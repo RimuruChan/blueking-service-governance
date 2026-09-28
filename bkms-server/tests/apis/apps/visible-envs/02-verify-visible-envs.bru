@@ -1,0 +1,27 @@
+meta {
+  name: 02-verify-visible-envs
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{serviceURL}}/apps/{{visEnvAppID}}
+  body: none
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body: isJson
+}
+
+tests {
+  test("should return the configured visible env names on app detail", () => {
+    expect(res.body.data.visibleEnvNames).to.deep.equal([bru.getVar("visEnvListedEnvName")]);
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
