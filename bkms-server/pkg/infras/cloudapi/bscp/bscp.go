@@ -137,7 +137,7 @@ func (c *ApiClient) ListBizServices(ctx context.Context, bizID string) ([]Servic
 			Path:   "/api/v1/config/list/app/app/biz_id/{biz_id}",
 		},
 		bkapi.OptSetRequestPathParams(map[string]string{"biz_id": bizID}),
-		bkapi.OptSetRequestQueryParam("all", "true"),
+		bkapi.OptSetRequestBody(map[string]any{"all": true}),
 	)
 
 	result, err := c.handleOperation(ctx, op)
@@ -304,7 +304,7 @@ func (c *ApiClient) listServiceFiles(ctx context.Context, bizID, svcID, versionI
 			Path:   "/api/v1/config/biz/{biz_id}/apps/{app_id}/releases/{release_id}/config_items",
 		},
 		bkapi.OptSetRequestPathParams(map[string]string{"biz_id": bizID, "app_id": svcID, "release_id": versionID}),
-		bkapi.OptSetRequestQueryParam("all", "true"),
+		bkapi.OptSetRequestBody(map[string]any{"all": true}),
 	)
 
 	result, err := c.handleOperation(ctx, op)
@@ -412,11 +412,11 @@ func (c *ApiClient) listServiceKeyValues(ctx context.Context, bizID, svcID, vers
 	op := c.NewOperation(
 		bkapi.OperationConfig{
 			Name:   "list_released_kv",
-			Method: "GET",
+			Method: "POST",
 			Path:   "/api/v1/config/biz/{biz_id}/apps/{app_id}/releases/{release_id}/kvs",
 		},
 		bkapi.OptSetRequestPathParams(map[string]string{"biz_id": bizID, "app_id": svcID, "release_id": versionID}),
-		bkapi.OptSetRequestQueryParam("all", "true"),
+		bkapi.OptSetRequestBody(map[string]any{"all": true}),
 	)
 
 	result, err := c.handleOperation(ctx, op)
