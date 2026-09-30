@@ -134,9 +134,10 @@ func createApplication(
 			AppConfigFileVersionStore: stores.AppConfigFileVersionStore,
 			BuildConfigStore:          stores.BuildConfigStore,
 		}, &dbfactory.TrpcApplicationOpts{
-			TrpcConfig: trpcConfig,
-			EnvVars:    envVars,
-			Components: components,
+			TrpcConfig:  trpcConfig,
+			EnvVars:     envVars,
+			Components:  components,
+			WorkspaceID: newWorkspaceID(ctx),
 		})
 	case bkmsapp.AppTypeTAF:
 		tafConfig := &appmodel.TafConfig{
@@ -152,9 +153,10 @@ func createApplication(
 			AppConfigFileVersionStore: stores.AppConfigFileVersionStore,
 			BuildConfigStore:          stores.BuildConfigStore,
 		}, &dbfactory.TafApplicationOpts{
-			TafConfig:  tafConfig,
-			EnvVars:    envVars,
-			Components: components,
+			TafConfig:   tafConfig,
+			EnvVars:     envVars,
+			Components:  components,
+			WorkspaceID: newWorkspaceID(ctx),
 		})
 	default:
 		return nil, nil
@@ -216,6 +218,7 @@ var _ = Describe("Builder Shared Tests", func() {
 	})
 
 	AfterEach(func() {
+		cleanupWorkspaces(ctx)
 		diApp.RequireStop()
 	})
 

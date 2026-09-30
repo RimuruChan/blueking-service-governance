@@ -2547,6 +2547,12 @@ definitions:
       bkBCSProjectID:
         description: 蓝鲸容器服务（BCS）项目 ID
         type: string
+      bkBSCPProjectID:
+        description: BSCP 项目 ID
+        type: string
+      bkBSCPProjectKey:
+        description: BSCP 项目 Key（如 BK-BSCP-00012）
+        type: string
       bkCCBizID:
         description: bkcc 业务 ID
         type: string
@@ -2564,6 +2570,9 @@ definitions:
         type: string
       bkRepoProjectID:
         description: 蓝盾制品库项目 ID
+        type: string
+      bscpCredentialID:
+        description: BSCP Credential ID
         type: string
       isBoundExistedBKCIProject:
         description: 是否绑定已有蓝盾项目
@@ -4238,25 +4247,19 @@ definitions:
     properties:
       appID:
         type: string
-      apps:
-        items:
-          $ref: '#/definitions/serializer.ServiceRefOutput'
-        type: array
-      bscpBizID:
+      bscpAppID:
+        type: string
+      bscpEnvID:
+        type: string
+      bscpEnvName:
         type: string
       createdAt:
         type: string
-      defaultFileAppID:
-        type: string
       envName:
-        type: string
-      feedAddr:
         type: string
       mountPath:
         type: string
       operator:
-        type: string
-      token:
         type: string
       updatedAt:
         type: string
@@ -6315,21 +6318,15 @@ definitions:
     properties:
       appID:
         type: string
-      bscpBizID:
-        type: string
       createdAt:
         type: string
-      credentialName:
-        type: string
-      feedAddr:
-        type: string
+      enable:
+        type: boolean
       mountPath:
         type: string
       operator:
         type: string
       postHookID:
-        type: string
-      token:
         type: string
       updatedAt:
         type: string
@@ -6829,14 +6826,6 @@ definitions:
         description: 额外 Kubernetes 资源 YAML 模板列表（传入时全量替换）
         items:
           type: string
-        type: array
-    type: object
-  serializer.PatchEnvBindingInput:
-    properties:
-      apps:
-        description: Services 绑定的下发服务列表（全量替换）
-        items:
-          $ref: '#/definitions/serializer.ServiceRefInput'
         type: array
     type: object
   serializer.PatchMetadataInput:
@@ -8360,23 +8349,6 @@ definitions:
       targetPort:
         type: string
     type: object
-  serializer.ServiceRefInput:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-    required:
-    - id
-    - name
-    type: object
-  serializer.ServiceRefOutput:
-    properties:
-      id:
-        type: string
-      name:
-        type: string
-    type: object
   serializer.SetAppDefaultAppSpecLifecycleInput:
     properties:
       appSpecLifecycle:
@@ -9160,6 +9132,7 @@ definitions:
         items:
           type: string
         type: array
+        uniqueItems: true
     required:
     - visibleEnvNames
     type: object
@@ -11319,46 +11292,6 @@ paths:
       - BkUserInfo: []
       - BkUserCredential: []
       summary: 获取指定环境的绑定详情
-      tags:
-      - bscpcfg
-    patch:
-      consumes:
-      - application/json
-      operationId: PatchBscpCfgEnvBinding
-      parameters:
-      - description: 应用 ID
-        in: path
-        name: appID
-        required: true
-        type: string
-      - description: 环境名称
-        in: path
-        name: envName
-        required: true
-        type: string
-      - description: 更新配置请求体
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/serializer.PatchEnvBindingInput'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/bkerrs.GinErrorOutput'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/bkerrs.GinErrorOutput'
-      security:
-      - BkUserInfo: []
-      - BkUserCredential: []
-      summary: 更新环境绑定（更新绑定的服务列表）
       tags:
       - bscpcfg
     post:

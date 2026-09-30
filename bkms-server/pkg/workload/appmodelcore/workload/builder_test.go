@@ -86,6 +86,7 @@ var _ = Describe("Builder", func() {
 	})
 
 	AfterEach(func() {
+		cleanupWorkspaces(ctx)
 		diApp.RequireStop()
 	})
 
@@ -96,7 +97,9 @@ var _ = Describe("Builder", func() {
 		var builder *workload.Builder
 
 		BeforeEach(func() {
-			app = dbfactory.Application(ctx, appStore)
+			app = dbfactory.ApplicationWithOpts(ctx, appStore, &dbfactory.ApplicationOpts{
+				WorkspaceID: newWorkspaceID(ctx),
+			})
 			envObj = dbfactory.Env(ctx, envSvc, app.WorkspaceID)
 
 			_, err := scopedEnvVarStore.CreateSimpleEnvScopeVar(ctx, *envObj, "ENV_VAR", "env_var", "")

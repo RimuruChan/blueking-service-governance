@@ -47,8 +47,6 @@ type Store interface {
 	CreateEnvBinding(ctx context.Context, binding *EnvBinding) error
 	// GetEnvBinding 获取指定 app+env 的绑定
 	GetEnvBinding(ctx context.Context, appID, envName string) (*EnvBinding, error)
-	// UpdateEnvBinding 更新绑定（可更新 services 数组）
-	UpdateEnvBinding(ctx context.Context, appID, envName string, updateData *EnvBindingUpdate) error
 	// DeleteEnvBinding 删除指定 app+env 的绑定
 	DeleteEnvBinding(ctx context.Context, appID, envName string) error
 
@@ -62,7 +60,7 @@ type Store interface {
 	GetSnapshot(ctx context.Context, appID, envName string) (*Snapshot, error)
 }
 
-// StoreMongo Store 的 MongoDB 实现，组合 Metadata 和 EnvBinding 存储
+// StoreMongo Store 的 MongoDB 实现，组合 Metadata、EnvBinding 存储
 type StoreMongo struct {
 	defStore     MetadataStore
 	bindingStore EnvBindingStore
@@ -120,15 +118,6 @@ func (s *StoreMongo) CreateEnvBinding(ctx context.Context, binding *EnvBinding) 
 // GetEnvBinding 获取指定 app+env 的绑定
 func (s *StoreMongo) GetEnvBinding(ctx context.Context, appID, envName string) (*EnvBinding, error) {
 	return s.bindingStore.Get(ctx, appID, envName)
-}
-
-// UpdateEnvBinding 更新绑定（可更新 services 数组）
-func (s *StoreMongo) UpdateEnvBinding(
-	ctx context.Context,
-	appID, envName string,
-	updateData *EnvBindingUpdate,
-) error {
-	return s.bindingStore.Update(ctx, appID, envName, updateData)
 }
 
 // DeleteEnvBinding 删除指定 app+env 的绑定

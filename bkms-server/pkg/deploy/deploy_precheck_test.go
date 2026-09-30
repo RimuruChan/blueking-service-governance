@@ -84,6 +84,8 @@ var _ = Describe("DeployPreChecker Check", func() {
 		polarisConfigStore        polaris.PolarisConfigStore
 		buildConfigStore          build.ConfigStore
 		workspaceCompsStore       workspace.WorkspaceCompsStore
+		workspaceStore            workspace.WorkspaceStore
+		createdWorkspaces         []string
 		envService                *env.EnvService
 		checker                   *DeployPreChecker
 		newApp                    func(*dbfactory.TrpcApplicationOpts) (*bkmsapp.Application, *envmodel.Environment)
@@ -121,6 +123,7 @@ var _ = Describe("DeployPreChecker Check", func() {
 				&polarisConfigStore,
 				&buildConfigStore,
 				&workspaceCompsStore,
+				&workspaceStore,
 				&envService,
 				&checker,
 				&clusterAddonDefStore,
@@ -135,7 +138,16 @@ var _ = Describe("DeployPreChecker Check", func() {
 			Return(nil, nil).
 			Build()
 
+		createdWorkspaces = nil
 		newApp = func(opts *dbfactory.TrpcApplicationOpts) (*bkmsapp.Application, *envmodel.Environment) {
+			if opts == nil {
+				opts = &dbfactory.TrpcApplicationOpts{}
+			}
+			// 构建 workload 时会按 app.WorkspaceID 查 workspace（BSCP 注入需要），
+			// 因此这里创建真实 workspace，避免 app 持有悬空的 WorkspaceID。
+			ws := dbfactory.Workspace(ctx, workspaceStore)
+			createdWorkspaces = append(createdWorkspaces, ws.ID)
+			opts.WorkspaceID = ws.ID
 			app, _ := dbfactory.TrpcApplication(ctx, &dbfactory.TrpcApplicationStores{
 				AppStore:                  appStore,
 				AppModelStore:             appModelStore,
@@ -150,6 +162,9 @@ var _ = Describe("DeployPreChecker Check", func() {
 
 	AfterEach(func() {
 		statusMock.UnPatch()
+		for _, id := range createdWorkspaces {
+			_ = workspaceStore.Delete(ctx, id)
+		}
 		fxApp.RequireStop()
 	})
 

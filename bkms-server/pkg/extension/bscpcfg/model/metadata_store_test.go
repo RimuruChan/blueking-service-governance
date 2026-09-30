@@ -57,14 +57,11 @@ var _ = Describe("MetadataStore", func() {
 		Context("when creating a valid metadata", func() {
 			It("should create successfully", func() {
 				meta := &model.Metadata{
-					AppID:          testAppID,
-					BscpBizID:      "12345",
-					MountPath:      "/data/bscp",
-					CredentialID:   "cred-1",
-					CredentialName: "bkms-credential",
-					Token:          "test-token",
-					FeedAddr:       "bscp-feed.example.com:9500",
-					Operator:       "tester",
+					AppID:        testAppID,
+					Enable:       true,
+					MountPath:    "/data/bscp",
+					WorkloadName: "test-workload",
+					Operator:     "tester",
 				}
 
 				err := store.Create(ctx, meta)
@@ -73,12 +70,10 @@ var _ = Describe("MetadataStore", func() {
 				// 验证写入
 				stored, err := store.Get(ctx, testAppID)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(stored.BscpBizID).To(Equal("12345"))
+				Expect(stored.Enable).To(BeTrue())
 				Expect(stored.MountPath).To(Equal("/data/bscp"))
-				Expect(stored.CredentialID).To(Equal("cred-1"))
-				Expect(stored.CredentialName).To(Equal("bkms-credential"))
-				Expect(stored.Token).To(Equal("test-token"))
-				Expect(stored.FeedAddr).To(Equal("bscp-feed.example.com:9500"))
+				Expect(stored.WorkloadName).To(Equal("test-workload"))
+				Expect(stored.Operator).To(Equal("tester"))
 				Expect(stored.CreatedAt).NotTo(BeZero())
 				Expect(stored.UpdatedAt).NotTo(BeZero())
 			})
@@ -88,7 +83,6 @@ var _ = Describe("MetadataStore", func() {
 			It("should return ErrMetadataAlreadyExists", func() {
 				meta := &model.Metadata{
 					AppID:     testAppID,
-					BscpBizID: "12345",
 					MountPath: "/data/bscp",
 				}
 				err := store.Create(ctx, meta)
@@ -96,7 +90,6 @@ var _ = Describe("MetadataStore", func() {
 
 				meta2 := &model.Metadata{
 					AppID:     testAppID,
-					BscpBizID: "12345",
 					MountPath: "/data/bscp2",
 				}
 				err = store.Create(ctx, meta2)
@@ -107,17 +100,6 @@ var _ = Describe("MetadataStore", func() {
 		Context("when required fields are missing", func() {
 			It("should return validation error for missing appID", func() {
 				meta := &model.Metadata{
-					BscpBizID: "12345",
-					MountPath: "/data/bscp",
-				}
-				err := store.Create(ctx, meta)
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("validation failed"))
-			})
-
-			It("should return validation error for missing bscpBizID", func() {
-				meta := &model.Metadata{
-					AppID:     testAppID,
 					MountPath: "/data/bscp",
 				}
 				err := store.Create(ctx, meta)
@@ -131,7 +113,7 @@ var _ = Describe("MetadataStore", func() {
 		BeforeEach(func() {
 			meta := &model.Metadata{
 				AppID:     testAppID,
-				BscpBizID: "99",
+				Enable:    true,
 				MountPath: "/etc/bscp",
 				Operator:  "admin",
 			}
@@ -143,7 +125,7 @@ var _ = Describe("MetadataStore", func() {
 			It("should return the meta", func() {
 				meta, err := store.Get(ctx, testAppID)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(meta.BscpBizID).To(Equal("99"))
+				Expect(meta.Enable).To(BeTrue())
 				Expect(meta.MountPath).To(Equal("/etc/bscp"))
 				Expect(meta.Operator).To(Equal("admin"))
 			})
@@ -161,26 +143,25 @@ var _ = Describe("MetadataStore", func() {
 		BeforeEach(func() {
 			meta := &model.Metadata{
 				AppID:     testAppID,
-				BscpBizID: "100",
+				Enable:    true,
 				MountPath: "/old/path",
-				Token:     "old-token",
 				Operator:  "user1",
 			}
 			err := store.Create(ctx, meta)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		Context("when updating token", func() {
-			It("should update token successfully", func() {
-				newToken := "new-token"
+		Context("when updating enable", func() {
+			It("should update enable successfully", func() {
+				newEnable := false
 				err := store.Update(ctx, testAppID, &model.MetadataUpdate{
-					Token: &newToken,
+					Enable: &newEnable,
 				})
 				Expect(err).NotTo(HaveOccurred())
 
 				updated, err := store.Get(ctx, testAppID)
 				Expect(err).NotTo(HaveOccurred())
-				Expect(updated.Token).To(Equal("new-token"))
+				Expect(updated.Enable).To(BeFalse())
 			})
 		})
 
@@ -225,9 +206,9 @@ var _ = Describe("MetadataStore", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				// 更新其他字段，workload 为 nil
-				newToken := "another-token"
+				newEnable := false
 				err = store.Update(ctx, testAppID, &model.MetadataUpdate{
-					Token: &newToken,
+					Enable: &newEnable,
 				})
 				Expect(err).NotTo(HaveOccurred())
 
@@ -235,7 +216,7 @@ var _ = Describe("MetadataStore", func() {
 				updated, err := store.Get(ctx, testAppID)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(updated.WorkloadName).To(Equal("existing-workload"))
-				Expect(updated.Token).To(Equal("another-token"))
+				Expect(updated.Enable).To(BeFalse())
 			})
 		})
 
@@ -266,7 +247,6 @@ var _ = Describe("MetadataStore", func() {
 		BeforeEach(func() {
 			meta := &model.Metadata{
 				AppID:     testAppID,
-				BscpBizID: "200",
 				MountPath: "/tmp",
 			}
 			err := store.Create(ctx, meta)
@@ -295,7 +275,6 @@ var _ = Describe("MetadataStore", func() {
 		BeforeEach(func() {
 			meta := &model.Metadata{
 				AppID:     testAppID,
-				BscpBizID: "100",
 				MountPath: "/data/bscp",
 				Operator:  "user1",
 			}
@@ -327,9 +306,9 @@ var _ = Describe("MetadataStore", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				// 更新其他字段，workloadKind 为 nil
-				newToken := "another-token"
+				newEnable := false
 				err = store.Update(ctx, testAppID, &model.MetadataUpdate{
-					Token: &newToken,
+					Enable: &newEnable,
 				})
 				Expect(err).NotTo(HaveOccurred())
 
@@ -337,7 +316,7 @@ var _ = Describe("MetadataStore", func() {
 				updated, err := store.Get(ctx, testAppID)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(updated.WorkloadKind).To(Equal("Deployment"))
-				Expect(updated.Token).To(Equal("another-token"))
+				Expect(updated.Enable).To(BeFalse())
 			})
 		})
 
@@ -370,7 +349,6 @@ var _ = Describe("MetadataStore", func() {
 
 				meta := &model.Metadata{
 					AppID:        anotherAppID,
-					BscpBizID:    "100",
 					MountPath:    "/data/bscp",
 					WorkloadKind: "Deployment",
 					WorkloadName: "my-deploy",
@@ -443,6 +421,16 @@ var _ = Describe("Metadata Model Logic", func() {
 			update.ApplyTo(meta)
 
 			Expect(meta.WorkloadKind).To(Equal(""))
+		})
+
+		It("should apply Enable when non-nil", func() {
+			meta := &model.Metadata{AppID: "app-1"}
+			enable := true
+			update := &model.MetadataUpdate{Enable: &enable}
+
+			update.ApplyTo(meta)
+
+			Expect(meta.Enable).To(BeTrue())
 		})
 
 		It("should handle nil update gracefully", func() {

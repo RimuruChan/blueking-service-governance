@@ -25,6 +25,8 @@ import (
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 
+	svccfg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg"
 )
 
@@ -38,11 +40,6 @@ const (
 	VolumeName = "bscp-temp"
 	// ShareVolumeName bscp-share volume 名称（sidecar 和主容器共享）
 	ShareVolumeName = "bscp-share"
-
-	// InitImage bscp-init 容器镜像
-	InitImage = "mirrors.tencent.com/bscp/bscp-init:latest"
-	// SidecarImage bscp-sidecar 容器镜像
-	SidecarImage = "mirrors.tencent.com/bscp/bscp-sidecar:latest"
 
 	// fileCacheDisabledArg 禁用文件缓存的启动参数
 	fileCacheDisabledArg = "--file-cache-enabled=false"
@@ -59,7 +56,7 @@ const (
 type Params struct {
 	// BscpBizID BSCP 业务 ID
 	BscpBizID string
-	// AppNames 绑定的服务名称列表（允许多个 bscp 配置，使用逗号分隔）
+	// AppNames 绑定的 BSCP App 名称（即 bkms appID）
 	AppNames string
 	// MountPath 业务容器指定的挂载路径
 	MountPath string
@@ -67,6 +64,14 @@ type Params struct {
 	FeedAddr string
 	// Token 服务秘钥
 	Token string
+	// ProjectKey BSCP 项目 Key（如 BK-BSCP-12345）
+	ProjectKey string
+	// EnvName BSCP 环境名称
+	EnvName string
+	// InitImage bscp-init 容器镜像
+	InitImage string
+	// SidecarImage bscp-sidecar 容器镜像
+	SidecarImage string
 }
 
 // PodFragment 装配产出的 pod 片段，待合并到完整 pod 中
@@ -94,6 +99,8 @@ func Build(params Params) *PodFragment {
 		{Name: "feed_addrs", Value: params.FeedAddr},
 		{Name: "token", Value: params.Token},
 		{Name: "temp_dir", Value: BscpDownloadPath},
+		{Name: "project_key", Value: params.ProjectKey},
+		{Name: "env_name", Value: params.EnvName},
 	}
 	// bscp-temp volumeMount
 	bscpTempMount := corev1.VolumeMount{
@@ -116,7 +123,7 @@ func Build(params Params) *PodFragment {
 		InitContainers: []corev1.Container{
 			{
 				Name:         InitContainerName,
-				Image:        InitImage,
+				Image:        params.InitImage,
 				Args:         []string{fileCacheDisabledArg},
 				Env:          bscpEnvVars,
 				VolumeMounts: []corev1.VolumeMount{bscpTempMount},
@@ -126,7 +133,7 @@ func Build(params Params) *PodFragment {
 		Containers: []corev1.Container{
 			{
 				Name:         SidecarContainerName,
-				Image:        SidecarImage,
+				Image:        params.SidecarImage,
 				Args:         []string{fileCacheDisabledArg},
 				Env:          bscpEnvVars,
 				VolumeMounts: []corev1.VolumeMount{bscpTempMount, sidecarShareMount},
@@ -154,17 +161,19 @@ func Build(params Params) *PodFragment {
 
 // BuildFromStore 从 Store 获取配置快照并装配 pod 片段。
 //
-// 当指定 app+env 未配置时返回 nil, nil，调用方无需额外判断。
+// 当指定 app+env 未配置、或配置管理未启用时返回 nil, nil。
 func BuildFromStore(
 	ctx context.Context,
 	store bscpcfg.Store,
 	appID, envName string,
+	ws *workspace.Workspace,
 ) (*PodFragment, error) {
 	snapshot, err := store.GetSnapshot(ctx, appID, envName)
 	if err != nil {
 		return nil, errors.Wrap(err, "getting bscp config snapshot")
 	}
-	if snapshot == nil {
+	// 未配置或未启用时不注入
+	if snapshot == nil || !snapshot.Metadata.Enable {
 		return nil, nil
 	}
 
@@ -172,12 +181,21 @@ func BuildFromStore(
 		return nil, errors.Wrap(err, "validating bscp config snapshot")
 	}
 
+	// 镜像地址从配置读取，注入前校验非空，避免注入空镜像
+	if svccfg.G.BSCP.InitImage == "" || svccfg.G.BSCP.SidecarImage == "" {
+		return nil, errors.New("bscpcfg initImage/sidecarImage not configured")
+	}
+
 	fragment := Build(Params{
-		BscpBizID: snapshot.Metadata.BscpBizID,
-		AppNames:  snapshot.GetServiceNames(),
-		MountPath: snapshot.Metadata.MountPath,
-		FeedAddr:  snapshot.Metadata.FeedAddr,
-		Token:     snapshot.Metadata.Token,
+		BscpBizID:    ws.BkSystems.BkCCBizID,
+		AppNames:     snapshot.GetBscpAppName(),
+		MountPath:    snapshot.Metadata.MountPath,
+		FeedAddr:     svccfg.G.BSCP.FeedAddr,
+		Token:        ws.BkSystems.BscpToken,
+		ProjectKey:   ws.BkSystems.BkBSCPProjectKey,
+		EnvName:      snapshot.EnvBinding.BscpEnvName,
+		InitImage:    svccfg.G.BSCP.InitImage,
+		SidecarImage: svccfg.G.BSCP.SidecarImage,
 	})
 	fragment.WorkloadName = snapshot.Metadata.WorkloadName
 	fragment.WorkloadKind = snapshot.Metadata.WorkloadKind
