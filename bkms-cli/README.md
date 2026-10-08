@@ -4,26 +4,34 @@ bkms-cli 是蓝鲸服务治理平台提供的命令行工具，支持查看应�
 
 ## 安装
 
-任选一种方式：
+通过独立安装脚本安装：
 
 ```shell
-# 类 Unix
+# macOS 和 Linux
 curl -fsSL https://raw.githubusercontent.com/TencentBlueKing/blueking-service-governance/main/bkms-cli/install.sh | sh
-# 或
+# 或使用 wget
 wget -qO- https://raw.githubusercontent.com/TencentBlueKing/blueking-service-governance/main/bkms-cli/install.sh | sh
+```
 
+```powershell
 # Windows（PowerShell 5.1+）
 irm https://raw.githubusercontent.com/TencentBlueKing/blueking-service-governance/main/bkms-cli/install.ps1 | iex
-
-# npm（Node.js 18+）
-npm i -g @blueking/bkms-cli@latest
-
-# Go 1.25.5+
-go install github.com/TencentBlueKing/blueking-service-governance/bkms-cli@latest
 ```
 
 脚本默认安装到 `~/.local/bin`（Windows 为 `%LOCALAPPDATA%\bkms-cli\bin`）。
-可在 `sh` 后加 `-s -- --version 1.0.4` 指定版本，其他选项见 `--help`。
+默认安装最新稳定版，可通过 `--version`（macOS/Linux）或 `-Version`（Windows）指定版本。
+
+也可以通过 npm 安装（需要 Node.js 18+）：
+
+```shell
+npm i -g @blueking/bkms-cli@latest
+```
+
+或使用 Go 安装（需要 Go 1.25.5+）：
+
+```shell
+go install github.com/TencentBlueKing/blueking-service-governance/bkms-cli@latest
+```
 
 ## 项目结构
 
