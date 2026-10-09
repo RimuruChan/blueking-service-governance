@@ -34,7 +34,9 @@ param(
 
     function Get-LatestVersion($LatestUrl) {
         $response = Invoke-WebRequest -UseBasicParsing -Uri $LatestUrl -TimeoutSec 30
-        $latest = $response.Content.Trim()
+        $content = $response.Content
+        if ($content -is [byte[]]) { $content = [Text.Encoding]::UTF8.GetString($content) }
+        $latest = $content.Trim()
         if ($latest -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') {
             throw 'Invalid latest.txt; specify -Version X.Y.Z.'
         }
@@ -94,13 +96,16 @@ param(
         }
     }
 
-    function Test-PathEntry([string]$PathValue, [string]$Directory) {
+    function Move-PathEntryToFront([string]$PathValue, [string]$Directory) {
         $target = $Directory.Replace('/', '\').TrimEnd('\')
+        $entries = @($Directory)
         foreach ($entry in ($PathValue -split ';')) {
+            if (-not $entry) { continue }
+            # Expand only for comparison; preserve other entries exactly as written.
             $expanded = [Environment]::ExpandEnvironmentVariables($entry.Trim().Trim('"'))
-            if ($expanded.Replace('/', '\').TrimEnd('\') -ieq $target) { return $true }
+            if ($expanded.Replace('/', '\').TrimEnd('\') -ine $target) { $entries += $entry }
         }
-        return $false
+        return $entries -join ';'
     }
 
     function Add-UserPath($Directory) {
@@ -109,14 +114,23 @@ param(
             return
         }
         # Never persist $env:PATH: it also contains the machine PATH and session-only entries.
+        $env:PATH = Move-PathEntryToFront $env:PATH $Directory
         try {
-            $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
-            if (-not (Test-PathEntry $userPath $Directory)) {
-                $updatedPath = if ($userPath) { "$Directory;$userPath" } else { $Directory }
-                [Environment]::SetEnvironmentVariable('Path', $updatedPath, 'User')
-            }
-            if (-not (Test-PathEntry $env:PATH $Directory)) {
-                $env:PATH = if ($env:PATH) { "$Directory;$env:PATH" } else { $Directory }
+            # Read user PATH without expanding references such as %JAVA_HOME%.
+            $registryPath = 'HKCU:\Environment'
+            $userPath = (Get-Item -LiteralPath $registryPath).GetValue('Path', '', 'DoNotExpandEnvironmentNames')
+            $updatedPath = Move-PathEntryToFront $userPath $Directory
+            if ($updatedPath -cne $userPath) {
+                # Preserve REG_EXPAND_SZ; SetEnvironmentVariable would write REG_SZ instead.
+                Set-ItemProperty -LiteralPath $registryPath -Name Path -Value $updatedPath -Type ExpandString
+                # Registry writes do not broadcast WM_SETTINGCHANGE. Setting a temporary user
+                # variable makes .NET send that notification so Explorer refreshes the environment
+                # for future terminals. A GUID avoids name collisions; NullString deletes it afterward.
+                # This follows cargo-dist's Add-Path implementation, also used by uv:
+                # https://github.com/axodotdev/cargo-dist/blob/main/cargo-dist/templates/installer/installer.ps1.j2
+                $refreshName = 'BKMS_CLI_PATH_REFRESH_' + [guid]::NewGuid().ToString('N')
+                [Environment]::SetEnvironmentVariable($refreshName, '1', 'User')
+                [Environment]::SetEnvironmentVariable($refreshName, [NullString]::Value, 'User')
             }
             Write-Host "User PATH configured for $Directory. Restart other terminals to pick up the change."
         } catch {

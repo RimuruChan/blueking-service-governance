@@ -96,6 +96,8 @@ download() (
 )
 
 # resolve_version REQUESTED_VERSION DOWNLOADER WORK_DIR LATEST_URL
+# Design reference: Helm's checkDesiredVersion also reads a plain-text version pointer.
+# https://github.com/helm/helm/blob/main/scripts/get-helm-3
 resolve_version() (
     requested=$1
     downloader=$2
@@ -208,6 +210,8 @@ install_archive() (
 
     [ ! -d "$destination" ] || fail "$destination is a directory."
     # main creates WORK_DIR beside DESTINATION, allowing atomic replacement.
+    # cargo-dist (used by uv) also stages files on the destination filesystem before renaming.
+    # https://github.com/axodotdev/cargo-dist/blob/main/cargo-dist/templates/installer/installer.sh.j2
     mv -f "$binary" "$destination"
 )
 
@@ -241,6 +245,9 @@ append_path() (
 
 # configure_path INSTALL_DIR PROFILE_DIR SHELL
 # Failure to save PATH must not turn a successful installation into an error.
+# Design reference: cargo-dist updates startup files and prints instructions for the current shell,
+# since an installer subprocess cannot change its parent's PATH. Our startup-file selection differs.
+# https://axodotdev.github.io/cargo-dist/book/installers/shell.html#adding-things-to-path
 configure_path() (
     install_dir=$1
     profile_dir=$2

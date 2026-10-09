@@ -18,7 +18,7 @@ wget -qO- https://raw.githubusercontent.com/TencentBlueKing/blueking-service-gov
 irm https://raw.githubusercontent.com/TencentBlueKing/blueking-service-governance/main/bkms-cli/install.ps1 | iex
 ```
 
-脚本默认安装到 `~/.local/bin`（Windows 为 `%LOCALAPPDATA%\bkms-cli\bin`）。
+脚本默认安装到用户目录，无需 root 或管理员权限：macOS/Linux 为 `~/.local/bin`，Windows 为 `%LOCALAPPDATA%\bkms-cli\bin`。
 默认安装最新稳定版，可通过 `--version`（macOS/Linux）或 `-Version`（Windows）指定版本。
 
 也可以通过 npm 安装（需要 Node.js 18+）：
