@@ -92,9 +92,7 @@ func EditHandler(ctx context.Context, appID, envName, specFile string, section c
 			envName,
 			section,
 			func() (*LabelsInput, error) { return ParseLabelsFile(specFile) },
-			func(v *LabelsInput) any {
-				return &SetDefaultLabelsRequest{AppSpecLabels: v}
-			},
+			func(v *LabelsInput) any { return v },
 		)
 	case client.AppSpecSectionAnnotations:
 		return setSectionHandler(
@@ -104,9 +102,7 @@ func EditHandler(ctx context.Context, appID, envName, specFile string, section c
 			envName,
 			section,
 			func() (*AnnotationsInput, error) { return ParseAnnotationsFile(specFile) },
-			func(v *AnnotationsInput) any {
-				return &SetDefaultAnnotationsRequest{AppSpecAnnotations: v}
-			},
+			func(v *AnnotationsInput) any { return v },
 		)
 	default:
 		return errors.Errorf("unsupported section: %s", section)
