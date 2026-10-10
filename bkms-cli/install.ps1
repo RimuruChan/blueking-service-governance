@@ -19,18 +19,17 @@ param(
     [string]$Version,
     [string]$InstallDir,
     [string]$BkmsBaseUrl,
-    [string]$UpdateLatestUrl = $env:BKMS_CLI_UPDATE_LATEST_URL,
-    [string]$UpdateDownloadUrlTemplate = $env:BKMS_CLI_UPDATE_DOWNLOAD_URL_TEMPLATE
+    [string]$UpdateLatestUrl,
+    [string]$UpdateDownloadUrlTemplate
 )
 
 # Keep functions and preferences local when invoked through irm | iex.
 & {
     $ErrorActionPreference = 'Stop'
     $ProgressPreference = 'SilentlyContinue'
-    $repository = 'TencentBlueKing/blueking-service-governance'
-    # Internal distributions may set both defaults here; public distribution leaves them empty.
-    $defaultUpdateLatestUrl = ''
-    $defaultUpdateDownloadUrlTemplate = ''
+    # Default distribution endpoints; change both together for a custom distribution.
+    $latestUrl = 'https://raw.githubusercontent.com/TencentBlueKing/blueking-service-governance/main/bkms-cli/latest.txt'
+    $downloadTemplate = 'https://github.com/TencentBlueKing/blueking-service-governance/releases/download/bkms-cli%2Fv{version}/{archive}'
 
     function Get-LatestVersion($LatestUrl) {
         $response = Invoke-WebRequest -UseBasicParsing -Uri $LatestUrl -TimeoutSec 30
@@ -144,17 +143,12 @@ param(
     if ($env:OS -ne 'Windows_NT') { throw 'This installer requires Windows; use install.sh on macOS/Linux.' }
     if ($PSVersionTable.PSVersion -lt [version]'5.1') { throw 'PowerShell 5.1 or newer is required.' }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
-    if (-not $UpdateLatestUrl) { $UpdateLatestUrl = $defaultUpdateLatestUrl }
-    if (-not $UpdateDownloadUrlTemplate) { $UpdateDownloadUrlTemplate = $defaultUpdateDownloadUrlTemplate }
     if ([bool]$UpdateLatestUrl -xor [bool]$UpdateDownloadUrlTemplate) {
         throw 'Set both update URLs together.'
     }
     if ($UpdateLatestUrl) {
         $latestUrl = $UpdateLatestUrl
         $downloadTemplate = $UpdateDownloadUrlTemplate
-    } else {
-        $latestUrl = "https://raw.githubusercontent.com/$repository/main/bkms-cli/latest.txt"
-        $downloadTemplate = "https://github.com/$repository/releases/download/bkms-cli%2Fv{version}/{archive}"
     }
     if (-not $downloadTemplate.Contains('{archive}')) { throw 'Download URL template must contain {archive}.' }
     Assert-HttpUrl $latestUrl

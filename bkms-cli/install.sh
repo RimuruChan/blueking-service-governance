@@ -18,13 +18,9 @@
 # Run with sh, including through curl/wget | sh.
 set -eu
 
-readonly REPOSITORY='TencentBlueKing/blueking-service-governance'
-readonly LATEST_URL="https://raw.githubusercontent.com/$REPOSITORY/main/bkms-cli/latest.txt"
-readonly DOWNLOAD_URL_TEMPLATE="https://github.com/$REPOSITORY/releases/download/bkms-cli%2Fv{version}/{archive}"
-
-# Internal distributions may set both defaults here. Public distribution leaves them empty.
-readonly DEFAULT_UPDATE_LATEST_URL=''
-readonly DEFAULT_UPDATE_DOWNLOAD_URL_TEMPLATE=''
+# Default distribution endpoints; change both together for a custom distribution.
+readonly LATEST_URL="https://raw.githubusercontent.com/TencentBlueKing/blueking-service-governance/main/bkms-cli/latest.txt"
+readonly DOWNLOAD_URL_TEMPLATE="https://github.com/TencentBlueKing/blueking-service-governance/releases/download/bkms-cli%2Fv{version}/{archive}"
 readonly CR=$(printf '\r')
 
 fail() {
@@ -43,8 +39,8 @@ Usage: sh install.sh [options]
   --update-download-url-template URL  Custom URL using {version} and {archive}.
   -h, --help                          Show this help.
 
-Custom update URLs must be supplied together. Arguments override BKMS_CLI_UPDATE_*
-environment variables and the defaults above. Installation replaces the saved update source.
+Custom update URLs must be supplied together. Arguments override the defaults above.
+Installation replaces the saved update source.
 
 Requires curl or wget, tar, basic Unix commands, and one of
 sha256sum, shasum or openssl. No jq, Python, Node.js or Go is needed.'
@@ -298,8 +294,8 @@ main() (
     requested_version=
     install_dir=
     base_url=
-    latest_url=${BKMS_CLI_UPDATE_LATEST_URL:-$DEFAULT_UPDATE_LATEST_URL}
-    download_template=${BKMS_CLI_UPDATE_DOWNLOAD_URL_TEMPLATE:-$DEFAULT_UPDATE_DOWNLOAD_URL_TEMPLATE}
+    latest_url=
+    download_template=
 
     # Parse options before checking tools, so --help works without download tools.
     while [ "$#" -gt 0 ]; do
