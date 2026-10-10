@@ -126,16 +126,6 @@ type SetDefaultProbeRequest struct {
 	AppSpecProbe *ProbeInput `json:"appSpecProbe"`
 }
 
-// SetDefaultLabelsRequest 设置默认标签的请求体
-type SetDefaultLabelsRequest struct {
-	AppSpecLabels *LabelsInput `json:"appSpecLabels"`
-}
-
-// SetDefaultAnnotationsRequest 设置默认注解的请求体
-type SetDefaultAnnotationsRequest struct {
-	AppSpecAnnotations *AnnotationsInput `json:"appSpecAnnotations"`
-}
-
 // SetEnvDevModeRequest 设置环境级开发模式的请求体。
 type SetEnvDevModeRequest struct {
 	AppSpecDevMode *EnabledInput `json:"appSpecDevMode"`
