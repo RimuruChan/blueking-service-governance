@@ -2,6 +2,39 @@
 
 bkms-cli 是蓝鲸服务治理平台提供的命令行工具，支持查看应用基础信息、构建、部署和查询部署结果等功能。
 
+## 安装
+
+bkms-cli 支持独立安装脚本、npm 和 Go 三种安装方式，请根据自己的环境任选其一。
+
+通过独立安装脚本安装：
+
+```shell
+# macOS 和 Linux
+curl -fsSL https://raw.githubusercontent.com/TencentBlueKing/blueking-service-governance/main/bkms-cli/install.sh | sh
+# 或使用 wget
+wget -qO- https://raw.githubusercontent.com/TencentBlueKing/blueking-service-governance/main/bkms-cli/install.sh | sh
+```
+
+```powershell
+# Windows（PowerShell 5.1+）
+irm https://raw.githubusercontent.com/TencentBlueKing/blueking-service-governance/main/bkms-cli/install.ps1 | iex
+```
+
+脚本默认安装到用户目录，无需 root 或管理员权限：macOS/Linux 为 `~/.local/bin`，Windows 为 `%LOCALAPPDATA%\bkms-cli\bin`。
+默认安装最新稳定版，可通过 `--version`（macOS/Linux）或 `-Version`（Windows）指定版本。
+
+也可以通过 npm 安装（需要 Node.js 18+）：
+
+```shell
+npm i -g @blueking/bkms-cli@latest
+```
+
+或使用 Go 安装（需要 Go 1.25.5+）：
+
+```shell
+go install github.com/TencentBlueKing/blueking-service-governance/bkms-cli@latest
+```
+
 ## 项目结构
 
 ```
@@ -9,7 +42,10 @@ bkms-cli/
 ├── main.go                  # 程序入口
 ├── Makefile                 # 构建 & 开发命令
 ├── .goreleaser.yaml         # 多架构发布构建（goreleaser）
-├── npm/                     # @blueking/bkms-cli（postinstall 下载二进制）
+├── install.sh               # macOS / Linux 安装脚本
+├── install.ps1              # Windows PowerShell 安装脚本
+├── latest.txt               # 已发布的 CLI 稳定版本号
+├── npm/                     # @blueking/bkms-cli（现有 npm 分发包）
 ├── cmd/                     # 子命令定义（按功能分目录，每个目录对应一个子命令）
 │   ├── root/                # 根命令
 │   ├── version/             # version 子命令
@@ -30,7 +66,7 @@ bkms-cli/
 │   ├── handler/             # 业务处理器
 │   │   ├── deploy/          # 部署相关逻辑
 │   │   └── publish/         # BCS 发布逻辑
-│   ├── version/             # 版本信息（通过 ldflags 注入）
+│   ├── version/             # 版本信息（ldflags 注入，Go 构建信息兜底）
 │   └── utils/               # 工具函数（命令行、控制台、环境变量、输出格式化、路径）
 └── test/
     └── e2e/                 # E2E 功能测试（详见 test/e2e/README.md）
@@ -47,7 +83,7 @@ bkms-cli/
 
 ### 环境要求
 
-- Go 1.21+
+- Go 1.25.5+
 - Make
 
 ### Make 命令一览
@@ -85,6 +121,8 @@ make build-all
 
 ### 编译期注入参数
 
+发布前手动同步 `bkms-cli/latest.txt` 和 `npm/package.json` 中的版本号，使其与 CLI tag 一致；CI 只校验，不修改或推送分支。
+
 以下参数通过 `go build -ldflags -X` / goreleaser `ldflags` 在编译期注入：
 
 | 参数 | 说明 |
@@ -92,7 +130,9 @@ make build-all
 | `pkg/version.Version` | 版本号（不带 `v`，如 `1.2.3`） |
 | `pkg/version.GitHash` | Git commit hash |
 | `pkg/version.BuildTime` | 构建时间 |
-| `pkg/updater.updateSource` | GitHub Releases 更新源（`owner/repository`） |
+
+版本信息优先使用编译期注入值；未注入时读取 Go 模块版本和可用的 VCS revision。
+缺少版本号时显示 `dev`，缺少 SHA 或构建时间时显示 `unknown`，不额外联网查询。
 
 ### 代码检查 & 格式化
 
