@@ -2557,69 +2557,6 @@ const docTemplate = `{
                         }
                     }
                 }
-            },
-            "patch": {
-                "security": [
-                    {
-                        "BkUserInfo": []
-                    },
-                    {
-                        "BkUserCredential": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "bscpcfg"
-                ],
-                "summary": "更新环境绑定（更新绑定的服务列表）",
-                "operationId": "PatchBscpCfgEnvBinding",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "应用 ID",
-                        "name": "appID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "环境名称",
-                        "name": "envName",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "更新配置请求体",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/serializer.PatchEnvBindingInput"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK"
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
-                        }
-                    }
-                }
             }
         },
         "/apps/{appID}/bscpcfg/metadata": {
@@ -11957,6 +11894,73 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            }
+        },
+        "/apps/{appID}/visible-envs": {
+            "put": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "app"
+                ],
+                "summary": "更新应用可见环境名单",
+                "operationId": "UpdateAppVisibleEnvs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "应用 ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "更新可见环境请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/serializer.UpdateAppVisibleEnvsInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_TencentBlueKing_blueking-service-governance_bkms-server_pkg_core_app_serializer.EmptyOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "$ref": "#/definitions/bkerrs.GinErrorOutput"
                         }
@@ -21362,6 +21366,13 @@ const docTemplate = `{
                     "description": "应用类型",
                     "type": "string"
                 },
+                "visibleEnvNames": {
+                    "description": "可见标准环境名称；未配置时为空数组",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "workspaceID": {
                     "description": "工作空间 ID",
                     "type": "string"
@@ -22815,6 +22826,14 @@ const docTemplate = `{
                     "description": "蓝鲸容器服务（BCS）项目 ID",
                     "type": "string"
                 },
+                "bkBSCPProjectID": {
+                    "description": "BSCP 项目 ID",
+                    "type": "string"
+                },
+                "bkBSCPProjectKey": {
+                    "description": "BSCP 项目 Key（如 BK-BSCP-00012）",
+                    "type": "string"
+                },
                 "bkCCBizID": {
                     "description": "bkcc 业务 ID",
                     "type": "string"
@@ -22837,6 +22856,10 @@ const docTemplate = `{
                 },
                 "bkRepoProjectID": {
                     "description": "蓝盾制品库项目 ID",
+                    "type": "string"
+                },
+                "bscpCredentialID": {
+                    "description": "BSCP Credential ID",
                     "type": "string"
                 },
                 "isBoundExistedBKCIProject": {
@@ -25258,34 +25281,25 @@ const docTemplate = `{
                 "appID": {
                     "type": "string"
                 },
-                "apps": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/serializer.ServiceRefOutput"
-                    }
+                "bscpAppID": {
+                    "type": "string"
                 },
-                "bscpBizID": {
+                "bscpEnvID": {
+                    "type": "string"
+                },
+                "bscpEnvName": {
                     "type": "string"
                 },
                 "createdAt": {
                     "type": "string"
                 },
-                "defaultFileAppID": {
-                    "type": "string"
-                },
                 "envName": {
-                    "type": "string"
-                },
-                "feedAddr": {
                     "type": "string"
                 },
                 "mountPath": {
                     "type": "string"
                 },
                 "operator": {
-                    "type": "string"
-                },
-                "token": {
                     "type": "string"
                 },
                 "updatedAt": {
@@ -28374,17 +28388,11 @@ const docTemplate = `{
                 "appID": {
                     "type": "string"
                 },
-                "bscpBizID": {
-                    "type": "string"
-                },
                 "createdAt": {
                     "type": "string"
                 },
-                "credentialName": {
-                    "type": "string"
-                },
-                "feedAddr": {
-                    "type": "string"
+                "enable": {
+                    "type": "boolean"
                 },
                 "mountPath": {
                     "type": "string"
@@ -28393,9 +28401,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "postHookID": {
-                    "type": "string"
-                },
-                "token": {
                     "type": "string"
                 },
                 "updatedAt": {
@@ -29124,18 +29129,6 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
-                }
-            }
-        },
-        "serializer.PatchEnvBindingInput": {
-            "type": "object",
-            "properties": {
-                "apps": {
-                    "description": "Services 绑定的下发服务列表（全量替换）",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/serializer.ServiceRefInput"
                     }
                 }
             }
@@ -31300,32 +31293,6 @@ const docTemplate = `{
                 }
             }
         },
-        "serializer.ServiceRefInput": {
-            "type": "object",
-            "required": [
-                "id",
-                "name"
-            ],
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "serializer.ServiceRefOutput": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
         "serializer.SetAppDefaultAppSpecLifecycleInput": {
             "type": "object",
             "required": [
@@ -32479,6 +32446,22 @@ const docTemplate = `{
                 },
                 "trafficLaneEnabled": {
                     "type": "boolean"
+                }
+            }
+        },
+        "serializer.UpdateAppVisibleEnvsInput": {
+            "type": "object",
+            "required": [
+                "visibleEnvNames"
+            ],
+            "properties": {
+                "visibleEnvNames": {
+                    "description": "可见标准环境名称，必填；显式传空数组表示清空配置",
+                    "type": "array",
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

@@ -86,6 +86,15 @@ type BkSystems struct {
 	// BkMonitorProjectID 蓝鲸监控平台项目 ID
 	BkMonitorProjectID string `bson:"bkMonitorProjectID"`
 
+	// BkBSCPProjectID BSCP 项目 ID
+	BkBSCPProjectID string `bson:"bkBSCPProjectID"`
+	// BkBSCPProjectKey BSCP 项目 Key（如 BK-BSCP-12345）
+	BkBSCPProjectKey string `bson:"bkBSCPProjectKey"`
+	// BscpToken BSCP Credential token
+	BscpToken string `bson:"bscpToken"`
+	// BscpCredentialID BSCP Credential ID
+	BscpCredentialID string `bson:"bscpCredentialID"`
+
 	// BkCCBizID bkcc 业务 ID
 	BkCCBizID string `bson:"bkCCBizID"`
 	// Level2BizID 二级业务 ID

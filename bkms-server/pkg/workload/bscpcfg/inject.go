@@ -25,6 +25,7 @@ import (
 	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
 
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg"
 )
 
@@ -44,11 +45,12 @@ func InjectFromStore(
 	ctx context.Context,
 	store bscpcfg.Store,
 	appID, envName, mainContainerName string,
+	ws *workspace.Workspace,
 	podSpec *corev1.PodSpec,
 ) error {
-	fragment, err := BuildFromStore(ctx, store, appID, envName)
+	fragment, err := BuildFromStore(ctx, store, appID, envName, ws)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "build bscp fragment for app %s, env %s", appID, envName)
 	}
 	return MergePodSpec(podSpec, fragment, mainContainerName)
 }

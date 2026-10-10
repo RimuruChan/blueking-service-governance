@@ -437,6 +437,7 @@ func (h *Handler) newDeployer(app *bkmsapp.Application) *appmodeldeploy.Deployer
 			h.registry.AppDepsVarReader,
 			h.registry.PolarisVarReader,
 			h.registry.WorkspaceCompsStore,
+			h.registry.WorkspaceStore,
 			h.registry.PolarisConfigStore,
 			h.registry.HostPortStore,
 			h.registry.BscpCfgStore,

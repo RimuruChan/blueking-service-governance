@@ -86,6 +86,7 @@ var _ = Describe("TafWorkloadBuilder", func() {
 	})
 
 	AfterEach(func() {
+		cleanupWorkspaces(ctx)
 		diApp.RequireStop()
 	})
 
@@ -129,6 +130,7 @@ var _ = Describe("TafWorkloadBuilder", func() {
 					FilePath:    "/etc/taf",
 					FileContent: "<taf>\n  <application>\n    <server>\n      logpath=/data/log\n      timeout=3000\n    </server>\n  </application>\n</taf>\n",
 				},
+				WorkspaceID: newWorkspaceID(ctx),
 			})
 
 			// Create two environments
@@ -269,6 +271,7 @@ var _ = Describe("TafWorkloadBuilder", func() {
 				EnvVars: []appmodel.Variable{
 					{Key: "MY_REGION", Value: "ap-guangzhou"},
 				},
+				WorkspaceID: newWorkspaceID(ctx),
 			})
 			appEnv = dbfactory.Env(ctx, envSvc, app.WorkspaceID)
 
@@ -305,6 +308,7 @@ var _ = Describe("TafWorkloadBuilder", func() {
 					FilePath:    "/etc/taf",
 					FileContent: "missing=${{ env.MISSING }}\n",
 				},
+				WorkspaceID: newWorkspaceID(ctx),
 			})
 			appEnv = dbfactory.Env(ctx, envSvc, app.WorkspaceID)
 

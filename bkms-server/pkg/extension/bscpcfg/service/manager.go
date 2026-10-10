@@ -22,12 +22,11 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/samber/lo"
 	"github.com/spf13/cast"
 
-	svccfg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
 	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
@@ -38,9 +37,7 @@ import (
 
 // Manager 应用配置管理业务管理器。
 type Manager struct {
-	feedAddr string
-
-	client bscpapi.Client
+	client bscpapi.ConfigClient
 
 	configStore model.Store
 }
@@ -50,15 +47,14 @@ func NewManager(
 	user auth.User,
 	configStore model.Store,
 ) (*Manager, error) {
-	client, err := bscpapi.New(user)
+	configClient, err := bscpapi.NewConfigClient(user)
 	if err != nil {
-		return nil, errors.Wrap(err, "initial bscp client")
+		return nil, errors.Wrap(err, "initial bscp config client")
 	}
 
 	return &Manager{
-		client:      client,
+		client:      configClient,
 		configStore: configStore,
-		feedAddr:    svccfg.G.BSCP.FeedAddr,
 	}, nil
 }
 
@@ -78,31 +74,24 @@ func (m *Manager) InitMetadata(
 		return nil, errors.Wrap(err, "get metadata")
 	}
 
-	// 获取或创建 Credential
-	cred, err := m.GetOrCreateCredential(ctx, params.BscpBizID)
-	if err != nil {
-		metrics.BscpcfgStepFailed("credential")
-		return nil, errors.Wrap(err, "get or create bscpcfg credential")
+	// 检查 workspace 是否已绑定 BSCP 项目
+	if params.BscpBizID == "" || params.BscpProjectID == "" {
+		return nil, errors.New("workspace is not bound to a BSCP project")
 	}
 
 	// 获取或创建后置脚本
-	hookID, err := m.GetOrCreatePostHook(ctx, params.BscpBizID, params.AppID)
+	hookID, err := m.GetOrCreatePostHook(ctx, params.BscpBizID, cast.ToInt64(params.BscpProjectID), params.AppID)
 	if err != nil {
-		metrics.BscpcfgStepFailed("post_hook")
 		return nil, errors.Wrap(err, "get or create post hook")
 	}
 
 	meta := &model.Metadata{
-		AppID:          params.AppID,
-		BscpBizID:      params.BscpBizID,
-		CredentialID:   fmt.Sprintf("%d", cred.ID),
-		CredentialName: cred.Name,
-		Token:          cred.EncCredential,
-		FeedAddr:       m.feedAddr,
-		WorkloadName:   params.WorkloadName,
-		WorkloadKind:   params.WorkloadKind,
-		PostHookID:     fmt.Sprintf("%d", hookID),
-		Operator:       params.Operator,
+		AppID:        params.AppID,
+		Enable:       true,
+		WorkloadName: params.WorkloadName,
+		WorkloadKind: params.WorkloadKind,
+		PostHookID:   fmt.Sprintf("%d", hookID),
+		Operator:     params.Operator,
 	}
 
 	if err = m.configStore.CreateMetadata(ctx, meta); err != nil {
@@ -119,57 +108,92 @@ func (m *Manager) PatchMetadata(ctx context.Context, appID string, updateData *m
 
 // === EnvBinding 管理 ===
 
-// CreateEnvBinding 创建环境绑定（前置条件：已 InitMetadata）。
+// CreateEnvBinding 创建环境绑定。
 func (m *Manager) CreateEnvBinding(
 	ctx context.Context,
 	params *CreateEnvBindingParams,
 ) (*model.Snapshot, error) {
-	// 1. 检查 Metadata 是否存在（要求先 InitMetadata）
+	// 1. 检查 Metadata 是否存在且启用
 	meta, err := m.configStore.GetMetadata(ctx, params.AppID)
 	if err != nil {
 		if errors.Is(err, model.ErrMetadataNotFound) {
-			return nil, errors.New("bscpcfg metadata not initialized, please call InitMetadata first")
+			return nil, errors.New("bscpcfg metadata is not initialized")
 		}
 		return nil, errors.Wrap(err, "get metadata")
 	}
-
-	// 2. 获取或创建 file 服务并刷新 IAM 权限
-	fileSvc, err := m.getOrCreateFileService(ctx, params)
-	if err != nil {
-		metrics.BscpcfgStepFailed("file_service")
-		return nil, errors.Wrap(err, "get or create file service")
+	if !meta.Enable {
+		return nil, errors.New("bscpcfg is disabled")
 	}
 
-	// 3. 绑定后置脚本到 file 服务
+	bizID := params.Workspace.BkSystems.BkCCBizID
+	projectIDStr := params.Workspace.BkSystems.BkBSCPProjectID
+	if projectIDStr == "" {
+		return nil, errors.New("workspace is not bound to a BSCP project")
+	}
+	if params.Workspace.BkSystems.BscpCredentialID == "" {
+		return nil, errors.New("workspace bscp credential is not ready")
+	}
+	projectID := cast.ToInt64(projectIDStr)
+
+	// 2. 按 envName 匹配或创建 BSCP 环境（类型由 bkms 环境类型映射而来）
+	bscpEnv, err := m.getOrCreateBscpEnv(ctx, bizID, projectID, params.EnvName, params.EnvType)
+	if err != nil {
+		return nil, errors.Wrap(err, "get or create bscp environment")
+	}
+
+	envID := cast.ToString(bscpEnv.ID)
+
+	// 3. 获取或创建 BSCP App
+	bscpApp, err := m.client.GetOrCreateApp(ctx, &bscpapi.CreateAppReq{
+		BizID:      bizID,
+		ProjectID:  projectID,
+		EnvID:      bscpEnv.ID,
+		Name:       params.AppID,
+		Alias:      params.AppID,
+		ConfigType: bscpapi.ConfigTypeFile,
+		DataType:   bscpapi.DataTypeAny,
+	})
+	if err != nil {
+		metrics.BscpcfgStepFailed("get_or_create_app")
+		return nil, errors.Wrap(err, "get or create bscp app")
+	}
+
+	// 3.1 刷新 workspace 权限范围（将 BSCP App 加入 IAM 权限组合）
+	if err = addBSCPPermissions(ctx, params.Workspace, bscpApp); err != nil {
+		return nil, errors.Wrap(err, "refresh bscpcfg permissions")
+	}
+
+	// 4. 绑定后置脚本
 	if postHookID := cast.ToInt64(meta.PostHookID); meta.PostHookID != "" && postHookID != 0 {
-		fileSvcID := cast.ToInt64(fileSvc.ID)
+		bscpAppID := cast.ToInt64(bscpApp.ID)
 		if err = m.client.UpdateConfigHook(ctx, &bscpapi.UpdateConfigHookReq{
-			BizID:      params.BscpBizID,
-			AppID:      fileSvcID,
+			BizID:      bizID,
+			ProjectID:  projectID,
+			EnvID:      bscpEnv.ID,
+			AppID:      bscpAppID,
 			PostHookID: postHookID,
 		}); err != nil {
-			metrics.BscpcfgStepFailed("bind_hook")
-			return nil, errors.Wrap(err, "bind post hook to file service")
+			metrics.BscpcfgStepFailed("bind_post_hook")
+			return nil, errors.Wrap(err, "bind post hook to bscp app")
 		}
-		log.Infof(ctx, "bound post hook %d to file service %d (biz %s)", postHookID, fileSvcID, params.BscpBizID)
+		log.Infof(ctx, "bound post hook %d to bscp app %d (biz %s, project %d, env %s)",
+			postHookID, bscpAppID, bizID, projectID, envID)
 	}
 
-	// 4. 刷新 Credential 权限
-	credID := cast.ToInt64(meta.CredentialID)
-	if err = m.RefreshCredentialScopes(ctx, params.BscpBizID, credID); err != nil {
-		metrics.BscpcfgStepFailed("refresh_scopes")
+	// 5. 刷新 Credential Scope
+	credID := cast.ToInt64(params.Workspace.BkSystems.BscpCredentialID)
+	if err = m.RefreshCredentialScopes(ctx, bizID, projectID, credID, *bscpApp, *bscpEnv); err != nil {
 		return nil, errors.Wrap(err, "refresh credential scopes")
 	}
 
-	// 5. 创建 EnvBinding
+	// 6. 写入 EnvBinding
 	binding := &model.EnvBinding{
-		AppID:   params.AppID,
-		EnvName: params.EnvName,
-		Services: []model.ServiceRef{
-			{ID: fileSvc.ID, Name: fileSvc.Name},
-		},
-		DefaultServiceID: fileSvc.ID,
-		Operator:         params.Operator,
+		AppID:       params.AppID,
+		EnvName:     params.EnvName,
+		BscpEnvID:   envID,
+		BscpEnvName: bscpEnv.Spec.Name,
+		BscpAppID:   bscpApp.ID,
+		Operator:    params.Operator,
 	}
 
 	if err = m.configStore.CreateEnvBinding(ctx, binding); err != nil {
@@ -182,41 +206,6 @@ func (m *Manager) CreateEnvBinding(
 	}, nil
 }
 
-// BindServices 更新环境绑定的下发服务列表。
-func (m *Manager) BindServices(
-	ctx context.Context,
-	appID, envName, bizID string,
-	newServices []model.ServiceRef,
-) error {
-	// 1. 获取现有 EnvBinding
-	existingBinding, err := m.configStore.GetEnvBinding(ctx, appID, envName)
-	if err != nil {
-		return errors.Wrap(err, "get existing env binding")
-	}
-
-	// 2. 校验 newServices 中是否包含 defaultServiceID
-	if err = validateDefaultService(existingBinding, newServices); err != nil {
-		return err
-	}
-
-	// 3. 刷新 Credential 权限
-	cred, err := m.GetOrCreateCredential(ctx, bizID)
-	if err != nil {
-		return errors.Wrap(err, "get or create credential")
-	}
-	if err = m.RefreshCredentialScopes(ctx, bizID, cred.ID); err != nil {
-		return errors.Wrap(err, "refresh credential scopes")
-	}
-
-	// 4. 写入 EnvBinding store
-	updateData := &model.EnvBindingUpdate{Services: &newServices}
-	if err = m.configStore.UpdateEnvBinding(ctx, appID, envName, updateData); err != nil {
-		return errors.Wrap(err, "update env binding in store")
-	}
-
-	return nil
-}
-
 // GetSnapshot 获取指定 app+env 的聚合快照。
 func (m *Manager) GetSnapshot(
 	ctx context.Context,
@@ -224,12 +213,12 @@ func (m *Manager) GetSnapshot(
 ) (*model.Snapshot, error) {
 	meta, err := m.configStore.GetMetadata(ctx, appID)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "get metadata")
 	}
 
 	binding, err := m.configStore.GetEnvBinding(ctx, appID, envName)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "get env binding")
 	}
 
 	return &model.Snapshot{
@@ -286,113 +275,58 @@ func (m *Manager) DeleteByApp(ctx context.Context, appID string) error {
 	return nil
 }
 
-// === cred 管理 ===
-
-// GetCredentialByName 通过名称查询指定业务下的 Credential
-func (m *Manager) GetCredentialByName(
-	ctx context.Context, bizID, name string,
-) (*bscpapi.Credential, error) {
-	credentials, err := m.client.ListCredentials(ctx, bizID)
-	if err != nil {
-		return nil, errors.Wrapf(err, "list credentials for biz %s", bizID)
-	}
-
-	cred, found := lo.Find(credentials, func(c bscpapi.Credential) bool {
-		return c.Name == name
-	})
-	if !found {
-		return nil, errors.Wrapf(ErrCredentialNotFound, "credential %q not found in biz %s", name, bizID)
-	}
-
-	return &cred, nil
-}
-
-// GetOrCreateCredential 获取或创建 Credential（幂等）。
-func (m *Manager) GetOrCreateCredential(
-	ctx context.Context, bizID string,
-) (*bscpapi.Credential, error) {
-	// 先尝试查询
-	cred, err := m.GetCredentialByName(ctx, bizID, credentialName)
-	if err == nil {
-		return cred, nil
-	}
-
-	// 非"未找到"错误，直接返回
-	if !errors.Is(err, ErrCredentialNotFound) {
-		return nil, err
-	}
-
-	// 不存在，创建新的 Credential
-	log.Infof(ctx, "credential %q not found in biz %s, creating...", credentialName, bizID)
-	_, createErr := m.client.CreateCredential(ctx, &bscpapi.CreateCredentialReq{
-		BizID: bizID,
-		Name:  credentialName,
-		Memo:  "auto-created by bkms platform",
-	})
-	if createErr != nil {
-		return nil, errors.Wrapf(createErr, "create credential %q in biz %s", credentialName, bizID)
-	}
-
-	// 创建成功后重新查询获取完整信息（含 EncCredential/Token）
-	cred, err = m.GetCredentialByName(ctx, bizID, credentialName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "get credential %q after creation in biz %s", credentialName, bizID)
-	}
-
-	return cred, nil
-}
-
-// RefreshCredentialScopes 刷新 Credential 的关联服务权限（增量 diff）。
+// RefreshCredentialScopes 为指定 app+env 添加 credential scope（幂等）。
 func (m *Manager) RefreshCredentialScopes(
-	ctx context.Context, bizID string, credentialID int64,
-) error {
-	// 获取业务下所有 BSCP 服务
-	services, err := m.client.ListBizServices(ctx, bizID)
-	if err != nil {
-		return errors.Wrapf(err, "list biz services for biz %s", bizID)
-	}
-
-	// 服务列表为空，不执行任何操作
-	if len(services) == 0 {
-		log.Infof(ctx, "no services found in biz %s, skip refresh credential scopes", bizID)
-		return nil
-	}
-
-	// 构建目标 Scope 列表：每个 app name + "/**"
-	targetScopes := lo.Map(services, func(app bscpapi.Service, _ int) bscpapi.CredentialScopeItem {
-		return bscpapi.CredentialScopeItem{
-			App:   app.Name,
-			Scope: defaultScope,
+	ctx context.Context,
+	bizID string,
+	projectID, credentialID int64,
+	app bscpapi.App,
+	env bscpapi.Environment,
+) (err error) {
+	defer func() {
+		if err != nil {
+			metrics.BscpcfgStepFailed("refresh_credential_scopes")
 		}
-	})
+	}()
 
-	// 获取当前 Credential 已有的 Scope 列表
-	credentialIDStr := cast.ToString(credentialID)
-	currentScopes, err := m.client.ListCredentialScopes(ctx, bizID, credentialIDStr)
+	targetScope := bscpapi.CredentialScopeItem{
+		App:     app.Name,
+		Scope:   defaultScope,
+		EnvID:   env.ID,
+		EnvName: env.Spec.Name,
+		EnvType: env.Spec.Type,
+	}
+
+	currentScopes, err := m.client.ListCredentialScopes(ctx, bizID, projectID, credentialID)
 	if err != nil {
-		return errors.Wrapf(err, "list credential scopes for biz %s, credential %d", bizID, credentialID)
+		return errors.Wrapf(
+			err, "list credential scopes for biz %s, project %d, credential %d",
+			bizID, projectID, credentialID,
+		)
 	}
 
-	// 计算增量 diff
-	updateReq := DiffScopes(currentScopes, targetScopes)
-	if updateReq == nil {
-		log.Infof(ctx, "credential scopes already up-to-date for biz %s, credential %d", bizID, credentialID)
-		return nil
+	// 已存在则跳过（幂等）
+	for _, s := range currentScopes {
+		if s.App == app.Name && s.EnvID == env.ID {
+			log.Infof(ctx, "credential scope already exists for app %s, env %d", app.Name, env.ID)
+			return nil
+		}
 	}
 
-	// 填充必要字段并执行更新
-	updateReq.BizID = bizID
-	updateReq.CredentialID = credentialIDStr
-
-	if err = m.client.UpdateCredentialScope(ctx, updateReq); err != nil {
-		return errors.Wrapf(err, "update credential scope for biz %s, credential %d", bizID, credentialID)
+	// 新增当前 app+env 的 scope
+	if err = m.client.UpdateCredentialScope(ctx, &bscpapi.UpdateCredentialScopeReq{
+		BizID:        bizID,
+		ProjectID:    projectID,
+		CredentialID: credentialID,
+		AddScope:     []bscpapi.CredentialScopeItem{targetScope},
+	}); err != nil {
+		return errors.Wrapf(
+			err, "update credential scope for biz %s, project %d, credential %d",
+			bizID, projectID, credentialID,
+		)
 	}
 
-	log.Infof(
-		ctx, "credential scopes refreshed for biz %s, credential %d (add: %d, alter: %d, del: %d)",
-		bizID, credentialID, len(updateReq.AddScope), len(updateReq.AlterScope), len(updateReq.DelID),
-	)
-
+	log.Infof(ctx, "credential scope added for app %s, env %d", app.Name, env.ID)
 	return nil
 }
 
@@ -400,24 +334,38 @@ func (m *Manager) RefreshCredentialScopes(
 
 // GetOrCreatePostHook 获取或创建后置脚本（幂等）。
 func (m *Manager) GetOrCreatePostHook(
-	ctx context.Context, bizID, appID string,
-) (int64, error) {
+	ctx context.Context, bizID string, projectID int64, appID string,
+) (hookID int64, err error) {
+	defer func() {
+		if err != nil {
+			metrics.BscpcfgStepFailed("get_or_create_post_hook")
+		}
+	}()
+
 	hookName := fmt.Sprintf("bkms-post-hook-%s", appID)
 
 	// 先尝试查询是否已存在
 	hooks, err := m.client.ListHooks(ctx, &bscpapi.ListHooksReq{
-		BizID: bizID,
-		Name:  hookName,
-		All:   true,
+		BizID:     bizID,
+		ProjectID: projectID,
+		Name:      hookName,
+		All:       true,
 	})
 	if err != nil {
-		return 0, errors.Wrapf(err, "list hooks for biz %s, name %s", bizID, hookName)
+		return 0, errors.Wrapf(err, "list hooks for biz %s, project %d, name %s", bizID, projectID, hookName)
 	}
 
 	// 精确匹配已有 hook
 	for _, item := range hooks.Details {
 		if item.Hook.Name == hookName {
-			log.Infof(ctx, "post hook %q already exists (id: %d) in biz %s", hookName, item.Hook.ID, bizID)
+			log.Infof(
+				ctx,
+				"post hook %q already exists (id: %d) in biz %s, project %d",
+				hookName,
+				item.Hook.ID,
+				bizID,
+				projectID,
+			)
 			return item.Hook.ID, nil
 		}
 	}
@@ -429,9 +377,10 @@ func (m *Manager) GetOrCreatePostHook(
 		bscpworkload.BscpShareBasePath,
 	)
 
-	log.Infof(ctx, "post hook %q not found in biz %s, creating...", hookName, bizID)
-	hookID, err := m.client.CreateHook(ctx, &bscpapi.CreateHookReq{
+	log.Infof(ctx, "post hook %q not found in biz %s, project %d, creating...", hookName, bizID, projectID)
+	hookID, err = m.client.CreateHook(ctx, &bscpapi.CreateHookReq{
 		BizID:        bizID,
+		ProjectID:    projectID,
 		Name:         hookName,
 		Type:         "shell",
 		Content:      scriptContent,
@@ -440,55 +389,60 @@ func (m *Manager) GetOrCreatePostHook(
 		Memo:         "auto-created by bkms platform, sync config files to shared volume",
 	})
 	if err != nil {
-		return 0, errors.Wrapf(err, "create post hook %q in biz %s", hookName, bizID)
+		return 0, errors.Wrapf(err, "create post hook %q in biz %s, project %d", hookName, bizID, projectID)
 	}
 
-	log.Infof(ctx, "post hook %q created (id: %d) in biz %s", hookName, hookID, bizID)
+	log.Infof(ctx, "post hook %q created (id: %d) in biz %s, project %d", hookName, hookID, bizID, projectID)
 	return hookID, nil
 }
 
-// === 内部辅助 ===
-
-// getOrCreateFileService 获取或创建 BSCP file 服务并刷新 IAM 权限。
-func (m *Manager) getOrCreateFileService(
+// getOrCreateBscpEnv 按 envName 在 BSCP 项目下匹配或创建环境。
+// envType 为 bkms 环境类型，内部会转换为 BSCP 环境类型（dev/test/staging/prod）。
+func (m *Manager) getOrCreateBscpEnv(
 	ctx context.Context,
-	params *CreateEnvBindingParams,
-) (*bscpapi.Service, error) {
-	// 获取或创建 file 类型服务
-	fileServiceName := fmt.Sprintf("bkms-%s-%s", params.AppName, params.EnvName)
-	fileSvc, err := m.client.GetOrCreateService(
-		ctx,
-		bscpapi.NewCreateServiceReq(
-			params.Workspace.BkSystems.BkCCBizID,
-			fileServiceName,
-			fileServiceName,
-			bscpapi.ConfigTypeFile,
-			bscpapi.DataTypeAny,
-		),
-	)
+	bizID string, projectID int64, envName, envType string,
+) (env *bscpapi.Environment, err error) {
+	defer func() {
+		if err != nil {
+			metrics.BscpcfgStepFailed("get_or_create_env")
+		}
+	}()
+
+	bscpEnvType := ToBscpEnvType(envType)
+	if bscpEnvType == "" {
+		return nil, errors.Errorf("unsupported bkms env type %q", envType)
+	}
+
+	envResp, err := m.client.ListEnvironments(ctx, bizID, projectID)
 	if err != nil {
-		return nil, errors.Wrap(err, "get or create bscpcfg file service")
+		return nil, errors.Wrapf(err, "list environments for biz %s, project %d", bizID, projectID)
 	}
 
-	// 刷新 workspace 权限范围（仅 file 服务）
-	if err = addBSCPPermissions(ctx, params.Workspace, fileSvc); err != nil {
-		return nil, errors.Wrap(err, "refresh bscpcfg permissions")
-	}
-
-	return fileSvc, nil
-}
-
-// validateDefaultService 校验 newServices 中是否包含 defaultServiceID
-func validateDefaultService(existingBinding *model.EnvBinding, newServices []model.ServiceRef) error {
-	if existingBinding.DefaultServiceID == "" {
-		return nil
-	}
-
-	for _, svc := range newServices {
-		if svc.ID == existingBinding.DefaultServiceID {
-			return nil
+	// 按类型、名称匹配
+	for _, e := range envResp.AllEnvironments() {
+		if strings.EqualFold(e.Spec.Type, bscpEnvType) && strings.EqualFold(e.Spec.Name, envName) {
+			return &e, nil
 		}
 	}
 
-	return errors.Errorf("services must contain the default file service (id: %s)", existingBinding.DefaultServiceID)
+	// 未找到则创建
+	log.Infof(
+		ctx,
+		"bscp environment %q (type %s) not found in project %d, creating...",
+		envName,
+		bscpEnvType,
+		projectID,
+	)
+	env, err = m.client.CreateEnvironment(ctx, &bscpapi.CreateEnvironmentReq{
+		BizID:     bizID,
+		ProjectID: projectID,
+		Name:      envName,
+		Type:      bscpEnvType,
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "create bscp environment %q in project %d", envName, projectID)
+	}
+
+	log.Infof(ctx, "bscp environment %q created (id: %d) in project %d", envName, env.ID, projectID)
+	return env, nil
 }

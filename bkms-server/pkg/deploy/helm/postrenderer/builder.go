@@ -51,7 +51,7 @@ func Build(
 		return nil, errors.Wrap(err, "build component post renderer")
 	}
 
-	bscpRenderer, err := buildBscpPostRenderer(ctx, app.ID, env.Name)
+	bscpRenderer, err := buildBscpPostRenderer(ctx, app, env.Name)
 	if err != nil {
 		return nil, errors.Wrap(err, "build bscp post renderer")
 	}
@@ -218,13 +218,24 @@ func buildPatch(
 // 如果应用未配置 BSCP 配置管理，返回 nil
 func buildBscpPostRenderer(
 	ctx context.Context,
-	appID, envName string,
+	app *bkmsapp.Application,
+	envName string,
 ) (*BscpPostRenderer, error) {
 	store, err := bscpcfg.NewStoreMongo(database.Client(), database.Name())
 	if err != nil {
 		return nil, errors.Wrap(err, "create bscp config store")
 	}
-	return NewBscpPostRendererFromStore(ctx, store, appID, envName)
+
+	wsStore, err := workspace.NewWorkspaceStoreMongo(database.Client(), database.Name())
+	if err != nil {
+		return nil, errors.Wrap(err, "create workspace store")
+	}
+	ws, err := wsStore.Get(ctx, app.WorkspaceID)
+	if err != nil {
+		return nil, errors.Wrapf(err, "get workspace %s", app.WorkspaceID)
+	}
+
+	return NewBscpPostRendererFromStore(ctx, store, app.ID, envName, ws)
 }
 
 // buildLanePostRenderer 根据泳道配置构建 PostRenderer

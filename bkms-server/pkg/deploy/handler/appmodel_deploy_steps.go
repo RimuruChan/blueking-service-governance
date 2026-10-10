@@ -115,6 +115,11 @@ func (h *Handler) preCheckDeploy(c *gin.Context, expectedAppType string) {
 		))
 		return
 	}
+	// 可见环境校验排在存在性、权限、应用类型校验之后，避免掩盖更具体的错误
+	if err = app.CheckVisibleEnv(environment); err != nil {
+		bkerrs.AbortWithErr(c, err)
+		return
+	}
 
 	checker := h.newDeployPreChecker()
 	result, err := checker.Check(ctx, app, environment)
@@ -131,6 +136,7 @@ func (h *Handler) newDeployPreChecker() *deploypkg.DeployPreChecker {
 		h.registry.AppDepsVarReader,
 		h.registry.PolarisVarReader,
 		h.registry.WorkspaceCompsStore,
+		h.registry.WorkspaceStore,
 		h.registry.PolarisConfigStore,
 		h.registry.HostPortStore,
 		h.registry.BscpCfgStore,
@@ -159,6 +165,10 @@ func (h *Handler) createAppModelDeploy(c *gin.Context) {
 	ctx := c.Request.Context()
 	app, environment, err := h.validateAppModelDeployAppEnv(ctx, uriInput.AppID, uriInput.EnvName, perm.TypeEdit, true)
 	if err != nil {
+		bkerrs.AbortWithErr(c, err)
+		return
+	}
+	if err = app.CheckVisibleEnv(environment); err != nil {
 		bkerrs.AbortWithErr(c, err)
 		return
 	}
@@ -491,6 +501,7 @@ func (h *Handler) newDeployer(app *bkmsapp.Application) *appmodeldeploy.Deployer
 			h.registry.AppDepsVarReader,
 			h.registry.PolarisVarReader,
 			h.registry.WorkspaceCompsStore,
+			h.registry.WorkspaceStore,
 			h.registry.PolarisConfigStore,
 			h.registry.HostPortStore,
 			h.registry.BscpCfgStore,

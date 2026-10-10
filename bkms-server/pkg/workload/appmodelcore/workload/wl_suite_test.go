@@ -19,15 +19,20 @@
 package workload_test
 
 import (
+	"context"
 	"testing"
 
 	tkex "github.com/Tencent/bk-bcs/bcs-scenarios/kourse/pkg/apis/tkex/v1alpha1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"go.uber.org/fx"
+	"go.uber.org/fx/fxtest"
 	appsv1 "k8s.io/api/apps/v1"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/workload"
 )
 
@@ -50,6 +55,37 @@ var _ = AfterSuite(func() {
 		panic("failed to teardown global database: " + err.Error())
 	}
 })
+
+// newWorkspaceStore 通过 fx 构造 WorkspaceStore，供测试补齐 app 所属 workspace 使用。
+func newWorkspaceStore() workspace.WorkspaceStore {
+	var workspaceStore workspace.WorkspaceStore
+	diApp := fxtest.New(GinkgoT(), workspace.FxModule, fx.Populate(&workspaceStore))
+	diApp.RequireStart()
+	diApp.RequireStop()
+	return workspaceStore
+}
+
+// trackedWorkspaces 记录测试创建的 workspace，由 cleanupWorkspaces 统一清理。
+var trackedWorkspaces []string
+
+// newWorkspaceID 创建一个真实 workspace 并返回其 ID。
+//
+// 构建 workload 时会按 app.WorkspaceID 查询 workspace（BSCP 注入需要），
+// 因此 app 不能持有悬空的 WorkspaceID。
+func newWorkspaceID(ctx context.Context) string {
+	ws := dbfactory.Workspace(ctx, newWorkspaceStore())
+	trackedWorkspaces = append(trackedWorkspaces, ws.ID)
+	return ws.ID
+}
+
+// cleanupWorkspaces 删除本测试创建的 workspace，避免残留影响其他 suite。
+func cleanupWorkspaces(ctx context.Context) {
+	store := newWorkspaceStore()
+	for _, id := range trackedWorkspaces {
+		_ = store.Delete(ctx, id)
+	}
+	trackedWorkspaces = nil
+}
 
 func initWorkloadPlugin() {
 	appConfigFileStore, appConfigFileDefStore, appConfigFileVersionStore, polarisConfigStore := newWorkloadPluginDependencies()

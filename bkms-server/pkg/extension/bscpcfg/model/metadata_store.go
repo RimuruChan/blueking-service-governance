@@ -122,24 +122,16 @@ func (s *MetadataStoreMongo) Update(
 		updateSet["mountPath"] = *updateData.MountPath
 		needUpdate = true
 	}
-	if updateData.CredentialID != nil {
-		updateSet["credentialID"] = *updateData.CredentialID
-		needUpdate = true
-	}
-	if updateData.CredentialName != nil {
-		updateSet["credential"] = *updateData.CredentialName
-		needUpdate = true
-	}
-	if updateData.Token != nil {
-		updateSet["token"] = *updateData.Token
-		needUpdate = true
-	}
 	if updateData.WorkloadName != nil {
 		updateSet["workloadName"] = *updateData.WorkloadName
 		needUpdate = true
 	}
 	if updateData.WorkloadKind != nil {
 		updateSet["workloadKind"] = *updateData.WorkloadKind
+		needUpdate = true
+	}
+	if updateData.Enable != nil {
+		updateSet["enable"] = *updateData.Enable
 		needUpdate = true
 	}
 	if !needUpdate {

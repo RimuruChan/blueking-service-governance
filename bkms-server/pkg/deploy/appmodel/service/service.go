@@ -222,6 +222,7 @@ func (s *Service) Deploy(ctx context.Context, app *bkmsapp.Application, params D
 		s.appDepsVarReader,
 		s.polarisVarReader,
 		s.workspaceCompsStore,
+		s.workspaceStore,
 		s.polarisConfigStore,
 		s.hostPortStore,
 		s.bscpCfgStore,

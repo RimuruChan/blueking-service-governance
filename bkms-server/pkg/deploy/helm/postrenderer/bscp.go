@@ -26,6 +26,7 @@ import (
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/postrender"
 
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg"
 	k8skind "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/kind"
 	wlbscpcfg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/bscpcfg"
@@ -65,8 +66,9 @@ func NewBscpPostRendererFromStore(
 	ctx context.Context,
 	store bscpcfg.Store,
 	appID, envName string,
+	ws *workspace.Workspace,
 ) (*BscpPostRenderer, error) {
-	fragment, err := wlbscpcfg.BuildFromStore(ctx, store, appID, envName)
+	fragment, err := wlbscpcfg.BuildFromStore(ctx, store, appID, envName, ws)
 	if err != nil {
 		return nil, errors.Wrap(err, "build bscp post renderer from store")
 	}

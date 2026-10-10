@@ -98,6 +98,7 @@ var _ = Describe("TrpcWorkloadBuilder", func() {
 	})
 
 	AfterEach(func() {
+		cleanupWorkspaces(ctx)
 		diApp.RequireStop()
 	})
 
@@ -142,6 +143,7 @@ var _ = Describe("TrpcWorkloadBuilder", func() {
 					Language:    "go",
 					FileContent: "server:\n  address: 0.0.0.0:8080\n  timeout: 3000\n",
 				},
+				WorkspaceID: newWorkspaceID(ctx),
 			})
 
 			// Create two environments
@@ -280,6 +282,7 @@ var _ = Describe("TrpcWorkloadBuilder", func() {
 				EnvVars: []appmodel.Variable{
 					{Key: "MY_REGION", Value: "ap-guangzhou"},
 				},
+				WorkspaceID: newWorkspaceID(ctx),
 			})
 			appEnv = dbfactory.Env(ctx, envSvc, app.WorkspaceID)
 
@@ -324,6 +327,7 @@ var _ = Describe("TrpcWorkloadBuilder", func() {
 					Language:    "go",
 					FileContent: "${{ env. }}",
 				},
+				WorkspaceID: newWorkspaceID(ctx),
 			})
 			appEnv = dbfactory.Env(ctx, envSvc, app.WorkspaceID)
 
@@ -348,6 +352,7 @@ var _ = Describe("TrpcWorkloadBuilder", func() {
 				Language:    "go",
 				FileContent: "missing: ${{ env.MISSING }}\n",
 			},
+			WorkspaceID: newWorkspaceID(ctx),
 		})
 		DeferCleanup(func() {
 			_, _ = appConfigFileStore.DeleteByApp(ctx, app.ID)
@@ -419,6 +424,7 @@ var _ = Describe("TrpcWorkloadBuilder", func() {
 					Language:    "go",
 					FileContent: "server:\n  app: myapp\n  timeout: 3000\n",
 				},
+				WorkspaceID: newWorkspaceID(ctx),
 			})
 
 			testEnv = dbfactory.Env(ctx, envSvc, app.WorkspaceID)

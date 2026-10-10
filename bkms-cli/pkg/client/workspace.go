@@ -18,6 +18,14 @@
 
 package client
 
+// 工作空间状态
+const (
+	// WorkspaceStateReady 工作空间启用中
+	WorkspaceStateReady = "Ready"
+	// WorkspaceStateDisabled 工作空间已停用
+	WorkspaceStateDisabled = "Disabled"
+)
+
 // Workspace 工作空间
 type Workspace struct {
 	ID          string `json:"id" yaml:"id"`

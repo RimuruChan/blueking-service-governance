@@ -75,6 +75,12 @@ func EnsureBkSystems(ctx context.Context, workspaceID, bkciProjectID string, biz
 		return nil, errors.Wrap(err, "init bkrepo project")
 	}
 
+	// 绑定 BSCP Default 项目并确保 credential 存在
+	bscpBinding, err := BindBscpProject(ctx, cmdbInfo.BizID, "")
+	if err != nil {
+		return nil, errors.Wrap(err, "bind bscp project")
+	}
+
 	return &BkSystems{
 		// 蓝盾项目 Code, 可读唯一字符串，如：bkce
 		BkCIProjectID: bkciProjectID,
@@ -86,6 +92,12 @@ func EnsureBkSystems(ctx context.Context, workspaceID, bkciProjectID string, biz
 		BkBCSProjectID: createProjResp.ID,
 		// BCS 项目 Code, 使用蓝盾项目可读 code (如 bkce)
 		BkBCSProjectCode: createProjResp.Code,
+		// BSCP 项目 ID / Key
+		BkBSCPProjectID:  bscpBinding.ProjectID,
+		BkBSCPProjectKey: bscpBinding.ProjectKey,
+		// BSCP Credential ID / Token
+		BscpToken:        bscpBinding.Token,
+		BscpCredentialID: bscpBinding.CredentialID,
 		// 表明用户创建项目时是否绑定了已有的蓝盾项目
 		IsBoundExistedBKCIProject: isBoundExistedBKCIProject,
 		// 运营产品 ID

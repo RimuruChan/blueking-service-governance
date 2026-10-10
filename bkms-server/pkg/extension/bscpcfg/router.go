@@ -40,8 +40,6 @@ type Handler interface {
 	CreateEnvBinding(c *gin.Context)
 	// DeleteEnvBinding 删除环境绑定
 	DeleteEnvBinding(c *gin.Context)
-	// PatchEnvBinding 更新环境绑定
-	PatchEnvBinding(c *gin.Context)
 	// GetEnvBinding 获取指定环境的绑定详情
 	GetEnvBinding(c *gin.Context)
 }
@@ -58,6 +56,5 @@ func Register(rg *gin.RouterGroup, h Handler) {
 	rg.GET("/apps/:appID/bscpcfg/envs", h.ListEnvBindings)
 	rg.POST("/apps/:appID/bscpcfg/envs/:envName/binding", h.CreateEnvBinding)
 	rg.DELETE("/apps/:appID/bscpcfg/envs/:envName/binding", h.DeleteEnvBinding)
-	rg.PATCH("/apps/:appID/bscpcfg/envs/:envName/binding", h.PatchEnvBinding)
 	rg.GET("/apps/:appID/bscpcfg/envs/:envName/binding", h.GetEnvBinding)
 }

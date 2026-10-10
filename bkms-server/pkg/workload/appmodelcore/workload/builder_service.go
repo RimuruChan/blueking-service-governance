@@ -51,6 +51,7 @@ import (
 type BuilderService struct {
 	envVarsReader          *envvars.UnifiedEnvVarsReader
 	workspaceCompsStore    workspace.WorkspaceCompsStore
+	workspaceStore         workspace.WorkspaceStore
 	polarisWorkloadBuilder *polaris.WorkloadBuilder
 	hostPortStore          hostport.HostPortStore
 	bscpCfgStore           bscpcfg.Store
@@ -168,6 +169,7 @@ func NewBuilderService(
 	appDepsVarReader *depenvvars.Reader,
 	polarisVarReader *polarisenvvars.Reader,
 	workspaceCompsStore workspace.WorkspaceCompsStore,
+	workspaceStore workspace.WorkspaceStore,
 	polarisConfigStore polaris.PolarisConfigStore,
 	hostPortStore hostport.HostPortStore,
 	bscpCfgStore bscpcfg.Store,
@@ -179,6 +181,7 @@ func NewBuilderService(
 	return &BuilderService{
 		envVarsReader:          envvars.NewUnifiedEnvVarsReader(scopedEnvVarStore, appDepsVarReader, polarisVarReader),
 		workspaceCompsStore:    workspaceCompsStore,
+		workspaceStore:         workspaceStore,
 		polarisWorkloadBuilder: polaris.NewWorkloadBuilder(polarisConfigStore),
 		hostPortStore:          hostPortStore,
 		bscpCfgStore:           bscpCfgStore,
