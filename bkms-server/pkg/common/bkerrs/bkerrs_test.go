@@ -110,6 +110,30 @@ var _ = Describe("Error", func() {
 		)
 	})
 
+	Describe("WrapScopedEnvVarKeyConflict", func() {
+		It("should wrap key conflicts with the scope and key in details", func() {
+			cause := errors.New("duplicate key")
+			err := bkerrs.WrapScopedEnvVarKeyConflict(cause, "workspace-a", "env", "feature-a", "APP_NAME")
+
+			var bkErr *bkerrs.Error
+			Expect(errors.As(err, &bkErr)).To(BeTrue())
+			Expect(errors.Is(err, cause)).To(BeTrue())
+			Expect(bkErr.Code()).To(Equal(bkerrs.ErrCodeAlreadyExists))
+			details := bkErr.Details()
+			Expect(details).To(HaveLen(1))
+			detail := details.AsMaps()[0]
+			Expect(detail["code"]).To(Equal(bkerrs.ErrDetailCodeScopedEnvVarKeyConflict))
+			Expect(detail["system"]).To(Equal("bkms"))
+			Expect(detail["module"]).To(Equal("envvars"))
+			Expect(detail["extras"]).To(Equal(map[string]string{
+				"workspaceID": "workspace-a",
+				"scopeType":   "env",
+				"scopeValue":  "feature-a",
+				"key":         "APP_NAME",
+			}))
+		})
+	})
+
 	Describe("WrapBSCPNotFullyReleased", func() {
 		It("should wrap not fully released error with detail code", func() {
 			err := bkerrs.WrapBSCPNotFullyReleased(

@@ -21519,6 +21519,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/bkerrs.GinErrorOutput'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/bkerrs.GinErrorOutput'
       security:
       - BkUserInfo: []
       - BkUserCredential: []
@@ -21586,6 +21590,10 @@ paths:
             $ref: '#/definitions/serializer.UpdateScopedEnvVarOutput'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/bkerrs.GinErrorOutput'
+        "409":
+          description: Conflict
           schema:
             $ref: '#/definitions/bkerrs.GinErrorOutput'
       security:

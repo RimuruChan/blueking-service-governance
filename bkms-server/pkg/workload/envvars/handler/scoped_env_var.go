@@ -65,6 +65,7 @@ func New(registry *storereg.Registry) *Handler {
 //	@Param			body		body		serializer.CreateScopedEnvVarInput	true	"创建作用域级别环境变量请求"
 //	@Success		200			{object}	serializer.CreateScopedEnvVarOutput
 //	@Failure		400			{object}	bkerrs.GinErrorOutput
+//	@Failure		409			{object}	bkerrs.GinErrorOutput
 //	@Router			/workspaces/{workspaceID}/scoped-env-vars [post]
 func (h *Handler) CreateScopedEnvVar(c *gin.Context) {
 	var uriInput serializer.WorkspaceURIInput
@@ -102,7 +103,9 @@ func (h *Handler) CreateScopedEnvVar(c *gin.Context) {
 	}
 	if err = h.scopedEnvVars().Create(ctx, envVar); err != nil {
 		if errors.Is(err, envvars.ErrScopedEnvVarKeyConflict) {
-			bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidRequest, "create scoped env var"))
+			bkerrs.AbortWithErr(c, bkerrs.WrapScopedEnvVarKeyConflict(
+				err, ws.ID, string(envVar.ScopeType), envVar.ScopeValue, envVar.Key,
+			))
 			return
 		}
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "create scoped env var"))
@@ -144,6 +147,7 @@ func (h *Handler) CreateScopedEnvVar(c *gin.Context) {
 //	@Param			body			body		serializer.UpdateScopedEnvVarInput	true	"更新作用域级别环境变量请求"
 //	@Success		200				{object}	serializer.UpdateScopedEnvVarOutput
 //	@Failure		400				{object}	bkerrs.GinErrorOutput
+//	@Failure		409				{object}	bkerrs.GinErrorOutput
 //	@Router			/workspaces/{workspaceID}/scoped-env-vars/{scopedEnvVarID} [put]
 func (h *Handler) UpdateScopedEnvVar(c *gin.Context) {
 	var uriInput serializer.ScopedEnvVarURIInput
@@ -197,7 +201,9 @@ func (h *Handler) UpdateScopedEnvVar(c *gin.Context) {
 	}
 	if err = envvars.UpdateByID(ctx, h.registry.DB, ws.ID, id, updateData); err != nil {
 		if errors.Is(err, envvars.ErrScopedEnvVarKeyConflict) {
-			bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidRequest, "update scoped env var"))
+			bkerrs.AbortWithErr(c, bkerrs.WrapScopedEnvVarKeyConflict(
+				err, ws.ID, string(oldObj.ScopeType), oldObj.ScopeValue, input.Key,
+			))
 			return
 		}
 		if errors.Is(err, envvars.ErrScopedEnvVarNotFound) {
