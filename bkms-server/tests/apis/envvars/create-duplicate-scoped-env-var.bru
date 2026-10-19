@@ -1,0 +1,47 @@
+meta {
+  name: create-duplicate-scoped-env-var
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{serviceURL}}/workspaces/{{envvarsWorkspaceID}}/scoped-env-vars
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "scopeType": "env",
+    "scopeValue": "{{envvarsEnvName}}",
+    "key": "{{envScopedKey}}",
+    "value": "duplicate-value",
+    "isSensitive": false
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body: isJson
+}
+
+tests {
+  test("should reject a duplicate scoped key with structured conflict details", () => {
+    const error = res.body.error;
+
+    expect(error.code).to.equal("ALREADY_EXISTS");
+    expect(error.details).to.have.length(1);
+    expect(error.details[0].code).to.equal("SCOPED_ENV_VAR_KEY_CONFLICT");
+    expect(error.details[0].extras).to.deep.equal({
+      workspaceID: bru.getVar("envvarsWorkspaceID"),
+      scopeType: "env",
+      scopeValue: bru.getVar("envvarsEnvName"),
+      key: bru.getVar("envScopedKey")
+    });
+  })
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
