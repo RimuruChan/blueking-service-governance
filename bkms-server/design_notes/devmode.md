@@ -181,6 +181,77 @@ restart.sh <random_name> <md5>
   8. 清除停止标志
 ```
 
+## 进程重启（publish restart）
+
+不替换二进制，仅「杀死业务进程 → 由 monitor 重新拉起」，过程中 Pod 不重建。入口为 `bkms-cli app publish restart`，
+由 server 异步完成 Pod 内命令执行，不新增脚本，trpc / taf 共用同一流程。
+
+### 接口
+
+`POST /api/v1/devmode/{appID}/restart`（异步接口），请求体中 `envs` / `envTypes` / `instances` 必须且只能指定其中一个：
+
+```json
+{"envs":      {"names": ["stage", "test"]}}
+{"envTypes":  {"types": ["development", "test"]}}
+{"instances": {"envName": "stage", "instanceIDs": ["pod1", "pod2"]}}
+```
+
+| 类型 | 目标 | 不满足条件时（生产环境 / 集群配置不完整 / 未启用 devmode / 无 Running 实例） |
+|------|------|------|
+| `envs` | 各环境下所有 Running 实例 | 严格模式：整个请求返回错误，不执行任何重启 |
+| `envTypes` | 匹配类型的环境下所有 Running 实例 | 仅允许 development / test / staging，含 `production` 直接拒绝；其余不满足条件的环境跳过，并在 `skipped` 中返回原因 |
+| `instances` | 指定环境下的指定实例 | 严格模式；实例必须属于该环境 |
+
+接口同步创建 pending 记录、把**本次请求的所有实例放进同一条任务消息**投递到 asynq 后立即返回 `202`：
+
+```json
+{"data": {"requestedAt": "2026-10-20T06:34:16Z", "instanceCount": 100, "recordIDs": ["..."], "skipped": []}}
+```
+
+CLI 拿到 `recordIDs` 后按记录 ID 精确轮询：先按 `statuses=pending&statuses=running` 只取 1 条拿到未完成数量，
+数量归零后再按 ID 拉取全部记录做汇总。查询接口支持 `envNames` / `envTypes` / `recordIDs`（三选一）、`since`、`statuses`；
+列表类参数通过重复 query 参数传递（如 `statuses=pending&statuses=running`）。
+
+集群访问使用当前用户的 BCS Token：任务执行时由 worker 按 ctx 中的用户身份重新获取，不写入队列。
+
+### 队列与单实例执行流程
+
+一次请求对应一条 asynq 消息，消息 payload 包含本次所有实例的记录 ID 与集群信息。worker 内按最大 10 个实例并行执行，每个实例：
+
+```
+a. cat pid.conf                                   记录旧 PID（仅用于展示）；失败则不执行后续步骤
+b. source utils.sh && { bash stop.sh; rm -f "${PID_CONF}"; clear_stop_flag; }
+c. 轮询 pid.conf                                  文件出现即视为成功，内容即新 PID（超时 30s）
+d. 更新发布记录为 success / failed
+```
+
+- 记录先于任务创建，任务重投递时跳过已进入终态的实例，避免重复重启；任务不自动重试（重启非幂等）
+- 从 b 开始的步骤不随请求取消（`context.WithoutCancel` + 独立超时），记录反映真实结果
+- 每个实例结束时上报 `bkms_devmode_restart_duration_seconds{status=ok|err|timeout}`，并输出一条带耗时的结构化日志
+
+- 先 `source utils.sh`，失败则不执行 stop，避免「进程已被杀、flag 无法清除」
+- 删除 `pid.conf`：stop.sh 不会删除该文件，不删则 c 步会误判成功；删除后只有 `start.sh` 在确认进程启动后才会重新写入
+- stop.sh 失败也会删除 `pid.conf` 并清除 flag，让 monitor 兜底；该实例直接记为失败，不再轮询
+- 拉起由 monitor 完成（发现进程不在且无 stop flag → 调用 `start.sh`），保证业务进程 stdout 指向容器而非 exec 会话
+
+### 记录
+
+复用发布记录表 `devmode_publish_records`：
+
+- 新增 `action` 字段：`publish` / `restart`，历史数据无该字段，按 `publish` 处理
+- 新增状态 `pending` / `running`：请求开始时为所有实例写入 `pending`，执行时更新为 `running`，结束时更新为 `success` / `failed`
+- `ListLatestByInstance`（实例列表展示最近一次发布信息）排除 `restart` 记录
+- `publish history` 同时展示两类记录，以 Action 列区分
+- 审计记录按实例写入（`OperationTypeRestart`），每个实例一条
+
+### 已知风险（测试时留意）
+
+- CLI 等待超时（固定 3 分钟）或用户 Ctrl+C 时任务仍在服务端执行，以 `publish history` 为准
+- worker 进程异常退出时，记录可能停留在 `running`，任务不自动重试，需要手动重新发起
+- 不区分调用来源，同一用户、同一条件并发提交两次时，轮询会同时看到两次的记录（不引入 batchID 的已知限制）
+- 同一实例上 publish 与 restart 并发执行时会相互影响 stop flag 与 `pid.conf`
+- 进程空窗期可能触发 liveness probe 导致容器重启
+
 ## 全局错误定义
 
 | 错误变量 | 说明 |

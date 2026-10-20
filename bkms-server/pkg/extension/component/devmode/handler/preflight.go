@@ -25,6 +25,7 @@ import (
 
 	"github.com/TencentBlueKing/gopkg/mapx"
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 	"github.com/samber/lo"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -38,8 +39,7 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
 	slz "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component/devmode/serializer"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bcs"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/bcstoken"
 	k8sclient "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/client"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/cluster"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
@@ -104,7 +104,9 @@ func (h *Handler) DevModePublishPreflight(c *gin.Context) {
 	}
 
 	// 解析实例列表
-	instanceIDs, err := h.resolveInstanceIDs(ctx, uriInput.AppID, uriInput.EnvName, bodyInput)
+	instanceIDs, err := h.resolveInstanceIDs(
+		ctx, uriInput.AppID, uriInput.EnvName, bodyInput.InstanceIDs, bodyInput.PublishAll,
+	)
 	if err != nil {
 		bkerrs.AbortWithErr(c, err)
 		return
@@ -134,11 +136,8 @@ func (h *Handler) validateEnv(
 	ctx context.Context, appID, envName string,
 ) (*bkmsapp.Application, *envmodel.Environment, error) {
 	// 检查集群 API 地址是否配置
-	if config.G.BCS.BaseUrl == "" {
-		return nil, nil, bkerrs.New(
-			bkerrs.ErrCodeInvalidRequest,
-			"publish is not supported: cluster API base URL is not configured",
-		)
+	if err := checkClusterAPIConfigured(); err != nil {
+		return nil, nil, err
 	}
 
 	// 校验 app 和 env（包含权限检查）
@@ -147,23 +146,41 @@ func (h *Handler) validateEnv(
 		return nil, nil, err
 	}
 
+	if err = checkEnvSupported(env); err != nil {
+		return nil, nil, err
+	}
+	return app, env, nil
+}
+
+// checkClusterAPIConfigured 检查集群 API 地址是否配置
+func checkClusterAPIConfigured() error {
+	if config.G.BCS.BaseUrl == "" {
+		return bkerrs.New(
+			bkerrs.ErrCodeInvalidRequest,
+			"publish is not supported: cluster API base URL is not configured",
+		)
+	}
+	return nil
+}
+
+// checkEnvSupported 校验环境是否支持 devmode 操作：非 production 且集群信息完整。
+func checkEnvSupported(env *envmodel.Environment) error {
 	// 拒绝 production 环境
 	if bkmsenv.IsProductionType(bkmsenv.Type(env.Type)) {
-		return nil, nil, bkerrs.Errorf(
+		return bkerrs.Errorf(
 			bkerrs.ErrCodeInvalidRequest,
-			"environment %s is a production environment, publish is not allowed", envName,
+			"environment %s is a production environment, publish is not allowed", env.Name,
 		)
 	}
 
 	// 校验集群信息完整性
 	if env.Cluster.ClusterID == "" || env.Cluster.Namespace == "" {
-		return nil, nil, bkerrs.New(
+		return bkerrs.New(
 			bkerrs.ErrCodeInvalidRequest,
 			"publish is not supported: cluster configuration is incomplete (clusterID or namespace is empty)",
 		)
 	}
-
-	return app, env, nil
+	return nil
 }
 
 // getEffectiveDevMode 获取并校验 devmode 生效配置。
@@ -199,51 +216,32 @@ func (h *Handler) getBCSProjectCode(ctx context.Context, workspaceID string) (st
 	return ws.BkSystems.BkBCSProjectCode, nil
 }
 
-// fetchActiveToken 获取当前用户的有效 Token。
+// fetchActiveToken 获取当前用户的有效 BCS Token
 func (h *Handler) fetchActiveToken(ctx context.Context, bcsProjectCode string) (string, error) {
-	user := auth.MustGetUser(ctx)
-	bcsClient, err := bcs.New(user, bcs.ClientOption{UserMode: true})
+	token, err := bcstoken.FetchActiveUserToken(ctx, bcsProjectCode)
 	if err != nil {
-		return "", bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "failed to initialize token client")
+		if errors.Is(err, bcstoken.ErrNoActiveUserToken) {
+			return "", bkerrs.Wrap(err, bkerrs.ErrCodeNotFound, "fetch active BCS user token")
+		}
+		return "", bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "fetch active BCS user token")
 	}
-
-	tokens, err := bcsClient.ListUserTokens(ctx)
-	if err != nil {
-		return "", bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "failed to retrieve token")
-	}
-
-	activeToken, found := lo.Find(tokens, func(item bcs.UserToken) bool {
-		return item.Status == bcs.UserTokenStatusActive
-	})
-	if !found {
-		return "", bkerrs.Errorf(
-			bkerrs.ErrCodeNotFound,
-			"no active token found, please create a token in BCS at %s",
-			buildBCSUserTokenURL(bcsProjectCode),
-		)
-	}
-
-	return activeToken.Token, nil
-}
-
-// buildBCSUserTokenURL 构造 BCS 用户 Token 创建页地址。
-func buildBCSUserTokenURL(bcsProjectCode string) string {
-	return fmt.Sprintf(
-		"%s/bcs/projects/%s/user-token",
-		strings.TrimRight(config.G.BCS.BaseUrl, "/"),
-		bcsProjectCode,
-	)
+	return token, nil
 }
 
 // resolveInstanceIDs 根据请求参数解析目标实例 ID 列表。
-// publishAll=true 时返回所有 Running 状态的 Pod 名称；否则校验指定的 instanceIDs 是否存在。
+// all=true 时返回所有 Running 状态的 Pod 名称；否则校验指定的 instanceIDs 是否存在。
 func (h *Handler) resolveInstanceIDs(
-	ctx context.Context, appID, envName string, input slz.PreflightBodyInput,
+	ctx context.Context, appID, envName string, instanceIDs []string, all bool,
 ) ([]string, error) {
 	// 获取最新部署记录
 	record, err := appmodeldeploy.GetLatest(ctx, h.registry.DB, appID, envName, "")
 	if err != nil {
-		return nil, bkerrs.Wrap(err, bkerrs.ErrCodeNotFound, "no deploy record found for this environment")
+		if errors.Is(err, store.ErrNotFound) {
+			return nil, bkerrs.Wrap(err, bkerrs.ErrCodeNotFound, "no deploy record found for this environment")
+		}
+		return nil, bkerrs.Wrapf(
+			err, bkerrs.ErrCodeInternalServerError, "get latest deploy record of app %s env %s", appID, envName,
+		)
 	}
 
 	// 通过 LabelSelector 拉取匹配的 Pod 列表
@@ -257,10 +255,10 @@ func (h *Handler) resolveInstanceIDs(
 		)
 	}
 
-	if input.PublishAll {
+	if all {
 		return h.getAllRunningInstanceIDs(pods.Items)
 	}
-	return h.validateSpecifiedInstanceIDs(pods.Items, input.InstanceIDs)
+	return h.validateSpecifiedInstanceIDs(pods.Items, instanceIDs)
 }
 
 // getAllRunningInstanceIDs 从 Pod 列表中筛选所有 Running 状态的实例 ID。
@@ -283,7 +281,10 @@ func (h *Handler) validateSpecifiedInstanceIDs(
 	items []unstructured.Unstructured, instanceIDs []string,
 ) ([]string, error) {
 	if len(instanceIDs) == 0 {
-		return nil, bkerrs.New(bkerrs.ErrCodeInvalidRequest, "instanceIDs is required when publishAll is false")
+		return nil, bkerrs.New(
+			bkerrs.ErrCodeInvalidRequest,
+			"instanceIDs is required when not targeting all instances",
+		)
 	}
 
 	podNameSet := make(map[string]struct{}, len(items))
@@ -310,6 +311,11 @@ func (h *Handler) validateSpecifiedInstanceIDs(
 	return instanceIDs, nil
 }
 
+// buildClusterAddress 构造集群 API 完整地址，如 {baseUrl}/clusters/{clusterID}/
+func buildClusterAddress(clusterID string) string {
+	return fmt.Sprintf("%s/clusters/%s/", strings.TrimRight(config.G.BCS.BaseUrl, "/"), clusterID)
+}
+
 // buildPreflightOutput 组装 preflight 响应数据。
 func buildPreflightOutput(
 	env *envmodel.Environment,
@@ -317,7 +323,7 @@ func buildPreflightOutput(
 	token string,
 	instanceIDs []string,
 ) *slz.PreflightOutput {
-	address := fmt.Sprintf("%s/clusters/%s/", strings.TrimRight(config.G.BCS.BaseUrl, "/"), env.Cluster.ClusterID)
+	address := buildClusterAddress(env.Cluster.ClusterID)
 
 	var workPath, mountPath string
 	if devModeSpec.WorkPath != nil {

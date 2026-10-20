@@ -87,7 +87,9 @@ definitions:
         description: 容器内挂载目录（plain 必填）
         type: string
       mountedEnvNames:
-        description: 创建时可选设置挂载环境范围；nil = 全环境生效，空数组 = 不挂载任何环境。环境名格式与路径参数 envName 相同。
+        description: |-
+          创建时可选设置挂载环境范围；nil = 全环境生效，空数组 = 不挂载任何环境。
+          环境名格式与路径参数 envName 相同。
         items:
           type: string
         type: array
@@ -134,6 +136,8 @@ definitions:
         type: string
       enableEnvVarRender:
         type: boolean
+      envInstanceStrategy:
+        type: string
       fileFormat:
         type: string
       fileId:
@@ -172,6 +176,8 @@ definitions:
         type: string
       enableEnvVarRender:
         type: boolean
+      envInstanceStrategy:
+        type: string
       id:
         type: string
       isUnifiedConfig:
@@ -271,6 +277,11 @@ definitions:
     properties:
       enableEnvVarRender:
         type: boolean
+      envInstanceStrategy:
+        enum:
+        - overlay
+        - overwrite
+        type: string
       isUnifiedConfig:
         type: boolean
       mountDir:
@@ -7656,9 +7667,13 @@ definitions:
     type: object
   serializer.PublishRecordOutputObj:
     properties:
+      action:
+        type: string
       binaryName:
         type: string
       createdAt:
+        type: string
+      envName:
         type: string
       fileSize:
         type: integer
@@ -8162,6 +8177,97 @@ definitions:
     - memoryLimits
     - memoryRequests
     - replicas
+    type: object
+  serializer.RestartData:
+    properties:
+      instanceCount:
+        description: InstanceCount 本次受理的实例数
+        type: integer
+      recordIDs:
+        description: RecordIDs 本次创建的发布记录 ID，用于精确轮询执行结果
+        items:
+          type: string
+        type: array
+      requestedAt:
+        description: RequestedAt 服务端受理时间，用于按条件轮询本次提交产生的记录
+        type: string
+      skipped:
+        description: Skipped 被跳过的环境（仅按环境类型指定时可能出现）
+        items:
+          $ref: '#/definitions/serializer.RestartSkippedEnv'
+        type: array
+    type: object
+  serializer.RestartEnvTypesTarget:
+    properties:
+      types:
+        description: Types 环境类型列表，不允许 production
+        items:
+          type: string
+        minItems: 1
+        type: array
+        uniqueItems: true
+    required:
+    - types
+    type: object
+  serializer.RestartEnvsTarget:
+    properties:
+      names:
+        description: Names 环境名称列表
+        items:
+          type: string
+        minItems: 1
+        type: array
+        uniqueItems: true
+    required:
+    - names
+    type: object
+  serializer.RestartInput:
+    properties:
+      envTypes:
+        allOf:
+        - $ref: '#/definitions/serializer.RestartEnvTypesTarget'
+        description: EnvTypes 按环境类型重启（匹配环境下所有 Running 实例）
+      envs:
+        allOf:
+        - $ref: '#/definitions/serializer.RestartEnvsTarget'
+        description: Envs 按环境名称重启（各环境下所有 Running 实例）
+      instances:
+        allOf:
+        - $ref: '#/definitions/serializer.RestartInstancesTarget'
+        description: Instances 重启指定环境下的指定实例
+    type: object
+  serializer.RestartInstancesTarget:
+    properties:
+      envName:
+        description: EnvName 环境名称
+        type: string
+      instanceIDs:
+        description: InstanceIDs 实例 ID 列表，须属于 EnvName 环境
+        items:
+          type: string
+        minItems: 1
+        type: array
+        uniqueItems: true
+    required:
+    - envName
+    - instanceIDs
+    type: object
+  serializer.RestartOutput:
+    properties:
+      data:
+        $ref: '#/definitions/serializer.RestartData'
+    type: object
+  serializer.RestartSkippedEnv:
+    properties:
+      envName:
+        description: EnvName 环境名称
+        type: string
+      envType:
+        description: EnvType 环境类型
+        type: string
+      reason:
+        description: Reason 跳过原因
+        type: string
     type: object
   serializer.RoleBindingOutput:
     properties:
@@ -18035,54 +18141,6 @@ paths:
       tags:
       - devmode
   /devmode/{appID}/envs/{envName}/publish-records:
-    get:
-      operationId: ListDevModePublishRecords
-      parameters:
-      - description: 应用 ID
-        in: path
-        name: appID
-        required: true
-        type: string
-      - description: 环境名称
-        in: path
-        name: envName
-        required: true
-        type: string
-      - description: 搜索关键字
-        in: query
-        name: keyword
-        type: string
-      - description: 分页页码（从 1 开始）
-        in: query
-        name: page
-        required: true
-        type: integer
-      - description: 分页大小
-        in: query
-        name: pageSize
-        required: true
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/serializer.ListPublishRecordsOutput'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/bkerrs.GinErrorOutput'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/bkerrs.GinErrorOutput'
-      security:
-      - BkUserInfo: []
-      - BkUserCredential: []
-      summary: 获取开发模式发布记录列表
-      tags:
-      - devmode
     post:
       consumes:
       - application/json
@@ -18123,6 +18181,105 @@ paths:
       - BkUserInfo: []
       - BkUserCredential: []
       summary: 上报开发模式发布结果
+      tags:
+      - devmode
+  /devmode/{appID}/publish-records:
+    get:
+      operationId: ListDevModePublishRecords
+      parameters:
+      - description: 应用 ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - collectionFormat: csv
+        description: 环境名称，与 envTypes 二选一
+        in: query
+        items:
+          type: string
+        name: envNames
+        type: array
+      - collectionFormat: csv
+        description: 环境类型，与 envNames 二选一
+        in: query
+        items:
+          type: string
+        name: envTypes
+        type: array
+      - description: 搜索关键字
+        in: query
+        name: keyword
+        type: string
+      - description: 分页页码（从 1 开始）
+        in: query
+        name: page
+        required: true
+        type: integer
+      - description: 分页大小
+        in: query
+        name: pageSize
+        required: true
+        type: integer
+      - description: 只返回创建时间不早于该时间的记录（RFC3339）
+        in: query
+        name: since
+        type: string
+      - collectionFormat: csv
+        description: 状态过滤
+        in: query
+        items:
+          type: string
+        name: statuses
+        type: array
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/serializer.ListPublishRecordsOutput'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/bkerrs.GinErrorOutput'
+      security:
+      - BkUserInfo: []
+      - BkUserCredential: []
+      summary: 获取开发模式发布记录列表
+      tags:
+      - devmode
+  /devmode/{appID}/restart:
+    post:
+      consumes:
+      - application/json
+      operationId: RestartDevModeProcesses
+      parameters:
+      - description: 应用 ID
+        in: path
+        name: appID
+        required: true
+        type: string
+      - description: 进程重启请求体
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/serializer.RestartInput'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/serializer.RestartOutput'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/bkerrs.GinErrorOutput'
+      security:
+      - BkUserInfo: []
+      - BkUserCredential: []
+      summary: 开发模式进程重启
       tags:
       - devmode
   /env-var-templates/app:

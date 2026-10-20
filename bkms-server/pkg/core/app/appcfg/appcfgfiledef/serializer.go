@@ -116,6 +116,7 @@ type DefSummaryObj struct {
 	IsUnifiedConfig    bool     `json:"isUnifiedConfig"`
 	MountedEnvNames    []string `json:"mountedEnvNames,omitempty"`
 	EnableEnvVarRender bool     `json:"enableEnvVarRender"`
+	EnvContentStrategy string   `json:"envInstanceStrategy,omitempty"`
 	Creator            string   `json:"creator"`
 	CreatedAt          string   `json:"createdAt"`
 }
@@ -130,6 +131,7 @@ func (o *DefSummaryObj) FromDef(def appcfg.AppConfigFileDef) *DefSummaryObj {
 		IsUnifiedConfig:    def.EnvConfigMode.IsUnifiedConfig,
 		MountedEnvNames:    def.EnvConfigMode.MountedEnvNames,
 		EnableEnvVarRender: def.EnableEnvVarRender,
+		EnvContentStrategy: string(def.EnvConfigMode.EnvContentStrategy),
 		Creator:            def.Creator,
 		CreatedAt:          def.CreatedAt.Format(time.RFC3339),
 	}
@@ -153,6 +155,7 @@ type DefDetailObj struct {
 	IsUnifiedConfig     bool           `json:"isUnifiedConfig"`
 	MountedEnvNames     []string       `json:"mountedEnvNames,omitempty"`
 	EnableEnvVarRender  bool           `json:"enableEnvVarRender"`
+	EnvContentStrategy  string         `json:"envInstanceStrategy,omitempty"`
 	FileType            string         `json:"fileType,omitempty"`
 	ContentSourceType   string         `json:"contentSourceType"`
 	BaseAppConfigFileID string         `json:"baseAppConfigFileId,omitempty"`
@@ -250,6 +253,7 @@ func (o *DefDetailObj) fillDef(def appcfg.AppConfigFileDef) {
 	o.IsUnifiedConfig = def.EnvConfigMode.IsUnifiedConfig
 	o.MountedEnvNames = def.EnvConfigMode.MountedEnvNames
 	o.EnableEnvVarRender = def.EnableEnvVarRender
+	o.EnvContentStrategy = string(def.EnvConfigMode.EnvContentStrategy)
 	o.Creator = def.Creator
 	o.CreatedAt = def.CreatedAt.Format(time.RFC3339)
 }
@@ -270,11 +274,13 @@ type UpdateDefInput struct {
 	IsUnifiedConfig    *bool     `json:"isUnifiedConfig,omitempty"`
 	MountedEnvNames    *[]string `json:"mountedEnvNames,omitempty" binding:"omitempty,dive,uri_slug"`
 	EnableEnvVarRender *bool     `json:"enableEnvVarRender,omitempty"`
+	// EnvContentStrategy: overlay 表示环境内容按补丁与默认配置合并；overwrite 表示环境内容独立生效，不再继承默认配置变更。
+	EnvContentStrategy *string `json:"envInstanceStrategy,omitempty" binding:"omitempty,oneof=overlay overwrite"`
 }
 
 // ToFileDefUpdate 转换为 service 层参数。
 func (i UpdateDefInput) ToFileDefUpdate(operator string) appcfg.FileDefUpdate {
-	return appcfg.FileDefUpdate{
+	update := appcfg.FileDefUpdate{
 		Name:               i.Name,
 		MountDir:           i.MountDir,
 		IsUnifiedConfig:    i.IsUnifiedConfig,
@@ -282,6 +288,11 @@ func (i UpdateDefInput) ToFileDefUpdate(operator string) appcfg.FileDefUpdate {
 		EnableEnvVarRender: i.EnableEnvVarRender,
 		Operator:           operator,
 	}
+	if i.EnvContentStrategy != nil {
+		strategy := appcfg.EnvContentStrategy(*i.EnvContentStrategy)
+		update.EnvContentStrategy = &strategy
+	}
+	return update
 }
 
 // UpdateDefOutput 更新 def 响应。

@@ -24,14 +24,28 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
-// PublishStatus 开发模式发布状态
-type PublishStatus string
+// RecordStatus 开发模式发布记录状态（publish / restart 共用）
+type RecordStatus string
 
 const (
-	// PublishStatusSuccess 发布成功
-	PublishStatusSuccess PublishStatus = "success"
-	// PublishStatusFailed 发布失败
-	PublishStatusFailed PublishStatus = "failed"
+	// RecordStatusSuccess 执行成功
+	RecordStatusSuccess RecordStatus = "success"
+	// RecordStatusFailed 执行失败
+	RecordStatusFailed RecordStatus = "failed"
+	// RecordStatusPending 等待执行
+	RecordStatusPending RecordStatus = "pending"
+	// RecordStatusRunning 执行中
+	RecordStatusRunning RecordStatus = "running"
+)
+
+// RecordAction 开发模式发布记录的操作类型
+type RecordAction string
+
+const (
+	// RecordActionPublish 发布二进制并热重启
+	RecordActionPublish RecordAction = "publish"
+	// RecordActionRestart 仅重启业务进程（不替换二进制）
+	RecordActionRestart RecordAction = "restart"
 )
 
 // PublishRecord 开发模式发布记录（每个实例/pod 一条）
@@ -44,6 +58,8 @@ type PublishRecord struct {
 	// EnvName 环境名称
 	EnvName string `bson:"envName"`
 
+	// Action 操作类型：publish / restart，历史数据为空，按 publish 处理
+	Action RecordAction `bson:"action,omitempty"`
 	// Instance 目标实例（pod）名称
 	Instance string `bson:"instance"`
 	// BinaryName 发布的二进制名称
@@ -52,8 +68,8 @@ type PublishRecord struct {
 	FileSize int64 `bson:"fileSize"`
 	// MD5 文件 MD5 值
 	MD5 string `bson:"md5"`
-	// Status 发布状态：success / failed
-	Status PublishStatus `bson:"status"`
+	// Status 发布状态：pending / running / success / failed
+	Status RecordStatus `bson:"status"`
 	// Message 失败原因等附加信息
 	Message string `bson:"message"`
 	// Operator 操作人
@@ -63,4 +79,12 @@ type PublishRecord struct {
 	CreatedAt time.Time `bson:"createdAt"`
 	// UpdatedAt 更新时间
 	UpdatedAt time.Time `bson:"updatedAt"`
+}
+
+// GetAction 获取操作类型，历史数据未设置时按 publish 处理
+func (r *PublishRecord) GetAction() RecordAction {
+	if r.Action == "" {
+		return RecordActionPublish
+	}
+	return r.Action
 }

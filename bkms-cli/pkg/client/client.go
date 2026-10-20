@@ -42,6 +42,8 @@ const (
 	DefaultListAppConfigFileVersionsPageSize = 100
 	// DefaultListAppInstancesPageSize 获取应用实例列表时的每页默认数量。
 	DefaultListAppInstancesPageSize = 100
+	// writeRequestTimeout 非幂等写请求（如提交异步重启）的超时时间
+	writeRequestTimeout = 30 * time.Second
 )
 
 // 接口兼容性断言
@@ -54,6 +56,8 @@ var ErrTokenExpiredOrInvalid = errors.New("access token expired or invalid")
 type SvcBasedClient struct {
 	cli     *resty.Client
 	authCli *resty.Client
+	// noRetryCli 用于非幂等写请求：不自动重试，避免请求被重复提交
+	noRetryCli *resty.Client
 }
 
 // New 新建 SvcBasedClient 实例
@@ -96,7 +100,17 @@ func New() Client {
 		SetTimeout(10*time.Second).
 		SetHeader("User-Agent", version.UserAgent())
 
-	return &SvcBasedClient{cli: bizCli, authCli: authCli}
+	noRetryCli := resty.New().
+		SetTransport(transport).
+		SetBaseURL(config.G.BkmsBaseURL).
+		SetTimeout(writeRequestTimeout).
+		SetHeaders(map[string]string{
+			"Content-Type":  "application/json",
+			"Authorization": fmt.Sprintf("Bearer %s", config.G.AccessToken),
+			"User-Agent":    version.UserAgent(),
+		})
+
+	return &SvcBasedClient{cli: bizCli, authCli: authCli, noRetryCli: noRetryCli}
 }
 
 // ValidateAccessToken 通过 AccessToken 获取用户名信息
@@ -205,32 +219,70 @@ func (c *SvcBasedClient) ReportDevModePublish(
 	return nil
 }
 
+// RestartDevModeProcesses 开发模式进程重启（异步接口，受理后立即返回；不自动重试）
+func (c *SvcBasedClient) RestartDevModeProcesses(
+	ctx context.Context,
+	appID string,
+	opts DevModeRestartOptions,
+) (*DevModeRestartData, error) {
+	path := fmt.Sprintf("/bkms/v1/bkms-server/devmode/%s/restart", url.PathEscape(appID))
+
+	var respData DevModeRestartRespData
+	resp, err := c.noRetryCli.R().SetContext(ctx).SetBody(opts).SetResult(&respData).Post(path)
+	if err != nil {
+		return nil, errors.Wrap(err, "restart devmode processes request failed")
+	}
+	if resp.StatusCode() != http.StatusOK && resp.StatusCode() != http.StatusAccepted {
+		return nil, formatAPIError(resp, "restart devmode processes")
+	}
+	if respData.Data == nil {
+		return nil, errors.New("restart devmode processes returned empty data")
+	}
+
+	return respData.Data, nil
+}
+
 // ListDevModePublishRecords 获取开发模式发布记录列表
 func (c *SvcBasedClient) ListDevModePublishRecords(
 	ctx context.Context,
-	appID, envName, keyword string,
-) ([]DevModePublishRecord, error) {
-	path := fmt.Sprintf(
-		"/bkms/v1/bkms-server/devmode/%s/envs/%s/publish-records",
-		url.PathEscape(appID),
-		url.PathEscape(envName),
-	)
-	queryParams := map[string]string{
-		"keyword":  keyword,
-		"page":     "1",
-		"pageSize": "100",
+	appID string, query DevModePublishRecordsQuery,
+) ([]DevModePublishRecord, int64, error) {
+	path := fmt.Sprintf("/bkms/v1/bkms-server/devmode/%s/publish-records", url.PathEscape(appID))
+	// 切片参数使用重复 query 参数（?statuses=pending&statuses=running）
+	params := url.Values{}
+	params.Set("keyword", query.Keyword)
+	params.Set("page", strconv.FormatInt(query.Page, 10))
+	params.Set("pageSize", strconv.FormatInt(query.PageSize, 10))
+	for key, values := range map[string][]string{
+		"envNames":  query.EnvNames,
+		"envTypes":  query.EnvTypes,
+		"recordIDs": query.RecordIDs,
+		"statuses":  query.Statuses,
+	} {
+		for _, value := range values {
+			params.Add(key, value)
+		}
 	}
 
 	var respData DevModePublishRecordsResp
-	resp, err := c.cli.R().SetContext(ctx).SetQueryParams(queryParams).SetResult(&respData).Get(path)
+	resp, err := c.cli.R().SetContext(ctx).SetQueryParamsFromValues(params).SetResult(&respData).Get(path)
 	if err != nil {
-		return nil, err
+		return nil, 0, errors.Wrap(err, "list devmode publish records request failed")
 	}
 	if resp.StatusCode() != http.StatusOK {
-		return nil, formatAPIError(resp, "list devmode publish records")
+		return nil, 0, formatAPIError(resp, "list devmode publish records")
 	}
 
-	return respData.Data.Results, nil
+	return respData.Data.Results, parseRecordCount(respData.Data.Count), nil
+}
+
+// parseRecordCount 解析记录总数（服务端以字符串返回大整数）
+func parseRecordCount(raw string) int64 {
+	count, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return count
 }
 
 // ListWorkspaces 获取工作空间列表

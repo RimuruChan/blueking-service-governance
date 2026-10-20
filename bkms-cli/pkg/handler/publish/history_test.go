@@ -47,7 +47,11 @@ var _ = Describe("ListHistory", func() {
 
 	It("converts records into display rows with human-readable file size", func() {
 		cli.EXPECT().
-			ListDevModePublishRecords(mock.Anything, appID, envName, "").
+			ListDevModePublishRecords(
+				mock.Anything, appID, client.DevModePublishRecordsQuery{
+					EnvNames: []string{envName}, Page: 1, PageSize: 100,
+				},
+			).
 			Return([]client.DevModePublishRecord{
 				{
 					Instance:   "pod-1",
@@ -58,9 +62,9 @@ var _ = Describe("ListHistory", func() {
 					Operator:   "admin",
 					UpdatedAt:  "2026-09-14T00:00:00Z",
 				},
-			}, nil)
+			}, int64(1), nil)
 
-		rows, err := ListHistory(ctx, cli, appID, envName, "")
+		rows, err := ListHistory(ctx, cli, appID, envName, nil, "")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(rows).To(HaveLen(1))
 		Expect(rows[0].Instance).To(Equal("pod-1"))
@@ -69,6 +73,46 @@ var _ = Describe("ListHistory", func() {
 		Expect(rows[0].MD5).To(Equal("m1"))
 		Expect(rows[0].Status).To(Equal("success"))
 		Expect(rows[0].Operator).To(Equal("admin"))
+		// 历史数据无 action 字段，按 publish 展示
+		Expect(rows[0].Action).To(Equal("publish"))
+	})
+
+	It("queries by env types when no env is given", func() {
+		cli.EXPECT().
+			ListDevModePublishRecords(
+				mock.Anything, appID, client.DevModePublishRecordsQuery{
+					EnvTypes: []string{"development", "test"}, Page: 1, PageSize: 100,
+				},
+			).
+			Return([]client.DevModePublishRecord{
+				{Action: "restart", EnvName: "dev-a", Instance: "pod-1", Status: "success"},
+				{Action: "publish", EnvName: "test", Instance: "pod-2", BinaryName: "server", FileSize: 1024},
+			}, int64(2), nil)
+
+		rows, err := ListHistory(ctx, cli, appID, "", []string{"development", "test"}, "")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(rows).To(HaveLen(2))
+		Expect(rows[0].EnvName).To(Equal("dev-a"))
+		Expect(rows[1].EnvName).To(Equal("test"))
+		Expect(rows[1].FileSize).To(Equal("1.0 KB"))
+	})
+
+	It("shows restart records without file size", func() {
+		cli.EXPECT().
+			ListDevModePublishRecords(
+				mock.Anything, appID, client.DevModePublishRecordsQuery{
+					EnvNames: []string{envName}, Page: 1, PageSize: 100,
+				},
+			).
+			Return([]client.DevModePublishRecord{
+				{Action: "restart", Instance: "pod-1", Status: "success", Operator: "admin"},
+			}, int64(1), nil)
+
+		rows, err := ListHistory(ctx, cli, appID, envName, nil, "")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(rows).To(HaveLen(1))
+		Expect(rows[0].Action).To(Equal("restart"))
+		Expect(rows[0].FileSize).To(BeEmpty())
 	})
 })
 

@@ -13068,80 +13068,6 @@
             }
         },
         "/devmode/{appID}/envs/{envName}/publish-records": {
-            "get": {
-                "security": [
-                    {
-                        "BkUserInfo": []
-                    },
-                    {
-                        "BkUserCredential": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "devmode"
-                ],
-                "summary": "获取开发模式发布记录列表",
-                "operationId": "ListDevModePublishRecords",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "应用 ID",
-                        "name": "appID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "环境名称",
-                        "name": "envName",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "搜索关键字",
-                        "name": "keyword",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "分页页码（从 1 开始）",
-                        "name": "page",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "分页大小",
-                        "name": "pageSize",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/serializer.ListPublishRecordsOutput"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
-                        }
-                    }
-                }
-            },
             "post": {
                 "security": [
                     {
@@ -13202,6 +13128,160 @@
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            }
+        },
+        "/devmode/{appID}/publish-records": {
+            "get": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "devmode"
+                ],
+                "summary": "获取开发模式发布记录列表",
+                "operationId": "ListDevModePublishRecords",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "应用 ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "环境名称，与 envTypes 二选一",
+                        "name": "envNames",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "环境类型，与 envNames 二选一",
+                        "name": "envTypes",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "搜索关键字",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "分页页码（从 1 开始）",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "分页大小",
+                        "name": "pageSize",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "只返回创建时间不早于该时间的记录（RFC3339）",
+                        "name": "since",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "状态过滤",
+                        "name": "statuses",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/serializer.ListPublishRecordsOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            }
+        },
+        "/devmode/{appID}/restart": {
+            "post": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "devmode"
+                ],
+                "summary": "开发模式进程重启",
+                "operationId": "RestartDevModeProcesses",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "应用 ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "进程重启请求体",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/serializer.RestartInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/serializer.RestartOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/bkerrs.GinErrorOutput"
                         }
@@ -19239,7 +19319,7 @@
                     "type": "string"
                 },
                 "mountedEnvNames": {
-                    "description": "创建时可选设置挂载环境范围；nil = 全环境生效，空数组 = 不挂载任何环境。环境名格式与路径参数 envName 相同。",
+                    "description": "创建时可选设置挂载环境范围；nil = 全环境生效，空数组 = 不挂载任何环境。\n环境名格式与路径参数 envName 相同。",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -19298,6 +19378,9 @@
                 "enableEnvVarRender": {
                     "type": "boolean"
                 },
+                "envInstanceStrategy": {
+                    "type": "string"
+                },
                 "fileFormat": {
                     "type": "string"
                 },
@@ -19354,6 +19437,9 @@
                 },
                 "enableEnvVarRender": {
                     "type": "boolean"
+                },
+                "envInstanceStrategy": {
+                    "type": "string"
                 },
                 "id": {
                     "type": "string"
@@ -19507,6 +19593,13 @@
             "properties": {
                 "enableEnvVarRender": {
                     "type": "boolean"
+                },
+                "envInstanceStrategy": {
+                    "type": "string",
+                    "enum": [
+                        "overlay",
+                        "overwrite"
+                    ]
                 },
                 "isUnifiedConfig": {
                     "type": "boolean"
@@ -30307,10 +30400,16 @@
         "serializer.PublishRecordOutputObj": {
             "type": "object",
             "properties": {
+                "action": {
+                    "type": "string"
+                },
                 "binaryName": {
                     "type": "string"
                 },
                 "createdAt": {
+                    "type": "string"
+                },
+                "envName": {
                     "type": "string"
                 },
                 "fileSize": {
@@ -31027,6 +31126,143 @@
                 "replicas": {
                     "type": "integer",
                     "minimum": 0
+                }
+            }
+        },
+        "serializer.RestartData": {
+            "type": "object",
+            "properties": {
+                "instanceCount": {
+                    "description": "InstanceCount 本次受理的实例数",
+                    "type": "integer"
+                },
+                "recordIDs": {
+                    "description": "RecordIDs 本次创建的发布记录 ID，用于精确轮询执行结果",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "requestedAt": {
+                    "description": "RequestedAt 服务端受理时间，用于按条件轮询本次提交产生的记录",
+                    "type": "string"
+                },
+                "skipped": {
+                    "description": "Skipped 被跳过的环境（仅按环境类型指定时可能出现）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/serializer.RestartSkippedEnv"
+                    }
+                }
+            }
+        },
+        "serializer.RestartEnvTypesTarget": {
+            "type": "object",
+            "required": [
+                "types"
+            ],
+            "properties": {
+                "types": {
+                    "description": "Types 环境类型列表，不允许 production",
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "serializer.RestartEnvsTarget": {
+            "type": "object",
+            "required": [
+                "names"
+            ],
+            "properties": {
+                "names": {
+                    "description": "Names 环境名称列表",
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "serializer.RestartInput": {
+            "type": "object",
+            "properties": {
+                "envTypes": {
+                    "description": "EnvTypes 按环境类型重启（匹配环境下所有 Running 实例）",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/serializer.RestartEnvTypesTarget"
+                        }
+                    ]
+                },
+                "envs": {
+                    "description": "Envs 按环境名称重启（各环境下所有 Running 实例）",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/serializer.RestartEnvsTarget"
+                        }
+                    ]
+                },
+                "instances": {
+                    "description": "Instances 重启指定环境下的指定实例",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/serializer.RestartInstancesTarget"
+                        }
+                    ]
+                }
+            }
+        },
+        "serializer.RestartInstancesTarget": {
+            "type": "object",
+            "required": [
+                "envName",
+                "instanceIDs"
+            ],
+            "properties": {
+                "envName": {
+                    "description": "EnvName 环境名称",
+                    "type": "string"
+                },
+                "instanceIDs": {
+                    "description": "InstanceIDs 实例 ID 列表，须属于 EnvName 环境",
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "serializer.RestartOutput": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/serializer.RestartData"
+                }
+            }
+        },
+        "serializer.RestartSkippedEnv": {
+            "type": "object",
+            "properties": {
+                "envName": {
+                    "description": "EnvName 环境名称",
+                    "type": "string"
+                },
+                "envType": {
+                    "description": "EnvType 环境类型",
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "Reason 跳过原因",
+                    "type": "string"
                 }
             }
         },

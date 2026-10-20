@@ -72,6 +72,9 @@ const (
 // 异步任务类耗时指标共用的 Bucket（单位：秒）
 var durationBuckets = []float64{5, 15, 30, 60, 120, 300, 600, 1800}
 
+// 开发模式单实例进程重启耗时的 Bucket（单位：秒），单次重启通常在数秒到一分钟内完成
+var devmodeRestartBuckets = []float64{1, 2, 5, 10, 15, 20, 30, 45, 60, 90}
+
 // 使用 promauto 自动注册指标，无需手动调用 prometheus.MustRegister。
 var (
 	// clientRequestTotal 记录 bkms-server 调用外部系统的结果总数。
@@ -345,6 +348,18 @@ var (
 		[]string{"operation"},
 	)
 
+	// devmodeRestartDuration 开发模式单实例进程重启（stop → 等待 monitor 拉起）的终态耗时。
+	devmodeRestartDuration = promauto.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Namespace: "bkms",
+			Subsystem: "devmode",
+			Name:      "restart_duration_seconds",
+			Help:      "Duration in seconds of dev mode single-instance process restarts by terminal status.",
+			Buckets:   devmodeRestartBuckets,
+		},
+		[]string{"status"},
+	)
+
 	// bscpcfgFailure BSCP 配置管理关键步骤失败计数。
 	bscpcfgFailure = promauto.NewCounterVec(
 		prometheus.CounterOpts{
@@ -439,6 +454,12 @@ func ClusterAddonOperationFinished(operation string, startedAt time.Time, errPtr
 	}
 	operation = normalizeClusterAddonOperation(operation)
 	clusterAddonDuration.WithLabelValues(operation, status).Observe(time.Since(startedAt).Seconds())
+}
+
+// DevModeRestartFinished 记录开发模式单实例进程重启的终态结果与耗时。
+func DevModeRestartFinished(rawStatus string, startedAt time.Time) {
+	status := normalizeResultStatus(rawStatus)
+	devmodeRestartDuration.WithLabelValues(status).Observe(time.Since(startedAt).Seconds())
 }
 
 // FeatureEnvNamespaceInitFailed 记录特性环境 namespace 初始化失败。

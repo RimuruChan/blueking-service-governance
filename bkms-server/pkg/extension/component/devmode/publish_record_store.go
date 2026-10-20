@@ -20,6 +20,7 @@ package devmode
 
 import (
 	"context"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
@@ -44,6 +45,16 @@ func ByAppEnv(appID, envName string) store.Opt {
 	return store.Combine(store.Where("appID", appID), store.Where("envName", envName))
 }
 
+// CreatedSince 按创建时间下限匹配（含）
+func CreatedSince(t time.Time) store.Opt {
+	return store.Where("createdAt", bson.M{"$gte": t})
+}
+
+// ByAppEnvs 按应用与多个环境匹配
+func ByAppEnvs(appID string, envNames []string) store.Opt {
+	return store.Combine(store.Where("appID", appID), store.Where("envName", bson.M{"$in": envNames}))
+}
+
 // KeywordMatches 按二进制名称、操作人或实例名模糊匹配（不区分大小写），keyword 为空白时不过滤
 func KeywordMatches(keyword string) store.Opt {
 	return store.ContainsIgnoreCase(keyword, "binaryName", "operator", "instance")
@@ -54,7 +65,8 @@ func NewestFirst() store.Opt {
 	return store.Combine(store.Desc("createdAt"), store.Desc("_id"))
 }
 
-// ListLatestByInstance 返回指定实例中每个实例最新的一条发布记录，key 为实例名，没有记录的实例不在其中
+// ListLatestByInstance 返回指定实例中每个实例最新的一条发布记录，key 为实例名，没有记录的实例不在其中。
+// restart 记录不涉及二进制变更，不参与「最近一次发布」的计算
 func ListLatestByInstance(
 	ctx context.Context, db *mongo.Database, appID, envName string, instanceIDs []string,
 ) (map[string]*PublishRecord, error) {
@@ -64,6 +76,8 @@ func ListLatestByInstance(
 	records, err := store.Of(db, PublishRecordMeta).ListLatestBy(ctx, []string{"instance"},
 		ByAppEnv(appID, envName),
 		store.Where("instance", bson.M{"$in": instanceIDs}),
+		// 历史数据无 action 字段，$ne 可同时匹配字段缺失的记录
+		store.Where("action", bson.M{"$ne": RecordActionRestart}),
 		store.Asc("instance"), store.Desc("createdAt"),
 	)
 	if err != nil {

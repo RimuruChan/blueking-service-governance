@@ -25,6 +25,7 @@ import (
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/appruntime"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 )
 
@@ -110,6 +111,7 @@ func (s *AppCfgFileDefService) createDef(
 	if params.MountedEnvNames != nil {
 		envConfigMode.MountedEnvNames = *params.MountedEnvNames
 	}
+	policy.InitializeEnvConfigMode(&envConfigMode, params)
 
 	def := AppConfigFileDef{
 		AppID:              params.AppID,
@@ -172,8 +174,11 @@ func (s *AppCfgFileDefService) UpdateAppCfgFileDef(
 	}
 
 	// 按策略区分
-	if update.MountDir != nil || update.EnableEnvVarRender != nil || update.MountedEnvNames != nil {
-		policy, err := s.policyFor(def.ConfigKind)
+	var policy ConfigKindPolicy
+	if update.MountDir != nil || update.EnableEnvVarRender != nil ||
+		update.MountedEnvNames != nil || update.EnvContentStrategy != nil {
+		var err error
+		policy, err = s.policyFor(def.ConfigKind)
 		if err != nil {
 			return errors.Wrap(err, "loading config kind policy for def update")
 		}
@@ -187,9 +192,21 @@ func (s *AppCfgFileDefService) UpdateAppCfgFileDef(
 			return errors.Wrap(ErrInvalidConfigSpec,
 				"this config kind does not allow modifying enableEnvVarRender")
 		}
+		if update.EnvContentStrategy != nil && !policy.AllowEnvContentStrategyUpdate() {
+			return errors.Wrap(ErrInvalidConfigSpec,
+				"this config kind does not support modifying envInstanceStrategy")
+		}
 	}
 
 	applyStaticDefFields(def, update)
+
+	if update.EnvContentStrategy != nil {
+		if err := s.applyFrameworkEnvContentStrategyChange(
+			ctx, def, *update.EnvContentStrategy, update.Operator,
+		); err != nil {
+			return err
+		}
+	}
 
 	if update.IsUnifiedConfig != nil && def.EnvConfigMode.IsUnifiedConfig != *update.IsUnifiedConfig {
 		def.EnvConfigMode.IsUnifiedConfig = *update.IsUnifiedConfig
@@ -207,6 +224,98 @@ func (s *AppCfgFileDefService) UpdateAppCfgFileDef(
 	}
 	if err := UpdateDef(ctx, s.DefStore, def); err != nil {
 		return errors.Wrap(err, "updating def record")
+	}
+	return nil
+}
+
+// applyFrameworkEnvContentStrategyChange 更新框架定义的环境内容策略。
+// 没有环境实例时只改字段。已有环境实例时，把每条实例改写成目标策略对应的文件形态，
+// 但不新增版本记录，currentVersion 保持不变。
+//
+// 调用方已通过 policy 保证当前 kind 支持修改 envInstanceStrategy。
+// TODO(non-atomic): 先改写环境实例，再由上层 UpdateAppCfgFileDef 持久化 def。
+func (s *AppCfgFileDefService) applyFrameworkEnvContentStrategyChange(
+	ctx context.Context,
+	def *AppConfigFileDef,
+	strategy EnvContentStrategy,
+	operator string,
+) error {
+	if err := validateFrameworkEnvContentStrategy(strategy); err != nil {
+		return err
+	}
+	if def.EnvConfigMode.EnvContentStrategy == strategy {
+		return nil
+	}
+	if def.EnvConfigMode.IsIndependent() {
+		if err := s.convertEnvInstancesForStrategy(ctx, def.ID, strategy, operator); err != nil {
+			return err
+		}
+	}
+	def.EnvConfigMode.EnvContentStrategy = strategy
+	return nil
+}
+
+// convertEnvInstancesForStrategy 把已有环境实例转换成目标策略的存储形态。
+func (s *AppCfgFileDefService) convertEnvInstancesForStrategy(
+	ctx context.Context,
+	defID bson.ObjectID,
+	strategy EnvContentStrategy,
+	operator string,
+) error {
+	defaultFile, err := s.FileStore.Get(ctx, FileByDefEnv(defID, EnvNameDefault))
+	if err != nil {
+		return errors.Wrap(err, "loading default file for strategy switch")
+	}
+	files, err := s.FileStore.List(ctx, FilesByDef(defID))
+	if err != nil {
+		return errors.Wrap(err, "listing env instances for strategy switch")
+	}
+	for i := range files {
+		file := &files[i]
+		if file.EnvName == EnvNameDefault {
+			continue
+		}
+		rawContent := file.Content
+		if file.Type == AppConfigFileTypeOverlay {
+			rawContent = file.OverlayContent
+		}
+
+		var (
+			targetType           AppConfigFileType
+			targetContent        *string
+			targetOverlayContent *string
+		)
+		targetBaseID := file.BaseAppConfigFileID
+
+		switch strategy {
+		case EnvContentStrategyOverwrite:
+			targetType = AppConfigFileTypeNormal
+			targetContent = rawContent
+			targetOverlayContent = nil
+		case EnvContentStrategyOverlay:
+			targetType = AppConfigFileTypeOverlay
+			targetContent = nil
+			targetOverlayContent = rawContent
+			if targetBaseID == nil {
+				baseID := defaultFile.ID
+				targetBaseID = &baseID
+			}
+		default:
+			return errors.Wrapf(ErrInvalidConfigSpec, "unsupported envInstanceStrategy %q", strategy)
+		}
+
+		if err := UpdateEnvInstanceForStrategySwitch(
+			ctx,
+			s.FileStore,
+			file.ID,
+			targetType,
+			targetContent,
+			targetOverlayContent,
+			targetBaseID,
+			operator,
+		); err != nil {
+			return errors.Wrapf(err, "converting env instance %s", file.ID.Hex())
+		}
 	}
 	return nil
 }
@@ -239,8 +348,7 @@ func (s *AppCfgFileDefService) ensureSingleFrameworkDef(
 	if kind != ConfigKindFramework {
 		return nil
 	}
-	// 与 app.AppTypeTRPC / AppTypeTAF 对齐，避免 appcfg 反向依赖 app 包。
-	if appType != "trpc" && appType != "taf" {
+	if !appruntime.IsAppModelType(appType) {
 		return nil
 	}
 	defs, err := ListDefsByApp(ctx, s.DefStore, appID, DefFilterConfigKind(ConfigKindFramework))
@@ -302,13 +410,28 @@ func (s *AppCfgFileDefService) AttachFrameworkEnvOverlay(
 		return &AppConfigFileWithDef{AppConfigFile: *existing, Def: def}, nil
 	}
 
-	overlay := lo.FromPtr(params.OverlayContent)
-	created, err := s.CreateEnvInstance(ctx, *defaultFile, CreateEnvInstanceParams{
-		EnvName:        params.EnvName,
-		OverlayContent: &overlay,
-		Operator:       params.Creator,
-		Description:    params.Description,
-	})
+	policy, err := s.policyFor(def.ConfigKind)
+	if err != nil {
+		return nil, errors.Wrap(err, "loading config kind policy for compatibility create")
+	}
+	strategy, err := policy.GetEnvContentStrategy(def)
+	if err != nil {
+		return nil, errors.Wrap(err, "resolving env instance strategy for compatibility create")
+	}
+
+	envParams := CreateEnvInstanceParams{
+		EnvName:     params.EnvName,
+		Operator:    params.Creator,
+		Description: params.Description,
+	}
+	raw := lo.FromPtr(params.OverlayContent)
+	if strategy == EnvContentStrategyOverwrite {
+		envParams.Content = &raw
+	} else {
+		envParams.OverlayContent = &raw
+	}
+
+	created, err := s.CreateEnvInstance(ctx, *defaultFile, envParams)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating framework env overlay on existing def")
 	}

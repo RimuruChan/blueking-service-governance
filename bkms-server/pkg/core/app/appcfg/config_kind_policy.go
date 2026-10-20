@@ -21,16 +21,18 @@ package appcfg
 import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
+
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/appruntime"
 )
 
-// EnvInstanceStrategy 环境实例的产生方式。
-type EnvInstanceStrategy string
+// EnvContentStrategy 环境内容相对默认配置的处理策略。
+type EnvContentStrategy string
 
 const (
-	// EnvInstanceStrategyOverlay 以 overlay（补丁）方式叠加基础配置。
-	EnvInstanceStrategyOverlay EnvInstanceStrategy = "overlay"
-	// EnvInstanceStrategyOverwrite 以 overwrite（全量覆盖）方式替换基础配置。
-	EnvInstanceStrategyOverwrite EnvInstanceStrategy = "overwrite"
+	// EnvContentStrategyOverlay 以 overlay（补丁）方式叠加基础配置。
+	EnvContentStrategyOverlay EnvContentStrategy = "overlay"
+	// EnvContentStrategyOverwrite 以 overwrite（全量覆盖）方式替换基础配置。
+	EnvContentStrategyOverwrite EnvContentStrategy = "overwrite"
 )
 
 // ConfigKindPolicy 定义某个 ConfigKind 的校验与行为规则。
@@ -39,8 +41,10 @@ type ConfigKindPolicy interface {
 	ValidateCreateParams(params CreateCfgFileParams) error
 	// ValidateContent 对原始内容做 kind 级别的约束校验。
 	ValidateContent(content string, format FileFormat) error
-	// GetEnvInstanceStrategy 返回环境实例产生策略。
-	GetEnvInstanceStrategy() EnvInstanceStrategy
+	// InitializeEnvConfigMode 在创建 def 时填充该 kind 需要持久化的环境配置模式字段。
+	InitializeEnvConfigMode(mode *EnvConfigMode, params CreateCfgFileParams)
+	// GetEnvContentStrategy 返回后续创建环境实例、展示生效内容时要使用的策略。
+	GetEnvContentStrategy(def *AppConfigFileDef) (EnvContentStrategy, error)
 	// IsEffectiveForEnv 判断该 def 是否在指定环境下生效。
 	IsEffectiveForEnv(def *AppConfigFileDef, envName string) bool
 	// AllowMountDirUpdate 是否允许通过 def 接口修改挂载目录。
@@ -49,6 +53,8 @@ type ConfigKindPolicy interface {
 	AllowMountedEnvNamesUpdate() bool
 	// AllowEnableEnvVarRenderUpdate 是否允许通过 def 接口修改环境变量渲染开关。
 	AllowEnableEnvVarRenderUpdate() bool
+	// AllowEnvContentStrategyUpdate 是否允许通过 def 接口修改环境内容策略。
+	AllowEnvContentStrategyUpdate() bool
 	// DefaultEnableEnvVarRender 返回该 kind 创建时 EnableEnvVarRender 的默认值。
 	DefaultEnableEnvVarRender() bool
 }
@@ -89,9 +95,29 @@ func (FrameworkPolicy) ValidateContent(content string, _ FileFormat) error {
 	return nil
 }
 
-// GetEnvInstanceStrategy framework 使用 overlay 策略。
-func (FrameworkPolicy) GetEnvInstanceStrategy() EnvInstanceStrategy {
-	return EnvInstanceStrategyOverlay
+// InitializeEnvConfigMode 在创建 framework def 时写入初始环境实例策略。
+// AppModel 应用写入完整配置，其余类型写入与默认配置合并。
+func (FrameworkPolicy) InitializeEnvConfigMode(mode *EnvConfigMode, params CreateCfgFileParams) {
+	if mode == nil {
+		return
+	}
+	if appruntime.IsAppModelType(params.AppType) {
+		mode.EnvContentStrategy = EnvContentStrategyOverwrite
+		return
+	}
+	mode.EnvContentStrategy = EnvContentStrategyOverlay
+}
+
+// GetEnvContentStrategy 返回框架定义上已持久化的环境内容策略。
+func (FrameworkPolicy) GetEnvContentStrategy(def *AppConfigFileDef) (EnvContentStrategy, error) {
+	if def == nil {
+		return "", errors.Wrap(ErrInvalidConfigSpec, "framework def is required")
+	}
+	strategy := def.EnvConfigMode.EnvContentStrategy
+	if err := validateFrameworkEnvContentStrategy(strategy); err != nil {
+		return "", err
+	}
+	return strategy, nil
 }
 
 // IsEffectiveForEnv framework 始终挂载到全部环境。
@@ -113,6 +139,11 @@ func (FrameworkPolicy) AllowMountedEnvNamesUpdate() bool {
 // AllowEnableEnvVarRenderUpdate framework 始终启用环境变量渲染，不允许关闭。
 func (FrameworkPolicy) AllowEnableEnvVarRenderUpdate() bool {
 	return false
+}
+
+// AllowEnvContentStrategyUpdate framework 允许修改环境内容策略。
+func (FrameworkPolicy) AllowEnvContentStrategyUpdate() bool {
+	return true
 }
 
 // DefaultEnableEnvVarRender framework 创建时始终启用环境变量渲染。
@@ -149,9 +180,13 @@ func (PlainPolicy) ValidateContent(_ string, _ FileFormat) error {
 	return nil
 }
 
-// GetEnvInstanceStrategy plain 使用 overwrite 策略（完整复制默认内容到环境实例）。
-func (PlainPolicy) GetEnvInstanceStrategy() EnvInstanceStrategy {
-	return EnvInstanceStrategyOverwrite
+// InitializeEnvConfigMode plain 不需要写入额外的环境实例策略字段。
+func (PlainPolicy) InitializeEnvConfigMode(_ *EnvConfigMode, _ CreateCfgFileParams) {
+}
+
+// GetEnvContentStrategy plain 固定使用 overwrite 策略。
+func (PlainPolicy) GetEnvContentStrategy(_ *AppConfigFileDef) (EnvContentStrategy, error) {
+	return EnvContentStrategyOverwrite, nil
 }
 
 // IsEffectiveForEnv plain 文件是否在指定环境生效仅由挂载范围决定；
@@ -183,7 +218,24 @@ func (PlainPolicy) AllowEnableEnvVarRenderUpdate() bool {
 	return true
 }
 
+// AllowEnvContentStrategyUpdate plain 不支持修改环境内容策略。
+func (PlainPolicy) AllowEnvContentStrategyUpdate() bool {
+	return false
+}
+
 // DefaultEnableEnvVarRender plain 创建时默认不启用环境变量渲染。
 func (PlainPolicy) DefaultEnableEnvVarRender() bool {
 	return false
+}
+
+// validateFrameworkEnvContentStrategy 校验框架定义上持久化的环境内容策略字段。
+func validateFrameworkEnvContentStrategy(strategy EnvContentStrategy) error {
+	switch strategy {
+	case EnvContentStrategyOverlay, EnvContentStrategyOverwrite:
+		return nil
+	default:
+		return errors.Wrapf(
+			ErrInvalidConfigSpec, "framework envInstanceStrategy %q is invalid", strategy,
+		)
+	}
 }

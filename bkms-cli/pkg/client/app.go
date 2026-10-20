@@ -96,10 +96,32 @@ type DevModePublishResult struct {
 	Message string `json:"message"`
 }
 
+// DevModePublishRecordsQuery 发布记录查询条件，envNames / envTypes / recordIDs 三选一
+type DevModePublishRecordsQuery struct {
+	// EnvNames 环境名称列表
+	EnvNames []string
+	// EnvTypes 环境类型列表
+	EnvTypes []string
+	// RecordIDs 发布记录 ID 列表
+	RecordIDs []string
+	// Statuses 状态过滤
+	Statuses []string
+	// Keyword 搜索关键字
+	Keyword string
+	// Page 分页页码
+	Page int64
+	// PageSize 分页大小
+	PageSize int64
+}
+
 // DevModePublishRecord 开发模式发布记录
 type DevModePublishRecord struct {
 	// ID 发布记录 ID
 	ID string `json:"id" yaml:"id"`
+	// Action 操作类型：publish / restart
+	Action string `json:"action" yaml:"action"`
+	// EnvName 环境名称
+	EnvName string `json:"envName" yaml:"envName"`
 	// Instance 目标实例（pod）名称
 	Instance string `json:"instance" yaml:"instance"`
 	// BinaryName 发布的二进制名称
@@ -118,6 +140,56 @@ type DevModePublishRecord struct {
 	CreatedAt string `json:"createdAt" yaml:"createdAt"`
 	// UpdatedAt 更新时间
 	UpdatedAt string `json:"updatedAt" yaml:"updatedAt"`
+}
+
+// DevModeRestartOptions 开发模式进程重启请求参数，Envs / EnvTypes / Instances 必须且只能指定其中一个
+type DevModeRestartOptions struct {
+	// Envs 按环境名称重启（各环境下所有 Running 实例）
+	Envs *DevModeRestartEnvsTarget `json:"envs,omitempty"`
+	// EnvTypes 按环境类型重启（匹配环境下所有 Running 实例）
+	EnvTypes *DevModeRestartEnvTypesTarget `json:"envTypes,omitempty"`
+	// Instances 重启指定环境下的指定实例
+	Instances *DevModeRestartInstancesTarget `json:"instances,omitempty"`
+}
+
+// DevModeRestartEnvsTarget 按环境名称重启的目标
+type DevModeRestartEnvsTarget struct {
+	Names []string `json:"names"`
+}
+
+// DevModeRestartEnvTypesTarget 按环境类型重启的目标
+type DevModeRestartEnvTypesTarget struct {
+	Types []string `json:"types"`
+}
+
+// DevModeRestartInstancesTarget 指定实例的重启目标
+type DevModeRestartInstancesTarget struct {
+	EnvName     string   `json:"envName"`
+	InstanceIDs []string `json:"instanceIDs"`
+}
+
+// DevModeRestartRespData 开发模式进程重启响应包装
+type DevModeRestartRespData struct {
+	Data *DevModeRestartData `json:"data"`
+}
+
+// DevModeRestartData 开发模式进程重启提交结果
+type DevModeRestartData struct {
+	// RequestedAt 服务端受理时间（RFC3339），用于轮询本次提交产生的记录
+	RequestedAt string `json:"requestedAt"`
+	// InstanceCount 本次受理的实例数
+	InstanceCount int `json:"instanceCount"`
+	// RecordIDs 本次创建的发布记录 ID，用于精确轮询执行结果
+	RecordIDs []string `json:"recordIDs"`
+	// Skipped 被跳过的环境
+	Skipped []DevModeRestartSkippedEnv `json:"skipped"`
+}
+
+// DevModeRestartSkippedEnv 被跳过的环境
+type DevModeRestartSkippedEnv struct {
+	EnvName string `json:"envName"`
+	EnvType string `json:"envType"`
+	Reason  string `json:"reason"`
 }
 
 // DevModePublishRecordsRespData 开发模式发布记录列表数据

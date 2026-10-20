@@ -157,6 +157,7 @@ type FileDefUpdate struct {
 	IsUnifiedConfig    *bool
 	MountedEnvNames    *[]string
 	EnableEnvVarRender *bool
+	EnvContentStrategy *EnvContentStrategy
 	Operator           string
 }
 
