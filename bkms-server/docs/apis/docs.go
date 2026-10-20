@@ -21559,6 +21559,10 @@ const docTemplate = `{
                     "description": "健康状态，即 k8s 探针检查结果",
                     "type": "boolean"
                 },
+                "isPolarisWeightOverridden": {
+                    "description": "北极星流量权重是否被单独覆盖（Pod 带北极星权重注解），对该 Pod 注册的所有北极星实例生效",
+                    "type": "boolean"
+                },
                 "latestPublish": {
                     "description": "最近一次开发模式发布状态",
                     "allOf": [

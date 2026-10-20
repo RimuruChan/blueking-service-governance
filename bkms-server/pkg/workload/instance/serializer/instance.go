@@ -306,6 +306,8 @@ type AppInstanceOutputObj struct {
 	Resources AppInstanceResourcesObj `json:"resources"`
 	// 北极星实例状态列表（一个 Pod 可能注册到多个北极星服务）
 	PolarisInfos []*PolarisInstanceInfoOutputObj `json:"polarisInfos"`
+	// 北极星流量权重是否被单独覆盖（Pod 带北极星权重注解），对该 Pod 注册的所有北极星实例生效
+	IsPolarisWeightOverridden bool `json:"isPolarisWeightOverridden"`
 	// 最近一次开发模式发布状态
 	LatestPublish *PublishStatusOutputObj `json:"latestPublish,omitempty"`
 }
@@ -348,6 +350,9 @@ func (o *AppInstanceOutputObj) FromPodManifest(
 
 	isHealthy := podstatus.IsReady(manifest)
 
+	// 平台侧覆盖单实例权重的唯一入口是给 Pod 打 AnnotationKeyWeight 注解
+	_, isPolarisWeightOverridden := mapx.GetMap(manifest, "metadata.annotations")[polaris.AnnotationKeyWeight]
+
 	*o = AppInstanceOutputObj{
 		ID:           podName,
 		DeployID:     deployID,
@@ -360,6 +365,8 @@ func (o *AppInstanceOutputObj) FromPodManifest(
 		IsHealthy:    isHealthy,
 		Age:          timex.CalcAge(mapx.GetStr(manifest, "metadata.creationTimestamp")),
 		Resources:    resources,
+
+		IsPolarisWeightOverridden: isPolarisWeightOverridden,
 	}
 	return o, nil
 }
