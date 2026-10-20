@@ -280,6 +280,14 @@ type AppInstanceResourcesObj struct {
 	MemoryRequests string `json:"memoryRequests,omitempty"`
 }
 
+// AppInstancePolarisObj 应用实例的北极星信息。
+type AppInstancePolarisObj struct {
+	// 北极星实例状态列表（一个 Pod 可能注册到多个北极星服务）
+	PolarisInfos []*PolarisInstanceInfoOutputObj `json:"polarisInfos"`
+	// 北极星权重覆盖值，未单独设置时为空字符串；对该 Pod 注册的所有北极星实例生效
+	PolarisWeightOverride string `json:"polarisWeightOverride"`
+}
+
 // AppInstanceOutputObj 单个应用实例（即一个 Pod）。
 type AppInstanceOutputObj struct {
 	// 实例 ID（即 k8s pod 的 name）
@@ -304,10 +312,8 @@ type AppInstanceOutputObj struct {
 	NodeIP string `json:"nodeIP"`
 	// 主容器资源规格（集群 Pod 实际值）
 	Resources AppInstanceResourcesObj `json:"resources"`
-	// 北极星实例状态列表（一个 Pod 可能注册到多个北极星服务）
-	PolarisInfos []*PolarisInstanceInfoOutputObj `json:"polarisInfos"`
-	// 北极星流量权重是否被单独覆盖（Pod 带北极星权重注解），对该 Pod 注册的所有北极星实例生效
-	IsPolarisWeightOverridden bool `json:"isPolarisWeightOverridden"`
+	// 北极星实例状态及权重覆盖配置
+	AppInstancePolarisObj
 	// 最近一次开发模式发布状态
 	LatestPublish *PublishStatusOutputObj `json:"latestPublish,omitempty"`
 }
@@ -351,7 +357,7 @@ func (o *AppInstanceOutputObj) FromPodManifest(
 	isHealthy := podstatus.IsReady(manifest)
 
 	// 平台侧覆盖单实例权重的唯一入口是给 Pod 打 AnnotationKeyWeight 注解
-	_, isPolarisWeightOverridden := mapx.GetMap(manifest, "metadata.annotations")[polaris.AnnotationKeyWeight]
+	polarisWeightOverride := mapx.GetStr(manifest, []string{"metadata", "annotations", polaris.AnnotationKeyWeight})
 
 	*o = AppInstanceOutputObj{
 		ID:           podName,
@@ -366,7 +372,7 @@ func (o *AppInstanceOutputObj) FromPodManifest(
 		Age:          timex.CalcAge(mapx.GetStr(manifest, "metadata.creationTimestamp")),
 		Resources:    resources,
 
-		IsPolarisWeightOverridden: isPolarisWeightOverridden,
+		AppInstancePolarisObj: AppInstancePolarisObj{PolarisWeightOverride: polarisWeightOverride},
 	}
 	return o, nil
 }

@@ -57,6 +57,8 @@ type Instance struct {
 	// 北极星实例状态列表（一个 Pod 可能注册到多个北极星服务）
 	// 若应用未配置北极星或 Pod 未在北极星中注册，则为空列表
 	PolarisInfos []PolarisInfo `json:"polarisInfos" yaml:"polarisInfos"`
+	// 北极星权重覆盖值，未单独设置时为空字符串
+	PolarisWeightOverride string `json:"polarisWeightOverride" yaml:"polarisWeightOverride"`
 }
 
 // ListAppInstancesRespData 应用实例列表响应

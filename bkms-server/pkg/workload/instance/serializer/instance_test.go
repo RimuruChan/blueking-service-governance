@@ -145,15 +145,15 @@ var _ = Describe("Instance serializer", func() {
 			Expect(output.IsHealthy).To(BeTrue())
 			Expect(output.Age).NotTo(BeEmpty())
 			Expect(output.Resources).To(Equal(serializer.AppInstanceResourcesObj{}))
-			Expect(output.IsPolarisWeightOverridden).To(BeFalse())
+			Expect(output.PolarisWeightOverride).To(BeEmpty())
 		})
 
-		It("marks polaris weight as overridden when the pod has the weight annotation", func() {
+		DescribeTable("returns the configured Polaris weight override", func(weight string) {
 			manifest := map[string]any{
 				"metadata": map[string]any{
 					"name": "pod-weight",
 					"annotations": map[string]any{
-						polaris.AnnotationKeyWeight: "0",
+						polaris.AnnotationKeyWeight: weight,
 					},
 				},
 				"spec": map[string]any{
@@ -167,8 +167,11 @@ var _ = Describe("Instance serializer", func() {
 			output, err := new(serializer.AppInstanceOutputObj).FromPodManifest(manifest, "deploy-id")
 
 			Expect(err).NotTo(HaveOccurred())
-			Expect(output.IsPolarisWeightOverridden).To(BeTrue())
-		})
+			Expect(output.PolarisWeightOverride).To(Equal(weight))
+		},
+			Entry("zero weight", "0"),
+			Entry("positive weight", "25"),
+		)
 
 		It("extracts main-container cpu and memory resources", func() {
 			manifest := map[string]any{
