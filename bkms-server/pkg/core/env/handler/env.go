@@ -253,6 +253,7 @@ func (h *Handler) CreateFeatureEnv(c *gin.Context) {
 		audit.WithDataAfter(featureEnv),
 		audit.WithWorkspaceID(app.WorkspaceID),
 		audit.WithEnvName(featureEnv.Name),
+		audit.WithAppID(app.ID),
 	)
 
 	ginutils.OK(c, serializer.CreateFeatureEnvOutput{
@@ -524,6 +525,7 @@ func (h *Handler) UpdateEnvBasicInfo(c *gin.Context) {
 		audit.WithDataAfter(updateData),
 		audit.WithWorkspaceID(env.WorkspaceID),
 		audit.WithEnvName(env.Name),
+		audit.WithAppID(env.OwnerAppID),
 	)
 
 	ginutils.OK(c, serializer.EmptyOutput{})
@@ -587,6 +589,7 @@ func (h *Handler) UpdateEnvCluster(c *gin.Context) {
 		audit.WithDataAfter(updateData),
 		audit.WithWorkspaceID(env.WorkspaceID),
 		audit.WithEnvName(env.Name),
+		audit.WithAppID(env.OwnerAppID),
 	)
 
 	ginutils.OK(c, serializer.EmptyOutput{})
@@ -637,6 +640,7 @@ func (h *Handler) DeleteEnv(c *gin.Context) {
 		audit.WithDataBefore(env),
 		audit.WithWorkspaceID(env.WorkspaceID),
 		audit.WithEnvName(env.Name),
+		audit.WithAppID(env.OwnerAppID),
 	)
 
 	ginutils.OK(c, serializer.EmptyOutput{})

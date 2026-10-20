@@ -62,18 +62,27 @@ var _ = Describe("validateScopedEnvVarScopeValue", func() {
 		handler = &Handler{registry: &storereg.Registry{DB: testutil.NewDB(GinkgoT())}}
 	})
 
-	It("accepts standard and feature environments in the workspace", func() {
-		for _, scope := range []envvartypes.ScopedEnvVarScope{
-			envvartypes.ScopeEnv(standardEnv.Name),
-			envvartypes.ScopeEnv(featureEnv.Name),
-		} {
-			Expect(handler.validateScopedEnvVarScopeValue(ctx, workspaceID, scope)).To(Succeed())
-		}
+	It("returns the standard environment without an owner app", func() {
+		environment, err := handler.validateScopedEnvVarScopeValue(ctx, workspaceID,
+			envvartypes.ScopeEnv(standardEnv.Name))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(environment.ID).To(Equal(standardEnv.ID))
+		Expect(environment.Name).To(Equal(standardEnv.Name))
+		Expect(environment.OwnerAppID).To(BeEmpty())
+	})
+
+	It("returns the feature environment with its owner app", func() {
+		environment, err := handler.validateScopedEnvVarScopeValue(ctx, workspaceID,
+			envvartypes.ScopeEnv(featureEnv.Name))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(environment.ID).To(Equal(featureEnv.ID))
+		Expect(environment.Name).To(Equal(featureEnv.Name))
+		Expect(environment.OwnerAppID).To(Equal(featureEnv.OwnerAppID))
 	})
 
 	It("rejects environments from another workspace", func() {
 		for _, environment := range []*envmodel.Environment{standardEnv, featureEnv} {
-			err := handler.validateScopedEnvVarScopeValue(ctx, "other-workspace",
+			_, err := handler.validateScopedEnvVarScopeValue(ctx, "other-workspace",
 				envvartypes.ScopeEnv(environment.Name))
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("not found"))
@@ -81,9 +90,20 @@ var _ = Describe("validateScopedEnvVarScopeValue", func() {
 	})
 
 	It("rejects a missing environment", func() {
-		err := handler.validateScopedEnvVarScopeValue(ctx, workspaceID, envvartypes.ScopeEnv("missing-env"))
+		_, err := handler.validateScopedEnvVarScopeValue(ctx, workspaceID, envvartypes.ScopeEnv("missing-env"))
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(ContainSubstring("not found"))
+	})
+
+	It("returns no environment for public scopes", func() {
+		for _, scope := range []envvartypes.ScopedEnvVarScope{
+			envvartypes.ScopeWorkspace,
+			envvartypes.ScopeEnvType("test"),
+		} {
+			environment, err := handler.validateScopedEnvVarScopeValue(ctx, workspaceID, scope)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(environment).To(BeNil())
+		}
 	})
 })
 

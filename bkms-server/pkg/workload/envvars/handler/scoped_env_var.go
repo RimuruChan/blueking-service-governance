@@ -29,6 +29,7 @@ import (
 	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
@@ -86,7 +87,8 @@ func (h *Handler) CreateScopedEnvVar(c *gin.Context) {
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidRequest, "validate scoped env var scope"))
 		return
 	}
-	if err = h.validateScopedEnvVarScopeValue(ctx, ws.ID, scope); err != nil {
+	environment, err := h.validateScopedEnvVarScopeValue(ctx, ws.ID, scope)
+	if err != nil {
 		bkerrs.AbortWithErr(c, err)
 		return
 	}
@@ -115,6 +117,11 @@ func (h *Handler) CreateScopedEnvVar(c *gin.Context) {
 		return
 	}
 
+	group := audit.OperationGroup{WorkspaceID: ws.ID}
+	if environment != nil {
+		group.EnvName = environment.Name
+		group.AppID = environment.OwnerAppID
+	}
 	go audit.AddOperationRecordAsync(
 		ctx,
 		audit.OperationTypeCreate,
@@ -122,7 +129,7 @@ func (h *Handler) CreateScopedEnvVar(c *gin.Context) {
 		ws.ID,
 		audit.WithAttribute(audit.AttributeScopedEnvVars),
 		audit.WithDataAfter(obj),
-		audit.WithWorkspaceID(ws.ID),
+		audit.WithGroup(group),
 	)
 
 	ginutils.JSON(c, http.StatusOK, serializer.CreateScopedEnvVarOutput{
@@ -224,6 +231,17 @@ func (h *Handler) UpdateScopedEnvVar(c *gin.Context) {
 		return
 	}
 
+	group := audit.OperationGroup{WorkspaceID: ws.ID}
+	if updatedObj.ScopeType == envvartypes.ScopeTypeEnv {
+		group.EnvName = updatedObj.ScopeValue
+		environment, err := store.Of(h.registry.DB, envmodel.EnvMeta).
+			Get(ctx, envmodel.ByName(ws.ID, group.EnvName))
+		if err != nil {
+			log.Errorf(ctx, "get environment %s/%s for env var audit: %v", ws.ID, group.EnvName, err)
+		} else {
+			group.AppID = environment.OwnerAppID
+		}
+	}
 	go audit.AddOperationRecordAsync(
 		ctx,
 		audit.OperationTypeUpdate,
@@ -232,7 +250,7 @@ func (h *Handler) UpdateScopedEnvVar(c *gin.Context) {
 		audit.WithAttribute(audit.AttributeScopedEnvVars),
 		audit.WithDataBefore(oldObj),
 		audit.WithDataAfter(updatedObj),
-		audit.WithWorkspaceID(ws.ID),
+		audit.WithGroup(group),
 	)
 
 	ginutils.OK(c, serializer.UpdateScopedEnvVarOutput{
@@ -298,6 +316,17 @@ func (h *Handler) DeleteScopedEnvVar(c *gin.Context) {
 		return
 	}
 
+	group := audit.OperationGroup{WorkspaceID: ws.ID}
+	if obj.ScopeType == envvartypes.ScopeTypeEnv {
+		group.EnvName = obj.ScopeValue
+		environment, err := store.Of(h.registry.DB, envmodel.EnvMeta).
+			Get(ctx, envmodel.ByName(ws.ID, group.EnvName))
+		if err != nil {
+			log.Errorf(ctx, "get environment %s/%s for env var audit: %v", ws.ID, group.EnvName, err)
+		} else {
+			group.AppID = environment.OwnerAppID
+		}
+	}
 	go audit.AddOperationRecordAsync(
 		ctx,
 		audit.OperationTypeDelete,
@@ -305,7 +334,7 @@ func (h *Handler) DeleteScopedEnvVar(c *gin.Context) {
 		ws.ID,
 		audit.WithAttribute(audit.AttributeScopedEnvVars),
 		audit.WithDataBefore(obj),
-		audit.WithWorkspaceID(ws.ID),
+		audit.WithGroup(group),
 	)
 
 	ginutils.OK(c, serializer.EmptyOutput{})
@@ -789,7 +818,7 @@ func (h *Handler) ListEnvAvailableEnvVars(c *gin.Context) {
 	ginutils.OK(c, serializer.ListEnvAvailableEnvVarsOutput{Data: data})
 }
 
-// validateScopedEnvVarScopeValue validates scopeValue that depends on persistent workspace data.
+// validateScopedEnvVarScopeValue validates scopeValue and returns the environment for env scope.
 // It is intentionally kept outside go-playground/validator because env scope
 // validation needs registry/database access to ensure the named environment
 // exists in the current workspace.
@@ -797,20 +826,22 @@ func (h *Handler) validateScopedEnvVarScopeValue(
 	ctx context.Context,
 	workspaceID string,
 	scope envvartypes.ScopedEnvVarScope,
-) error {
+) (*envmodel.Environment, error) {
 	if scope.ScopeType != envvartypes.ScopeTypeEnv {
-		return nil
+		return nil, nil
 	}
 
 	// The caller has already checked workspace edit permission, so both standard
 	// and feature environments in this workspace are valid targets.
-	if _, err := store.Of(h.registry.DB, envmodel.EnvMeta).Get(ctx, envmodel.ByName(workspaceID, scope.ScopeValue)); err != nil {
+	environment, err := store.Of(h.registry.DB, envmodel.EnvMeta).
+		Get(ctx, envmodel.ByName(workspaceID, scope.ScopeValue))
+	if err != nil {
 		if errors.Is(err, envmodel.ErrEnvNotFound) {
-			return bkerrs.Errorf(bkerrs.ErrCodeNotFound, "environment %s not found", scope.ScopeValue)
+			return nil, bkerrs.Errorf(bkerrs.ErrCodeNotFound, "environment %s not found", scope.ScopeValue)
 		}
-		return bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "get environment by workspace and name")
+		return nil, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "get environment by workspace and name")
 	}
-	return nil
+	return environment, nil
 }
 
 func ensureAppSupportsDefinedEnvVars(app *bkmsapp.Application) error {

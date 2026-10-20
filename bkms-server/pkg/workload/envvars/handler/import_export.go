@@ -164,6 +164,7 @@ func (h *Handler) ImportEnvScopedEnvVar(c *gin.Context) {
 		audit.WithDataAfter(preview.Summary),
 		audit.WithWorkspaceID(environment.WorkspaceID),
 		audit.WithEnvName(environment.Name),
+		audit.WithAppID(environment.OwnerAppID),
 	)
 
 	ginutils.OK(c, serializer.ImportEnvVarOutput{
