@@ -232,16 +232,7 @@ func (h *Handler) UpdateScopedEnvVar(c *gin.Context) {
 	}
 
 	group := audit.OperationGroup{WorkspaceID: ws.ID}
-	if updatedObj.ScopeType == envvartypes.ScopeTypeEnv {
-		group.EnvName = updatedObj.ScopeValue
-		environment, err := store.Of(h.registry.DB, envmodel.EnvMeta).
-			Get(ctx, envmodel.ByName(ws.ID, group.EnvName))
-		if err != nil {
-			log.Errorf(ctx, "get environment %s/%s for env var audit: %v", ws.ID, group.EnvName, err)
-		} else {
-			group.AppID = environment.OwnerAppID
-		}
-	}
+	h.setGroupEnvAndApp(ctx, &group, updatedObj)
 	go audit.AddOperationRecordAsync(
 		ctx,
 		audit.OperationTypeUpdate,
@@ -317,16 +308,7 @@ func (h *Handler) DeleteScopedEnvVar(c *gin.Context) {
 	}
 
 	group := audit.OperationGroup{WorkspaceID: ws.ID}
-	if obj.ScopeType == envvartypes.ScopeTypeEnv {
-		group.EnvName = obj.ScopeValue
-		environment, err := store.Of(h.registry.DB, envmodel.EnvMeta).
-			Get(ctx, envmodel.ByName(ws.ID, group.EnvName))
-		if err != nil {
-			log.Errorf(ctx, "get environment %s/%s for env var audit: %v", ws.ID, group.EnvName, err)
-		} else {
-			group.AppID = environment.OwnerAppID
-		}
-	}
+	h.setGroupEnvAndApp(ctx, &group, obj)
 	go audit.AddOperationRecordAsync(
 		ctx,
 		audit.OperationTypeDelete,
@@ -842,6 +824,20 @@ func (h *Handler) validateScopedEnvVarScopeValue(
 		return nil, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "get environment by workspace and name")
 	}
 	return environment, nil
+}
+
+func (h *Handler) setGroupEnvAndApp(ctx context.Context, group *audit.OperationGroup, envVar *envvars.ScopedEnvVar) {
+	if envVar.ScopeType != envvartypes.ScopeTypeEnv {
+		return
+	}
+	group.EnvName = envVar.ScopeValue
+	environment, err := store.Of(h.registry.DB, envmodel.EnvMeta).
+		Get(ctx, envmodel.ByName(group.WorkspaceID, group.EnvName))
+	if err != nil {
+		log.Errorf(ctx, "get environment %s/%s for env var audit: %v", group.WorkspaceID, group.EnvName, err)
+		return
+	}
+	group.AppID = environment.OwnerAppID
 }
 
 func ensureAppSupportsDefinedEnvVars(app *bkmsapp.Application) error {
