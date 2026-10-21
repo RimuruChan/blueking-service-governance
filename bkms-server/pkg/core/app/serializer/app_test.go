@@ -636,6 +636,47 @@ var _ = Describe("App serializers", func() {
 			"Key: 'CreateAppInput.AppModelSpec.TrpcSpec'",
 			"Error:Field validation for 'AppModelSpec.TrpcSpec' failed on the 'required' tag",
 		}),
+		Entry("sh command is mutually exclusive with args", serializer.CreateAppInput{
+			Name: "demo-app",
+			ID:   "demo-app",
+			Type: bkmsapp.AppTypeTRPC,
+			BuildConfig: &serializer.BuildConfigInput{
+				SourceType:          "pipeline",
+				PipelineBuildConfig: &serializer.PipelineBuildConfigInput{PipelineID: "pipeline-id"},
+			},
+			AppModelSpec: &serializer.AppModelSpecInput{
+				Args:      []string{"--port=8080"},
+				ShCommand: "./server",
+				TrpcSpec: &serializer.TrpcSpecInput{
+					Language: "go",
+					FileName: "trpc_go.yaml",
+					FilePath: "/data/trpc_go.yaml",
+				},
+			},
+		}, []string{
+			"CreateAppInput.AppModelSpec.ShCommand",
+			"failed on the 'exec_command_or_sh_command_exclusive' tag",
+		}),
+		Entry("sh command must not be blank", serializer.CreateAppInput{
+			Name: "demo-app",
+			ID:   "demo-app",
+			Type: bkmsapp.AppTypeTRPC,
+			BuildConfig: &serializer.BuildConfigInput{
+				SourceType:          "pipeline",
+				PipelineBuildConfig: &serializer.PipelineBuildConfigInput{PipelineID: "pipeline-id"},
+			},
+			AppModelSpec: &serializer.AppModelSpecInput{
+				ShCommand: " \n\t",
+				TrpcSpec: &serializer.TrpcSpecInput{
+					Language: "go",
+					FileName: "trpc_go.yaml",
+					FilePath: "/data/trpc_go.yaml",
+				},
+			},
+		}, []string{
+			"CreateAppInput.AppModelSpec.ShCommand",
+			"failed on the 'sh_command_not_blank' tag",
+		}),
 		Entry("helm app requires helm repo config for helm repo type", serializer.CreateAppInput{
 			Name: "helm-app",
 			ID:   "helm-app",

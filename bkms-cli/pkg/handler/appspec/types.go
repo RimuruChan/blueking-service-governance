@@ -138,12 +138,14 @@ type UpdateStartCommandRequest struct {
 	AppModelSpec *StartCommandInput `json:"appModelSpec"`
 }
 
-// StartCommandInput holds the command, args and spec for the start command update.
+// StartCommandInput holds the command, args, shell command and spec for the start command update.
+// ShCommand is mutually exclusive with Command and Args.
 type StartCommandInput struct {
-	Command  []string         `json:"command" yaml:"command"`
-	Args     []string         `json:"args" yaml:"args"`
-	TrpcSpec *client.TrpcSpec `json:"trpcSpec,omitempty" yaml:"trpcSpec,omitempty"`
-	TafSpec  *client.TafSpec  `json:"tafSpec,omitempty" yaml:"tafSpec,omitempty"`
+	Command   []string         `json:"command" yaml:"command"`
+	Args      []string         `json:"args" yaml:"args"`
+	ShCommand string           `json:"shCommand,omitempty" yaml:"shCommand,omitempty"`
+	TrpcSpec  *client.TrpcSpec `json:"trpcSpec,omitempty" yaml:"trpcSpec,omitempty"`
+	TafSpec   *client.TafSpec  `json:"tafSpec,omitempty" yaml:"tafSpec,omitempty"`
 }
 
 // ViewAllResult holds the aggregated result of all sections for the view command.

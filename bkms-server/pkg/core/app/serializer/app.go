@@ -185,6 +185,8 @@ type AppModelSpecInput struct {
 	Command []string `json:"command"`
 	// 容器启动参数
 	Args []string `json:"args"`
+	// 容器启动脚本，以 /bin/sh 执行，与 command、args 互斥，不能为纯空白；开发模式下 tRPC 应用需在脚本中以绝对路径启动二进制
+	ShCommand string `json:"shCommand"`
 	// 容器环境变量，仅创建应用时生效；更新 tRPC/TAF Spec 时为兼容旧客户端接收但忽略
 	EnvVars []VariableInput `json:"envVars"`
 	// tRPC 框架配置
@@ -211,6 +213,8 @@ type AppModelSpecOutputObj struct {
 	Command []string `json:"command"`
 	// 容器启动参数
 	Args []string `json:"args"`
+	// 容器启动脚本，以 /bin/sh 执行
+	ShCommand string `json:"shCommand"`
 	// 容器环境变量
 	EnvVars []VariableOutputObj `json:"envVars"`
 	// 应用组件
@@ -260,8 +264,9 @@ func (o *AppModelSpecOutputObj) FromModel(
 		return nil
 	}
 	*o = AppModelSpecOutputObj{
-		Command: emptySliceIfNil(am.Workload.Command),
-		Args:    emptySliceIfNil(am.Workload.Args),
+		Command:   emptySliceIfNil(am.Workload.Command),
+		Args:      emptySliceIfNil(am.Workload.Args),
+		ShCommand: am.Workload.ShCommand,
 	}
 	o.Components = normalizeComponentOutputs(components)
 	o.EnvVars = make([]VariableOutputObj, 0, len(am.Workload.EnvVars))

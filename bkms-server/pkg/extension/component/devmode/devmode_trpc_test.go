@@ -79,6 +79,25 @@ var _ = Describe("DevMode Component TRPC", func() {
 				_, err := builder.Build()
 				Expect(err).NotTo(HaveOccurred())
 			})
+
+			It("should write sh command into trpc-start.sh and start it by path", func() {
+				script := "echo '{{.NotTemplate}}'\n./test-app"
+				config := &devmode.Config{
+					Enabled:          true,
+					EnvType:          devmode.EnvTypeDevelopment,
+					AppType:          bkmsapp.AppTypeTRPC,
+					AppName:          "test-app",
+					TrpcBinaryPath:   "/usr/local/trpc/bin",
+					StartupShCommand: script,
+				}
+				output, err := devmode.New(config).Build()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(output.ConfigMap.Data[devmode.KeyTrpcStartScript]).To(Equal("#!/bin/sh\n" + script))
+				// 包装进程命令行只含脚本路径，不含二进制路径，避免被误识别为业务进程
+				Expect(output.ConfigMap.Data[devmode.KeyStartScript]).To(
+					ContainSubstring("nohup " + devmode.TrpcStartScriptPath + " "),
+				)
+			})
 		})
 
 		Context("New", func() {

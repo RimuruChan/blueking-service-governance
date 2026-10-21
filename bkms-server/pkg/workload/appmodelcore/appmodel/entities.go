@@ -149,6 +149,8 @@ type Workload struct {
 	Command []string `bson:"command,omitempty"`
 	// Args 容器启动参数
 	Args []string `bson:"args,omitempty"`
+	// ShCommand 容器启动脚本，以 /bin/sh 执行（与 Command、Args 互斥）
+	ShCommand string `bson:"shCommand,omitempty"`
 	// EnvVars 容器环境变量
 	EnvVars []Variable `bson:"envVars,omitempty"`
 

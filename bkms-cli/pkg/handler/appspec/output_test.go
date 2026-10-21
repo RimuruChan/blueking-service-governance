@@ -170,6 +170,14 @@ var _ = Describe("Output Formatting", func() {
 			Expect(result).To(ContainSubstring("--config /etc/app.yaml"))
 		})
 
+		It("should format shell command instead of command and args", func() {
+			o := &StartCommandOutput{ShCommand: "cd /app && ./server"}
+			result := o.FormatTable()
+			Expect(result).To(ContainSubstring("Shell Command:"))
+			Expect(result).To(ContainSubstring("cd /app && ./server"))
+			Expect(result).NotTo(ContainSubstring("Args:"))
+		})
+
 		It("should show Not configured when empty", func() {
 			o := &StartCommandOutput{}
 			result := o.FormatTable()

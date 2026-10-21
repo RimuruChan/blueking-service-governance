@@ -108,7 +108,7 @@ bkms-cli app appspec view --app my-app -o 'jq=.resources'
 
 ## start-command
 
-`start-command` 管理应用的容器启动命令和参数。该命令为全局配置，不区分环境。
+`start-command` 管理应用的容器启动命令和参数，或一段完整的 shell 启动脚本。该命令为全局配置，不区分环境。
 
 ### start-command view
 
@@ -138,6 +138,12 @@ command:
 args:
   - -conf
   - /usr/local/trpc/bin/trpc-go.yaml
+
+# shell 脚本格式：以 /bin/sh 执行，支持多行、变量、管道等；与 command/args 互斥，写入一种会替换另一种
+# 开发模式下 tRPC 应用需在脚本中以绝对路径启动二进制
+# shCommand: |
+#   export GOTRACEBACK=crash
+#   /usr/local/trpc/bin/server -conf /usr/local/trpc/conf/trpc_go.yaml
 
 # 带 trpcSpec 覆盖（可选，通常无需手动指定）
 # command:

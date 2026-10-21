@@ -52,6 +52,7 @@ type AppDetail struct {
 type AppModelSpec struct {
 	Command    []string         `json:"command"`
 	Args       []string         `json:"args"`
+	ShCommand  string           `json:"shCommand"`
 	Components []AppComponent   `json:"components"`
 	TrpcSpec   *TrpcSpec        `json:"trpcSpec,omitempty"`
 	TafSpec    *TafSpec         `json:"tafSpec,omitempty"`

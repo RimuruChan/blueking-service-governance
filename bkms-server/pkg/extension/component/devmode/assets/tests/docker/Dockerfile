@@ -4,5 +4,6 @@ RUN apk add --no-cache \
     bash \
     coreutils \
     grep \
+    procps \
     sed \
     shellcheck

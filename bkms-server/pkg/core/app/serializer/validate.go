@@ -20,6 +20,7 @@ package serializer
 
 import (
 	"regexp"
+	"strings"
 
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
@@ -47,6 +48,7 @@ func init() {
 		// Register struct-level validator for CreateAppInput to enforce
 		// conditional required fields based on app type.
 		v.RegisterStructValidation(validateCreateAppInputStruct, CreateAppInput{})
+		v.RegisterStructValidation(validateAppModelSpecInputStruct, AppModelSpecInput{})
 		v.RegisterStructValidation(validateCreateAppComponentInputStruct, CreateAppComponentInput{})
 		// Register struct-level validator for HelmSourceInput to enforce
 		// the matching repo config based on RepoType. This applies to both
@@ -131,6 +133,21 @@ func validateAppModelSpecEnvVarsUnique(sl validator.StructLevel, spec *AppModelS
 			return
 		}
 		seen[envVar.Key] = struct{}{}
+	}
+}
+
+// validateAppModelSpecInputStruct ensures ShCommand is not blank and is mutually exclusive with Command and Args.
+func validateAppModelSpecInputStruct(sl validator.StructLevel) {
+	input := sl.Current().Interface().(AppModelSpecInput)
+	if input.ShCommand == "" {
+		return
+	}
+	// 仅拒绝纯空白脚本，非空脚本原样保留，不做 TrimSpace 归一化
+	if strings.TrimSpace(input.ShCommand) == "" {
+		sl.ReportError(input.ShCommand, "ShCommand", "ShCommand", "sh_command_not_blank", "")
+	}
+	if len(input.Command) > 0 || len(input.Args) > 0 {
+		sl.ReportError(input.ShCommand, "ShCommand", "ShCommand", "exec_command_or_sh_command_exclusive", "")
 	}
 }
 

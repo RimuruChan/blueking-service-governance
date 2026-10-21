@@ -27,27 +27,32 @@ import (
 
 // StartCommandOutput is the output structure for start command view.
 type StartCommandOutput struct {
-	Command  []string         `json:"command" yaml:"command"`
-	Args     []string         `json:"args" yaml:"args"`
-	TrpcSpec *client.TrpcSpec `json:"trpcSpec,omitempty" yaml:"trpcSpec,omitempty"`
-	TafSpec  *client.TafSpec  `json:"tafSpec,omitempty" yaml:"tafSpec,omitempty"`
+	Command   []string         `json:"command" yaml:"command"`
+	Args      []string         `json:"args" yaml:"args"`
+	ShCommand string           `json:"shCommand,omitempty" yaml:"shCommand,omitempty"`
+	TrpcSpec  *client.TrpcSpec `json:"trpcSpec,omitempty" yaml:"trpcSpec,omitempty"`
+	TafSpec   *client.TafSpec  `json:"tafSpec,omitempty" yaml:"tafSpec,omitempty"`
 }
 
 // FormatTable returns a plain-text table representation of the start command.
 func (o *StartCommandOutput) FormatTable() string {
-	if o == nil || (len(o.Command) == 0 && len(o.Args) == 0) {
+	if o == nil || (len(o.Command) == 0 && len(o.Args) == 0 && o.ShCommand == "") {
 		return "  Not configured"
 	}
 	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf("  %-20s %s\n", "Command:", formatStringSlice(o.Command)))
-	sb.WriteString(fmt.Sprintf("  %-20s %s", "Args:", formatStringSlice(o.Args)))
+	if o.ShCommand != "" {
+		fmt.Fprintf(&sb, "  %-20s %s", "Shell Command:", o.ShCommand)
+	} else {
+		fmt.Fprintf(&sb, "  %-20s %s\n", "Command:", formatStringSlice(o.Command))
+		fmt.Fprintf(&sb, "  %-20s %s", "Args:", formatStringSlice(o.Args))
+	}
 	if o.TrpcSpec != nil {
-		sb.WriteString(fmt.Sprintf("\n  %-20s %s / %s / %s",
-			"TrpcSpec:", o.TrpcSpec.Language, o.TrpcSpec.FilePath+"/"+o.TrpcSpec.FileName, ""))
+		fmt.Fprintf(&sb, "\n  %-20s %s / %s / %s",
+			"TrpcSpec:", o.TrpcSpec.Language, o.TrpcSpec.FilePath+"/"+o.TrpcSpec.FileName, "")
 	}
 	if o.TafSpec != nil {
-		sb.WriteString(fmt.Sprintf("\n  %-20s %s / %s",
-			"TafSpec:", o.TafSpec.FilePath+"/"+o.TafSpec.FileName, ""))
+		fmt.Fprintf(&sb, "\n  %-20s %s / %s",
+			"TafSpec:", o.TafSpec.FilePath+"/"+o.TafSpec.FileName, "")
 	}
 	return sb.String()
 }

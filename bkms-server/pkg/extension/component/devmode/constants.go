@@ -56,6 +56,9 @@ const (
 	TrpcMountPath = TrpcWorkPath + "/" + ScriptsSubDir
 	// TrpcInitScriptPath trpc init.sh 脚本的完整路径
 	TrpcInitScriptPath = TrpcMountPath + "/init.sh"
+	// TrpcStartScriptPath trpc-start.sh 在 init.sh 拷贝出的脚本目录中的路径（仅 shell 模式使用），
+	// 与 start.sh 等脚本一样在 Pod 启动时固定，不随 ConfigMap 热更新变化
+	TrpcStartScriptPath = TrpcWorkPath + "/scripts/" + KeyTrpcStartScript
 )
 
 // taf 相关常量
@@ -90,6 +93,9 @@ const (
 
 	// KeyTafStartScript taf 启动脚本的 key（wrap 方式拉起 taf 进程）
 	KeyTafStartScript = "taf-start.sh"
+
+	// KeyTrpcStartScript trpc 启动脚本的 key（仅 StartupShCommand 模式使用，承载用户启动脚本）
+	KeyTrpcStartScript = "trpc-start.sh"
 
 	// KeyBkmsTrpcBinPath bkms trpc 二进制文件路径
 	KeyBkmsTrpcBinPath = "BKMS_TRPC_BIN_PATH"

@@ -95,6 +95,20 @@ var _ = Describe("DevMode Component TAF", func() {
 					output.ConfigMap.Data[devmode.KeyTafStartScript],
 				).To(ContainSubstring("./test-taf-app --config=/etc/config.yaml"))
 			})
+
+			It("should write sh command into taf-start.sh as-is", func() {
+				script := "echo '{{.NotTemplate}}'\n./test-taf-app"
+				config := &devmode.Config{
+					Enabled:          true,
+					EnvType:          devmode.EnvTypeDevelopment,
+					AppType:          bkmsapp.AppTypeTAF,
+					AppName:          "test-taf-app",
+					StartupShCommand: script,
+				}
+				output, err := devmode.New(config).Build()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(output.ConfigMap.Data[devmode.KeyTafStartScript]).To(Equal("#!/bin/sh\n" + script))
+			})
 		})
 
 		Context("New", func() {

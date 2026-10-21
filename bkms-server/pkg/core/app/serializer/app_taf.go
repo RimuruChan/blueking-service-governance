@@ -46,9 +46,10 @@ type TafSpecOutputObj struct {
 // ToTafCreateParams 将 AppModelSpecInput 转换为 taf 内部创建参数类型
 func (input *AppModelSpecInput) ToTafCreateParams() *tafapp.CreateParams {
 	params := &tafapp.CreateParams{
-		Command: input.Command,
-		Args:    input.Args,
-		EnvVars: variableInputsToModel(input.EnvVars),
+		Command:   input.Command,
+		Args:      input.Args,
+		ShCommand: input.ShCommand,
+		EnvVars:   variableInputsToModel(input.EnvVars),
 	}
 	if input.TafSpec != nil {
 		params.TafConfig = &tafapp.TafConfigParams{
@@ -64,8 +65,9 @@ func (input *AppModelSpecInput) ToTafCreateParams() *tafapp.CreateParams {
 func (input *AppModelSpecInput) ToTafUpdateParams() *tafapp.UpdateParams {
 	// 更新 Spec 时忽略 EnvVars 以兼容旧客户端，应用环境变量应通过独立 CRUD 接口修改。
 	params := &tafapp.UpdateParams{
-		Command: input.Command,
-		Args:    input.Args,
+		Command:   input.Command,
+		Args:      input.Args,
+		ShCommand: input.ShCommand,
 	}
 	if input.TafSpec != nil {
 		params.TafConfig = &tafapp.TafConfigParams{

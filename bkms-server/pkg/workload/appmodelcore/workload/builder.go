@@ -662,6 +662,10 @@ func (b *Builder) buildContainerSpec(
 		Command: appModel.Workload.Command,
 		Args:    appModel.Workload.Args,
 	}
+	if appModel.Workload.ShCommand != "" {
+		c.Command = []string{"/bin/sh", "-c", appModel.Workload.ShCommand}
+		c.Args = nil
+	}
 
 	c.Env = appEnvVars.ToKubeObjs()
 

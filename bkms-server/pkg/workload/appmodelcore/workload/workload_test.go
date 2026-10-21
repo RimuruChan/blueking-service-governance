@@ -468,6 +468,23 @@ var _ = Describe("Builder Shared Tests", func() {
 		Entry("TAF workload", workloadTestCases[1]),
 	)
 
+	DescribeTable("Build Basic - should run sh command with /bin/sh -c",
+		func(tc WorkloadTestCase) {
+			app, appModel := createApplication(ctx, tc, stores, nil, nil)
+			testEnv := dbfactory.Env(ctx, envSvc, app.WorkspaceID)
+			appModel.Workload.ShCommand = "echo ready\nexec ./server"
+
+			result, err := workload.NewBuilder(builderSvc, app, appModel).Build(ctx, testEnv)
+			Expect(err).NotTo(HaveOccurred())
+
+			container := asGameDeployment(result).Spec.Template.Spec.Containers[0]
+			Expect(container.Command).To(Equal([]string{"/bin/sh", "-c", "echo ready\nexec ./server"}))
+			Expect(container.Args).To(BeEmpty())
+		},
+		Entry("TRPC workload", workloadTestCases[0]),
+		Entry("TAF workload", workloadTestCases[1]),
+	)
+
 	// Test Build Components
 	DescribeTable("Build Components - ListComponents should return the right result",
 		func(tc WorkloadTestCase) {

@@ -82,6 +82,9 @@ type Config struct {
 	// StartupCommand 用户 app 启动命令
 	StartupCommand string
 
+	// StartupShCommand 用户 app 启动脚本，非空时写入独立脚本文件以 /bin/sh 执行（$0 为脚本路径）
+	StartupShCommand string
+
 	// TrpcBinaryPath trpc 二进制文件路径（仅 trpc 类型使用）
 	TrpcBinaryPath string
 }
@@ -150,11 +153,12 @@ func FromAppModel(appModel *appmodel.AppModel, envType string) *Config {
 
 	appType := appModel.Workload.Type
 	cfg := &Config{
-		Enabled:        false,
-		EnvType:        envType,
-		AppType:        appType,
-		AppName:        appModel.Workload.Name,
-		StartupCommand: customStartScript,
+		Enabled:          false,
+		EnvType:          envType,
+		AppType:          appType,
+		AppName:          appModel.Workload.Name,
+		StartupCommand:   customStartScript,
+		StartupShCommand: appModel.Workload.ShCommand,
 	}
 
 	if appType == bkmsapp.AppTypeTAF {

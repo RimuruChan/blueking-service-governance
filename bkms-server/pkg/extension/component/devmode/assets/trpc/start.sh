@@ -72,7 +72,7 @@ start_process() {
 
         # 启动进程（后台运行，输出重定向到标准输出/错误）
         # {{.BKMS_CUSTOM_START_SCRIPT}} 是 Go 模板渲染后的，用户 app 启动命令，
-        #  这里拿的是 appModel 中的 command、args 以空格拼接后的字符串。
+        #  exec 模式为 appModel 中的 command、args 以空格拼接后的字符串，shell 模式为 trpc-start.sh 的路径。
         nohup {{.BKMS_CUSTOM_START_SCRIPT}} > /proc/self/fd/1 2> /proc/self/fd/2 &
     )
 

@@ -37,7 +37,10 @@ func NewEditCmd() *cobra.Command {
 		Short: "Edit application start command",
 		Long: `Edit the application start command and arguments from a YAML file.
 
-The YAML file should contain 'command' and/or 'args' fields as string arrays.
+The YAML file should contain either 'command' and/or 'args' fields as string arrays,
+or a 'shCommand' field holding a complete shell script executed by /bin/sh.
+'shCommand' is mutually exclusive with 'command' and 'args'; providing one mode
+replaces the other.
 For trpc/taf apps, the current trpcSpec/tafSpec will be automatically preserved
 unless explicitly overridden in the YAML file.`,
 		Example: `  # Set start command from YAML file
@@ -49,6 +52,11 @@ unless explicitly overridden in the YAML file.`,
   #   args:
   #     - -conf
   #     - /usr/local/trpc/bin/trpc-go.yaml
+  #
+  # Example YAML file content (shell script):
+  #   shCommand: |
+  #     export GOTRACEBACK=crash
+  #     /usr/local/trpc/bin/server -conf /usr/local/trpc/conf/trpc_go.yaml
   #
   # Example YAML file content (with trpcSpec override):
   #   command:

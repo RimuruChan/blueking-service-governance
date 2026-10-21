@@ -21748,6 +21748,10 @@ const docTemplate = `{
                         "$ref": "#/definitions/serializer.VariableInput"
                     }
                 },
+                "shCommand": {
+                    "description": "容器启动脚本，以 /bin/sh 执行，与 command、args 互斥，不能为纯空白；开发模式下 tRPC 应用需在脚本中以绝对路径启动二进制",
+                    "type": "string"
+                },
                 "tafSpec": {
                     "description": "TAF 框架配置",
                     "allOf": [
@@ -21796,6 +21800,10 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/serializer.VariableOutputObj"
                     }
+                },
+                "shCommand": {
+                    "description": "容器启动脚本，以 /bin/sh 执行",
+                    "type": "string"
                 },
                 "tafSpec": {
                     "description": "TAF 框架配置",

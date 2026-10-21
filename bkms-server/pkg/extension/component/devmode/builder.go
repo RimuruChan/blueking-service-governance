@@ -27,6 +27,7 @@ import (
 	"text/template"
 
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -74,7 +75,7 @@ func (b *builder) Validate() error {
 	if b.config.AppName == "" {
 		return ErrAppNameRequired
 	}
-	if b.config.StartupCommand == "" {
+	if b.config.StartupCommand == "" && b.config.StartupShCommand == "" {
 		return ErrStartupCommandRequired
 	}
 	// taf 类型不校验 TrpcBinaryPath，trpc 类型需要校验
@@ -133,7 +134,10 @@ func (b *builder) BuildConfigMap() (*corev1.ConfigMap, error) {
 		// trpc 类型
 		initSh = TrpcInitScript
 		data[KeyBkmsTrpcBinPath] = b.config.TrpcBinaryPath
-		data[KeyBkmsCustomStartScript] = b.config.StartupCommand
+		// shell 模式下 start.sh 改为执行 trpc-start.sh，用 sh -c 内联会让包装进程被误认为业务进程
+		data[KeyBkmsCustomStartScript] = lo.Ternary(
+			b.config.StartupShCommand == "", b.config.StartupCommand, TrpcStartScriptPath,
+		)
 		scripts = []scriptDefinition{
 			{key: KeyUtilsScript, template: TrpcUtilsScript, name: KeyUtilsScript},
 			{key: KeyStartScript, template: TrpcStartScript, name: KeyStartScript},
@@ -156,7 +160,12 @@ func (b *builder) BuildConfigMap() (*corev1.ConfigMap, error) {
 		configMapData[script.key] = rendered
 	}
 
-	if b.config.IsTaf() {
+	switch {
+	case b.config.StartupShCommand != "":
+		// shell 模式：启动脚本原样写入独立文件，不做转义和模板渲染
+		startKey := lo.Ternary(b.config.IsTaf(), KeyTafStartScript, KeyTrpcStartScript)
+		configMapData[startKey] = "#!/bin/sh\n" + b.config.StartupShCommand
+	case b.config.IsTaf():
 		// taf 类型额外包含 taf-start.sh（wrap 启动脚本）
 		configMapData[KeyTafStartScript] = fmt.Sprintf("#!/bin/bash\n\nexec %s", b.config.StartupCommand)
 	}

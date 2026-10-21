@@ -39,6 +39,8 @@ type CreateParams struct {
 	Command []string
 	// Args 容器启动参数
 	Args []string
+	// ShCommand 容器启动脚本，与 Command、Args 互斥
+	ShCommand string
 	// EnvVars 容器环境变量
 	EnvVars []appmodel.Variable
 	// TrpcConfig tRPC 特有配置
@@ -63,6 +65,8 @@ type UpdateParams struct {
 	Command []string
 	// Args 容器启动参数
 	Args []string
+	// ShCommand 容器启动脚本，与 Command、Args 互斥
+	ShCommand string
 	// TrpcConfig tRPC 特有配置
 	TrpcConfig *TrpcConfigParams
 }
@@ -151,11 +155,12 @@ func (s *Service) Create(ctx context.Context, app *bkmsapp.Application, params *
 	appModel := &appmodel.AppModel{
 		AppID: app.ID,
 		Workload: appmodel.Workload{
-			Name:    app.Name,
-			Type:    appmodel.WorkloadTypeTrpc,
-			Command: params.Command,
-			Args:    params.Args,
-			EnvVars: params.EnvVars,
+			Name:      app.Name,
+			Type:      appmodel.WorkloadTypeTrpc,
+			Command:   params.Command,
+			Args:      params.Args,
+			ShCommand: params.ShCommand,
+			EnvVars:   params.EnvVars,
 		},
 	}
 
@@ -224,6 +229,7 @@ func (s *Service) Update(
 	// 更新通用配置
 	appModel.Workload.Command = params.Command
 	appModel.Workload.Args = params.Args
+	appModel.Workload.ShCommand = params.ShCommand
 
 	// 保存更新
 	if err = s.appModelStore.UpdateAppModel(ctx, appModel); err != nil {
