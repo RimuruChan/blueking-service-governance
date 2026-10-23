@@ -98,6 +98,24 @@ var _ = Describe("Publisher", func() {
 			Expect(publisher.GetInstanceIDs()).To(Equal([]string{"pod-1", "pod-2"}))
 		})
 
+		It("returns an error when preflight returns empty devMode paths", func() {
+			cli.EXPECT().
+				DevModePublishPreflight(mock.Anything, appID, envName, mock.Anything, mock.Anything).
+				Return(&client.DevModePreflightData{
+					Token:       "test-token",
+					Address:     "https://bcs-api.example.com/clusters/BCS-K8S-12345/",
+					Namespace:   "bkms-test",
+					InstanceIDs: []string{"pod-1"},
+					DevMode:     &client.DevModeConfig{Enabled: true},
+				}, nil)
+
+			publisher := NewPublisher(ctx, cli, appID, envName)
+			err := publisher.PreCheck([]string{"pod-1"}, false)
+
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("incomplete devMode config"))
+		})
+
 		It("returns an error when preflight fails", func() {
 			cli.EXPECT().
 				DevModePublishPreflight(mock.Anything, appID, envName, mock.Anything, mock.Anything).

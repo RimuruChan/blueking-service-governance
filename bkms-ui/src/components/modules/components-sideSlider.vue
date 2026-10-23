@@ -495,6 +495,7 @@
       <template #aside>
         <ViewDefaultEnvVars
           ref="envVarRef"
+          :border="false"
           :custom-request-fn="handleGetVarEnv"
           :env-list="envList"
         />
@@ -744,6 +745,7 @@
    * @description: 重新选择
    */
   function handleReSelect() {
+    isCollaspeAside.value = true;
     isShow.value = true;
     isUseInstance.value = false;
     curInstanceObj.value = undefined;
@@ -753,6 +755,7 @@
    * @description: 添加组件
    */
   function handleShowPopover() {
+    isCollaspeAside.value = true;
     isShow.value = true;
     isUseInstance.value = false;
   }
@@ -1097,6 +1100,7 @@
     instanceDetail.type = row.type;
     instanceDetail.version = row.version;
     instanceDetail.properties = getFormProperties(row.properties);
+    isCollaspeAside.value = true;
     isShow.value = true;
   }
 
@@ -1130,13 +1134,20 @@
       // 默认显示 popover
       if (val && !props.data) {
         setTimeout(() => {
-          isShow.value = true;
+          if (localValue.value && isCollaspeAside.value) {
+            isShow.value = true;
+          }
         }, 200);
       }
     },
   );
   watch(localValue, val => {
     emits('update:modelValue', val);
+  });
+  watch(isCollaspeAside, collapsed => {
+    if (!collapsed) {
+      isShow.value = false;
+    }
   });
   watch(isUseInstance, val => {
     if (!val) {

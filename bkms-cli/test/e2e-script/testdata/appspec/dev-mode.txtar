@@ -1,0 +1,18 @@
+# app appspec dev-mode 子命令（仅环境级）
+
+# 缺 --env
+! exec $BKMS_CLI_BIN app appspec dev-mode view --app $BKMS_APP_ID
+stderr 'required flag\(s\) "env" not set'
+
+# 带 --env 正常操作
+exec $BKMS_CLI_BIN app appspec dev-mode view --app $BKMS_APP_ID --env $BKMS_ENV_NAME
+stdout 'Enabled:'
+stdout 'Work Path:'
+
+exec $BKMS_CLI_BIN app appspec dev-mode enable --app $BKMS_APP_ID --env $BKMS_ENV_NAME
+exec $BKMS_CLI_BIN app appspec dev-mode view --app $BKMS_APP_ID --env $BKMS_ENV_NAME -o json
+jsonfield enabled=true
+
+exec $BKMS_CLI_BIN app appspec dev-mode disable --app $BKMS_APP_ID --env $BKMS_ENV_NAME
+
+exec $BKMS_CLI_BIN app appspec dev-mode reset --app $BKMS_APP_ID --env $BKMS_ENV_NAME

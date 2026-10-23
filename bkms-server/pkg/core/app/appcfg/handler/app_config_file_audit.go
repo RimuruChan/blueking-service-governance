@@ -45,6 +45,14 @@ func buildAppConfigFileAuditData(acf *appcfg.AppConfigFile, name string) map[str
 	if acf.BaseAppConfigFileID != nil {
 		data["baseAppConfigFileID"] = acf.BaseAppConfigFileID.Hex()
 	}
+	if acf.BSCPConfig != nil {
+		data["bscpConfig"] = map[string]any{
+			"bizID":     acf.BSCPConfig.BizID,
+			"serviceID": acf.BSCPConfig.ServiceID,
+			"versionID": acf.BSCPConfig.VersionID,
+			"configID":  acf.BSCPConfig.ConfigID,
+		}
+	}
 	return data
 }
 
@@ -57,7 +65,7 @@ func (h *Handler) addAppConfigFileAudit(
 	after any,
 ) {
 	opts := []audit.Option{
-		audit.WithAttribute(audit.AttributeAppModel),
+		audit.WithAttribute(audit.AttributeAppConfigFile),
 		audit.WithWorkspaceID(app.WorkspaceID),
 		audit.WithAppID(app.ID),
 	}

@@ -24,10 +24,12 @@ import (
 	"github.com/TencentBlueKing/gopkg/stringx"
 	"github.com/onsi/gomega"
 
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
+	build "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 )
 
@@ -82,7 +84,7 @@ func TrpcApplication(
 		app.WorkspaceID = opts.WorkspaceID
 	}
 
-	err := stores.AppStore.CreateApp(ctx, app)
+	err := stores.AppStore.Create(ctx, app)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	// 设置默认镜像
@@ -101,26 +103,29 @@ func TrpcApplication(
 		}
 	}
 
-	// 创建 AppModel
+	// 创建 AppModel。文件名和挂载目录不写入 app model，只写到下面的 framework def。
 	model := &appmodel.AppModel{
 		AppID: app.ID,
 		Workload: appmodel.Workload{
-			Type:       appmodel.WorkloadTypeTrpc,
-			Name:       app.Name,
-			Image:      image,
-			EnvVars:    opts.EnvVars,
-			TrpcConfig: *trpcConfig,
+			Type:    appmodel.WorkloadTypeTrpc,
+			Name:    app.Name,
+			Image:   image,
+			EnvVars: opts.EnvVars,
+			TrpcConfig: appmodel.TrpcConfig{
+				Language:    trpcConfig.Language,
+				FileContent: trpcConfig.FileContent,
+			},
 		},
 		Components: opts.Components,
 		Replicas:   opts.Replicas,
 	}
-	err = stores.AppModelStore.CreateAppModel(ctx, model)
+	err = appmodel.CreateAppModel(ctx, database.DB(), model)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	// 创建 app-level 默认 AppConfigFile（tRPC plugin 需要）
-	// def.Name 使用 tRPC 配置中的实际文件名，与 app model 保持一致
+	// 创建 app-level 默认 AppConfigFile（tRPC plugin 需要）。
+	// 文件名和挂载目录取自入参，写入 framework def。
 	acfService := appcfg.NewAppConfigFileService(
-		stores.AppConfigFileStore, stores.AppConfigFileDefStore, stores.AppConfigFileVersionStore,
+		database.DB(),
 	)
 	_, err = acfService.Create(
 		ctx,
@@ -128,6 +133,7 @@ func TrpcApplication(
 			AppID:             app.ID,
 			EnvName:           appcfg.EnvNameDefault,
 			Name:              trpcConfig.FileName,
+			MountDir:          trpcConfig.FilePath,
 			Type:              appcfg.AppConfigFileTypeNormal,
 			ContentSourceType: appcfg.ContentSourceTypeLocal,
 			Format:            appcfg.FileFormatYAML,
@@ -135,6 +141,7 @@ func TrpcApplication(
 			Creator:           appcfg.CfgSystemUser,
 			Description:       appcfg.CfgSystemVersionDescription,
 			ConfigKind:        appcfg.ConfigKindFramework,
+			AppType:           app.Type,
 		},
 	)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -156,7 +163,7 @@ func TrpcApplication(
 			},
 		}
 	}
-	err = stores.BuildConfigStore.Create(ctx, buildCfg)
+	err = store.Of(database.DB(), build.ConfigMeta).Create(ctx, buildCfg)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	return app, model
@@ -164,12 +171,7 @@ func TrpcApplication(
 
 // TafApplicationStores 创建 TAF 应用所需的 store 集合
 type TafApplicationStores struct {
-	AppStore                  bkmsapp.ApplicationStore
-	AppModelStore             appmodel.AppModelStore
-	AppConfigFileStore        appcfg.AppConfigFileStore
-	AppConfigFileDefStore     appcfg.AppConfigFileDefStore
-	AppConfigFileVersionStore appcfg.AppConfigFileVersionStore
-	BuildConfigStore          build.ConfigStore
+	AppStore *bkmsapp.ApplicationStore
 }
 
 // TafApplicationOpts 定义创建 TAF 应用时的可选参数
@@ -223,7 +225,7 @@ func TafApplication(
 		app.WorkspaceID = opts.WorkspaceID
 	}
 
-	err := stores.AppStore.CreateApp(ctx, app)
+	err := stores.AppStore.Create(ctx, app)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	// 设置默认镜像
@@ -249,26 +251,28 @@ func TafApplication(
 		}
 	}
 
-	// 创建 AppModel
+	// 创建 AppModel。文件名和挂载目录不写入 app model，只写到下面的 framework def。
 	model := &appmodel.AppModel{
 		AppID: app.ID,
 		Workload: appmodel.Workload{
-			Type:      appmodel.WorkloadTypeTaf,
-			Name:      app.Name,
-			Image:     image,
-			EnvVars:   opts.EnvVars,
-			TafConfig: *tafConfig,
+			Type:    appmodel.WorkloadTypeTaf,
+			Name:    app.Name,
+			Image:   image,
+			EnvVars: opts.EnvVars,
+			TafConfig: appmodel.TafConfig{
+				FileContent: tafConfig.FileContent,
+			},
 		},
 		Components: opts.Components,
 		Replicas:   opts.Replicas,
 	}
-	err = stores.AppModelStore.CreateAppModel(ctx, model)
+	err = appmodel.CreateAppModel(ctx, database.DB(), model)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	// 创建 app-level 默认 AppConfigFile（TAF plugin 需要）
-	// def.Name 使用 TAF 配置中的实际文件名，与 app model 保持一致
+	// 创建 app-level 默认 AppConfigFile（TAF plugin 需要）。
+	// 文件名和挂载目录取自入参，写入 framework def。
 	acfService := appcfg.NewAppConfigFileService(
-		stores.AppConfigFileStore, stores.AppConfigFileDefStore, stores.AppConfigFileVersionStore,
+		database.DB(),
 	)
 	_, err = acfService.Create(
 		ctx,
@@ -276,6 +280,7 @@ func TafApplication(
 			AppID:             app.ID,
 			EnvName:           appcfg.EnvNameDefault,
 			Name:              tafConfig.FileName,
+			MountDir:          tafConfig.FilePath,
 			Type:              appcfg.AppConfigFileTypeNormal,
 			ContentSourceType: appcfg.ContentSourceTypeLocal,
 			Format:            appcfg.FileFormatTAF,
@@ -283,6 +288,7 @@ func TafApplication(
 			Creator:           appcfg.CfgSystemUser,
 			Description:       appcfg.CfgSystemVersionDescription,
 			ConfigKind:        appcfg.ConfigKindFramework,
+			AppType:           app.Type,
 		},
 	)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
@@ -304,7 +310,7 @@ func TafApplication(
 			},
 		}
 	}
-	err = stores.BuildConfigStore.Create(ctx, buildCfg)
+	err = store.Of(database.DB(), build.ConfigMeta).Create(ctx, buildCfg)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
 	return app, model

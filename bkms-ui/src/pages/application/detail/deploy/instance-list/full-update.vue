@@ -53,8 +53,18 @@
             v-model="formModel.updateContent"
             @change="handleUpdateContentChange"
           >
-            <Radio label="both">{{ $t('镜像+配置') }}</Radio>
-            <Radio label="config">{{ $t('仅配置') }}</Radio>
+            <Radio
+              v-bk-tooltips="{ content: deployDisabledReason, disabled: !deployDisabledReason }"
+              :disabled="!!deployDisabledReason"
+              label="both"
+              >{{ $t('镜像+配置') }}</Radio
+            >
+            <Radio
+              v-bk-tooltips="{ content: deployDisabledReason, disabled: !deployDisabledReason }"
+              :disabled="!!deployDisabledReason"
+              label="config"
+              >{{ $t('仅配置') }}</Radio
+            >
             <Radio
               :disabled="isFederationEnv"
               label="image"
@@ -140,20 +150,18 @@
               </Button>
             </Button.ButtonGroup>
           </Form.FormItem>
-          <Form.FormItem
+          <CodeRevisionField
             v-if="imageSource === 'code'"
-            :label="$t('代码分支')"
-            property="branch"
+            ref="branchSelectRef"
+            v-model="formModel.revision"
+            v-model:revision-type="formModel.revisionType"
+            :default-revision="defaultRevision"
+            :repository-id="repoAlias"
             required
-          >
-            <RepoRefSelect
-              ref="branchSelectRef"
-              v-model="formModel.branch"
-              :repository-id="repoAlias"
-              :workspace-id="workspaceId"
-              @branch-commit="handleBranchSelect"
-            />
-          </Form.FormItem>
+            :show-source="showCodeSource"
+            :workspace-id="workspaceId"
+            @confirm="handleRevisionConfirm"
+          />
           <Form.FormItem
             :label="$t('镜像 Tag')"
             property="imageTag"
@@ -207,7 +215,9 @@
   import { Alert, Button, Form, Input, Message, Radio, Sideslider } from 'bkui-vue';
   import { useI18n } from 'vue-i18n';
   import { InstanceService } from '~/api/modules/v1';
+  import { type RevisionType, revisionRequestFields } from '~/components/code-revision/revision';
   import { useAppRepoRefSelect } from '~/composables/use-app-repo-ref-select';
+  import { useAppVisibleEnvs } from '~/composables/use-app-visible-envs';
   import useIsFederationEnv from '~/composables/use-is-federation-env';
   import useLeaveConfirm from '~/composables/use-leave-confirm';
   import { useRecommendTag } from '~/composables/use-recommend-tag';
@@ -238,6 +248,8 @@
   const { t } = useI18n();
   const trpcDeployStore = useTrpcDeployStore();
   const appDetailStore = useAppDetail();
+  const { checkDeployEnv, getEnvDeployDisabledReason } = useAppVisibleEnvs();
+  const deployDisabledReason = computed(() => getEnvDeployDisabledReason(trpcDeployStore.curEnvItem));
   const isFederationEnv = useIsFederationEnv(() => trpcDeployStore.curEnvItem);
 
   const { workspaceId, repoAlias, branchSelectRef, prepareBranchAfterMount } = useAppRepoRefSelect(
@@ -247,30 +259,37 @@
   const imageSource = ref<ImageSourceType>('image');
   const formRef = ref();
   const imageSelectRef = ref();
+  const showCodeSource = computed(() => appDetailStore.appDetail?.buildConfig?.sourceType !== 'pipeline');
+  const defaultRevision = ref('');
   const formModel = reactive<{
-    branch: string;
     imageTag: string;
     replicas?: number;
+    revision: string;
+    revisionType: RevisionType;
     updateContent: 'both' | 'config' | 'image';
   }>({
-    branch: '',
+    revision: '',
+    revisionType: 'branch',
     imageTag: '',
     updateContent: 'both',
   });
   // 切换为“仅配置”时会保留之前的镜像来源，因此只有“镜像+配置”选择源码时才触发构建。
   const shouldBuildFromSource = computed(() => formModel.updateContent === 'both' && imageSource.value === 'code');
-  const { getDefaultBranch, fetchRecommendTag } = useRecommendTag(() => formModel.branch, {
-    manualFetchOnly: computed(() => !repoAlias.value),
-    onRecommend: tag => {
-      if (shouldBuildFromSource.value) {
-        formModel.imageTag = tag;
-      }
+  const { getDefaultBranch, fetchRecommendTag } = useRecommendTag(
+    () => ({ revisionType: formModel.revisionType, revision: formModel.revision }),
+    {
+      manualFetchOnly: computed(() => !repoAlias.value),
+      onRecommend: tag => {
+        if (shouldBuildFromSource.value) {
+          formModel.imageTag = tag;
+        }
+      },
     },
-  });
+  );
 
-  /** 分支确认后拉取推荐镜像 Tag */
-  function handleBranchSelect(branch: string) {
-    if (branch) fetchRecommendTag(branch);
+  /** 来源或修订确认后重算推荐版本号，包括用户改过的版本号 */
+  function handleRevisionConfirm() {
+    fetchRecommendTag();
   }
   const { confirmBox, forceCleanDirtyTag, withPausedWatch } = useLeaveConfirm(formModel);
 
@@ -334,10 +353,16 @@
   async function handleChangeImageSource(source: ImageSourceType) {
     imageSource.value = source;
     if (source === 'code') {
-      // 推荐 Tag 由 useRecommendTag 监听 formModel.branch 变化自动触发
-      await prepareBranchAfterMount(getDefaultBranch());
+      defaultRevision.value = getDefaultBranch();
+      formModel.revisionType = 'branch';
+      await prepareBranchAfterMount(defaultRevision.value);
+      // 无仓库别名时 prepare 不会发出确认，需要主动拉一次推荐版本号
+      if (!repoAlias.value) {
+        await fetchRecommendTag();
+      }
     } else {
-      formModel.branch = '';
+      formModel.revision = '';
+      formModel.revisionType = 'branch';
       formModel.imageTag = '';
     }
   }
@@ -355,18 +380,20 @@
    * 配置+镜像、仅配置
    */
   async function handleConfigAndImage() {
+    const env = trpcDeployStore.curEnvItem;
+    if (!env?.name || !checkDeployEnv(env)) return false;
     try {
       // 根据应用类型获取对应的部署 API
       const deployAPIs = useDeployAPIs(appDetailStore.appType as DeployableAppType);
       // 根据镜像来源选择部署方式
       const params: DeployParams = {
         appID: appDetailStore.appID,
-        envName: trpcDeployStore.curEnvItem!.name ?? '',
+        envName: env.name,
         imageTag: formModel.imageTag,
         replicas: Number(formModel.replicas),
       };
       if (shouldBuildFromSource.value) {
-        params.branch = formModel.branch;
+        Object.assign(params, revisionRequestFields(showCodeSource.value, formModel.revisionType, formModel.revision));
         const buildRes = await deployAPIs.buildAndCreateDeploy!(params);
         // 后端状态类型为 string，这里收窄为 BuildTips 支持的状态。
         const validStatuses: BuildStatus[] = ['failed', 'pollingBroken', 'running', 'success', 'warning'];
@@ -379,7 +406,7 @@
           imageTag: buildRes.params?.BKMS_IMAGE_TAG || formModel.imageTag,
           operator: buildRes.operator || '',
           pipelineID: buildRes.pipelineID || '',
-          revision: buildRes.revision || formModel.branch,
+          revision: buildRes.revision || formModel.revision,
           status,
         });
       } else {
@@ -462,7 +489,8 @@
   watch(isShow, async val => {
     if (!val) {
       withPausedWatch(() => {
-        formModel.branch = '';
+        formModel.revision = '';
+        formModel.revisionType = 'branch';
         formModel.updateContent = 'both';
         formModel.imageTag = '';
         formModel.replicas = undefined;
@@ -473,6 +501,7 @@
     } else {
       // 打开弹窗时回填当前生效实例数；withPausedWatch 避免初始化赋值被标记为未保存修改。
       withPausedWatch(() => {
+        formModel.updateContent = deployDisabledReason.value ? 'image' : 'both';
         formModel.replicas = isValidReplicas(props.effectiveReplicas) ? props.effectiveReplicas : undefined;
       });
       // 打开弹窗时获取当前镜像 Tag

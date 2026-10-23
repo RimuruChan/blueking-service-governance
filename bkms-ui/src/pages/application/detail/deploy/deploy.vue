@@ -78,6 +78,8 @@
                 v-model="curEnv"
                 v-model:model-values="curEnvs"
                 class="mr-[16px]"
+                enable-visible-env-settings
+                :filter-visible-envs="activeTab === 'instance' || activeTab === 'overview'"
                 init-first-env-when-empty
                 :mode="envSelectMode"
                 :multi-selectable="isEnvMultiSelectable"
@@ -120,6 +122,8 @@
           #right
         >
           <Button
+            v-bk-tooltips="{ content: fullUpdateDisabledReason, disabled: !fullUpdateDisabledReason }"
+            :disabled="!!fullUpdateDisabledReason"
             :loading="precheckLoading"
             theme="primary"
             @click="handleShowFullUpdateDialog"
@@ -242,7 +246,7 @@
             </template>
             <template #default>
               <div class="flex px-[24px] gap-[36px] text-[12px] h-[18px] leading-[18px]">
-                <span>{{ $t('代码分支') }}: {{ latestDeployStatus?.branch || '--' }}</span>
+                <span>{{ latestRevisionLabel }}: {{ latestRevisionText }}</span>
                 <span>{{ $t('镜像 Tag') }}: {{ latestDeployStatus?.imageTag || '--' }}</span>
                 <span>{{ $t('操作人') }}: {{ latestDeployStatus?.operator || '--' }}</span>
                 <Button
@@ -261,7 +265,7 @@
             <InstanceList
               v-if="!isMultiEnvMode"
               :key="curEnv"
-              :has-deploy-record="latestDeployStatus?.hasDeployRecord"
+              :has-deploy-record="instanceListHasDeployRecord"
               @remove-deploy="handleRemoveDeploy"
             />
             <!-- 多环境 -->
@@ -300,7 +304,9 @@
                 <div class="text-[#4D4F56] text-[14px] leading-[22px]">{{ $t('该环境尚未部署应用') }}</div>
               </template>
               <Button
+                v-bk-tooltips="{ content: currentEnvDeployDisabledReason, disabled: !currentEnvDeployDisabledReason }"
                 class="mt-[8px]"
+                :disabled="!curEnv || !!currentEnvDeployDisabledReason"
                 :loading="precheckLoading"
                 theme="primary"
                 @click="handleShowQuicklyDeploy"
@@ -380,8 +386,10 @@
   import TabHeader from '~/components/tab-header.vue';
   import { isAppModelAppType, isHelmLikeAppType } from '~/composables/app-type';
   import { useAlertVisibility } from '~/composables/use-alert-visibility';
+  import { useAppVisibleEnvs } from '~/composables/use-app-visible-envs';
   import { type DeployStatusInfo, useDeployStatusMap } from '~/composables/use-deploy-status';
   import useInterval from '~/composables/use-interval';
+  import useIsFederationEnv from '~/composables/use-is-federation-env';
   import { useUrlQuerySync } from '~/composables/use-url-query-sync';
   import ViewBuildLog from '~/pages/application/detail/components/view-build-log/index.vue';
   import { useAppDetail } from '~/stores/app-detail';
@@ -395,6 +403,7 @@
   import CreateFeatureEnv from './create-feature-env.vue';
   import DeployEvent from './deploy-event.vue';
   import DeployHistory from './deploy-history.vue';
+  import { resolveInstanceListHasDeployRecord, shouldResetDeployStatusOnEnvChange } from './deploy-status-rules';
   import EnvVarPrecheckDialog from './env-var-precheck-dialog.vue';
   import FeatureEnv from './feature-env.vue';
   import FullUpdate from './instance-list/full-update.vue';
@@ -424,6 +433,11 @@
   const route = useRoute();
   const router = useRouter();
   const appDetailStore = useAppDetail();
+  const { getEnvDeployDisabledReason, isEnvVisible } = useAppVisibleEnvs();
+  const currentEnvDeployDisabledReason = computed(() => getEnvDeployDisabledReason(trpcDeployStore.curEnvItem));
+  const isFederationEnv = useIsFederationEnv(() => trpcDeployStore.curEnvItem);
+  // 普通集群的隐藏环境仍可进入仅镜像维护；联邦集群不支持该操作。
+  const fullUpdateDisabledReason = computed(() => (isFederationEnv.value ? currentEnvDeployDisabledReason.value : ''));
   const { getAppDeployStatusInfo } = useDeployStatusMap();
   const { t } = useI18n();
   const {
@@ -454,8 +468,11 @@
   const showBuildLog = ref(false);
 
   // 是否有可用环境（有环境且至少一个不是 NotReady）
-  const hasAvailableEnv = computed(
-    () => envList.value.length > 0 && envList.value.some(env => env.status !== 'NotReady'),
+  const hasAvailableEnv = computed(() =>
+    envList.value.some(
+      env =>
+        env.status !== 'NotReady' && (activeTab.value !== 'instance' || isEnvVisible(env) || env.name === curEnv.value),
+    ),
   );
 
   // 该规格只服务实例页的部署/扩缩容操作；总览使用聚合接口中的资源数据，不应触发此请求。
@@ -610,12 +627,15 @@
   );
   const isEnvSelectInline = ref(false);
 
-  // 切 Tab 时投放点会随旧页面一起销毁，先把选择器收回顶部栏，等新页面挂载完再投放过去。
+  // 切 Tab 或离开特性环境页时投放点会随旧页面一起销毁，先把选择器收回顶部栏，等新页面挂载完再投放过去。
+  let envSelectTeleportGeneration = 0;
   watch(
-    [activeTab, hasAvailableEnv, isEnvListLoading],
+    [activeTab, hasAvailableEnv, isEnvListLoading, isFeatureEnvPage],
     async () => {
+      const generation = ++envSelectTeleportGeneration;
       isEnvSelectInline.value = false;
       await nextTick();
+      if (generation !== envSelectTeleportGeneration || isFeatureEnvPage.value) return;
       isEnvSelectInline.value =
         (hasAvailableEnv.value || isEnvListLoading.value) && INLINE_ENV_SELECT_TABS.includes(activeTab.value);
     },
@@ -729,6 +749,12 @@
 
   const latestDeployStatus = ref<LatestDeployStatus | null>(null);
 
+  /**
+   * 实例列表的「是否有部署记录」判定：build 阶段恒视为有记录（构建不删旧实例，
+   * 列表必须继续按上一轮部署记录查询），其余阶段透传 latest-status 的聚合结果。
+   */
+  const instanceListHasDeployRecord = computed(() => resolveInstanceListHasDeployRecord(latestDeployStatus.value));
+
   /** 构建状态 Alert 信息 */
   interface BuildAlertInfo {
     closable: boolean;
@@ -769,13 +795,25 @@
     return { status: 'success', theme: 'success', closable: true, statusText: t('构建成功') };
   });
 
+  // 历史记录只有 branch；新记录用 revision，Tag / Commit 不再标成代码分支
+  const latestRevisionText = computed(
+    () => latestDeployStatus.value?.revision || latestDeployStatus.value?.branch || '--',
+  );
+  const latestRevisionLabel = computed(() => {
+    const revisionType = latestDeployStatus.value?.revisionType;
+    if (revisionType === 'tag') return 'Tag';
+    if (revisionType === 'commit') return 'Commit';
+    return t('代码分支');
+  });
+
   /** 统一组装构建日志信息，供日志侧滑和全量更新状态同步使用。 */
   const buildLogInfo = computed<BuildInfo>(() => ({
     buildID: latestDeployStatus.value?.buildID || '',
     imageTag: latestDeployStatus.value?.imageTag || '',
     operator: latestDeployStatus.value?.operator || '',
     pipelineID: latestDeployStatus.value?.pipelineID || '',
-    revision: latestDeployStatus.value?.branch || '',
+    revision: latestDeployStatus.value?.revision || latestDeployStatus.value?.branch || '',
+    revisionType: latestDeployStatus.value?.revisionType,
     status: buildAlertInfo.value?.status || 'failed',
   }));
 
@@ -797,7 +835,10 @@
     const appID = appDetailStore.appID;
     const envName = trpcDeployStore.curEnvItem?.name;
     if (activeTab.value === TAB_NAMES.overview) return;
-    if (!appID || !envName) return;
+    if (!appID || !envName) {
+      initLoading.value = false;
+      return;
+    }
     try {
       const prevDeployStatus = latestDeployStatus.value?.status;
       // 根据应用类型获取对应的部署 API
@@ -847,7 +888,11 @@
   /** 同步单环境选择到页面状态和部署 Store，并触发当前环境数据重新加载。 */
   function handleEnvChange(env?: EnvOutput) {
     curEnvs.value = env?.name ? [env.name] : [];
+    // 环境选择器 refresh 后会重抛当前环境；先取旧环境名再更新 Store，环境未变化时
+    // 保留最新部署状态与实例快照，只有真正切换环境（或清空选择）才允许重置。
+    const prevEnvName = trpcDeployStore.curEnvItem?.name;
     trpcDeployStore.updateCurEnvItem(env);
+    if (!shouldResetDeployStatusOnEnvChange(env, prevEnvName)) return;
     latestDeployStatus.value = null;
     initLoading.value = true;
   }
@@ -896,17 +941,17 @@
 
   /** 从实例列表打开快速部署，并关闭总览入口专用的目标环境选择模式。 */
   async function handleShowQuicklyDeploy() {
-    const envName = trpcDeployStore.curEnvItem?.name;
-    if (!envName || precheckLoading.value) return;
+    const env = trpcDeployStore.curEnvItem;
+    if (!env?.name || precheckLoading.value || currentEnvDeployDisabledReason.value) return;
 
     precheckLoading.value = true;
     try {
-      const precheckPassed = await precheck(envName, trpcDeployStore.curEnvItem);
+      const precheckPassed = await precheck(env);
       if (!precheckPassed) return;
-      if (trpcDeployStore.curEnvItem?.name !== envName) return;
+      if (trpcDeployStore.curEnvItem?.name !== env.name) return;
 
       await fetchEffectiveDeploySpec();
-      if (trpcDeployStore.curEnvItem?.name !== envName) return;
+      if (trpcDeployStore.curEnvItem?.name !== env.name) return;
 
       // 清空总览目标是入口标记，保证实例列表仍读取当前环境，不显示目标环境选择器。
       overviewDeployTargets.value = undefined;
@@ -941,17 +986,17 @@
   const showFullUpdateDialog = ref(false);
   /** 打开当前环境的全量更新侧栏。 */
   async function handleShowFullUpdateDialog() {
-    const envName = trpcDeployStore.curEnvItem?.name;
-    if (!envName || precheckLoading.value) return;
+    const env = trpcDeployStore.curEnvItem;
+    if (!env?.name || precheckLoading.value || fullUpdateDisabledReason.value) return;
 
     precheckLoading.value = true;
     try {
-      const precheckPassed = await precheck(envName, trpcDeployStore.curEnvItem);
-      if (precheckPassed && trpcDeployStore.curEnvItem?.name === envName) {
-        await fetchEffectiveDeploySpec();
-        if (trpcDeployStore.curEnvItem?.name !== envName) return;
-        showFullUpdateDialog.value = true;
-      }
+      // 隐藏环境只允许实例镜像维护，不调用会被后端名单拦截的创建部署预检。
+      if (!currentEnvDeployDisabledReason.value && !(await precheck(env))) return;
+      if (trpcDeployStore.curEnvItem?.name !== env.name) return;
+      await fetchEffectiveDeploySpec();
+      if (trpcDeployStore.curEnvItem?.name !== env.name) return;
+      showFullUpdateDialog.value = true;
     } catch (error) {
       console.warn(error);
     } finally {
@@ -1036,7 +1081,7 @@
 
     precheckLoading.value = true;
     try {
-      const precheckPassed = await precheck(env.name, env);
+      const precheckPassed = await precheck(env);
       if (!precheckPassed) return;
 
       if (isFeatureEnvPage.value) await leaveFeatureEnvPage();
@@ -1065,6 +1110,7 @@
         displayName: env.displayName,
         id: env.id,
         kind: 'feature',
+        ownerAppID: appDetailStore.appID,
         name: env.name,
         status: env.status,
         type: env.type,
@@ -1173,6 +1219,9 @@
   watch(
     [() => appDetailStore.appID, () => trpcDeployStore.curEnvItem?.name, activeTab],
     async () => {
+      if (activeTab.value === TAB_NAMES.instance) {
+        initLoading.value = true;
+      }
       latestDeployStatus.value = null;
       if (activeTab.value === TAB_NAMES.overview) {
         effectiveDeploySpec.value = undefined;

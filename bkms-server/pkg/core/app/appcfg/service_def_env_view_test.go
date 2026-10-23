@@ -34,10 +34,6 @@ var _ = Describe("AppCfgFileDefService — Env View", func() {
 		f = setupDefServiceFixture()
 	})
 
-	AfterEach(func() {
-		f.DiApp.RequireStop()
-	})
-
 	Context("GetEnvFileDetail", func() {
 		It("should return default file for unified config", func() {
 			result := f.createFrameworkFile("values.yaml")
@@ -49,6 +45,39 @@ var _ = Describe("AppCfgFileDefService — Env View", func() {
 			Expect(detail.DefaultFile).NotTo(BeNil())
 			Expect(detail.DisplayFile).NotTo(BeNil())
 			Expect(detail.DisplayFile.ID).To(Equal(detail.DefaultFile.ID))
+			Expect(detail.DisplayFile.ID).To(Equal(result.ID))
+			Expect(detail.HasEnvInstance).To(BeFalse())
+			Expect(detail.EditableContentField).To(Equal("content"))
+		})
+
+		It("should return default file for framework overwrite strategy without env instance", func() {
+			content := "key: value"
+			result, err := f.Svc.Create(f.Ctx, appcfg.CreateCfgFileParams{
+				AppID:             f.AppID,
+				EnvName:           appcfg.EnvNameDefault,
+				Name:              "trpc_go.yaml",
+				Type:              appcfg.AppConfigFileTypeNormal,
+				ContentSourceType: appcfg.ContentSourceTypeLocal,
+				Format:            appcfg.FileFormatYAML,
+				Content:           &content,
+				Creator:           "tester",
+				ConfigKind:        appcfg.ConfigKindFramework,
+				AppType:           "trpc",
+			})
+			Expect(err).NotTo(HaveOccurred())
+			def, err := f.DefStore.GetByID(f.Ctx, result.Def.ID)
+			Expect(err).NotTo(HaveOccurred())
+
+			isUnified := false
+			err = f.Svc.UpdateAppCfgFileDef(f.Ctx, def, appcfg.FileDefUpdate{
+				IsUnifiedConfig: &isUnified,
+				Operator:        "editor",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			detail, err := f.Svc.GetEnvFileDetail(f.Ctx, def, "prod")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(detail.DisplayFile).NotTo(BeNil())
 			Expect(detail.DisplayFile.ID).To(Equal(result.ID))
 			Expect(detail.HasEnvInstance).To(BeFalse())
 			Expect(detail.EditableContentField).To(Equal("content"))
@@ -110,11 +139,15 @@ var _ = Describe("AppCfgFileDefService — Env View", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			overlay := "env: prod\n"
-			created, _, isNewFile, err := f.Svc.PrepareEnvContentUpdate(f.Ctx, def, "prod", overlay, "editor")
+			upserted, err := f.Svc.UpsertEnvContent(f.Ctx, def, appcfg.UpsertEnvContentParams{
+				EnvName:     "prod",
+				Content:     overlay,
+				Operator:    "editor",
+				Description: "prod overlay",
+			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(isNewFile).To(BeTrue())
-			created, err = f.Svc.CreateFileWithVersion(f.Ctx, *created, def.Name, "prod overlay", "editor")
-			Expect(err).NotTo(HaveOccurred())
+			Expect(upserted.IsNewFile).To(BeTrue())
+			created := upserted.File
 
 			detail, err := f.Svc.GetEnvFileDetail(f.Ctx, def, "prod")
 			Expect(err).NotTo(HaveOccurred())
@@ -245,9 +278,12 @@ var _ = Describe("AppCfgFileDefService — Env View", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			overlay := "env: prod\n"
-			created, _, _, err := f.Svc.PrepareEnvContentUpdate(f.Ctx, def, "prod", overlay, "editor")
-			Expect(err).NotTo(HaveOccurred())
-			_, err = f.Svc.CreateFileWithVersion(f.Ctx, *created, def.Name, "prod overlay", "editor")
+			_, err = f.Svc.UpsertEnvContent(f.Ctx, def, appcfg.UpsertEnvContentParams{
+				EnvName:     "prod",
+				Content:     overlay,
+				Operator:    "editor",
+				Description: "prod overlay",
+			})
 			Expect(err).NotTo(HaveOccurred())
 
 			items, err := f.Svc.GetMountPreview(f.Ctx, f.AppID, "prod")
@@ -269,9 +305,12 @@ var _ = Describe("AppCfgFileDefService — Env View", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			overlay := "env: prod\n"
-			created, _, _, err := f.Svc.PrepareEnvContentUpdate(f.Ctx, def, "prod", overlay, "editor")
-			Expect(err).NotTo(HaveOccurred())
-			_, err = f.Svc.CreateFileWithVersion(f.Ctx, *created, def.Name, "prod overlay", "editor")
+			_, err = f.Svc.UpsertEnvContent(f.Ctx, def, appcfg.UpsertEnvContentParams{
+				EnvName:     "prod",
+				Content:     overlay,
+				Operator:    "editor",
+				Description: "prod overlay",
+			})
 			Expect(err).NotTo(HaveOccurred())
 
 			items, err := f.Svc.GetMountPreview(f.Ctx, f.AppID, "prod")
@@ -295,9 +334,12 @@ var _ = Describe("AppCfgFileDefService — Env View", func() {
 			})
 			Expect(err).NotTo(HaveOccurred())
 
-			created, _, _, err := f.Svc.PrepareEnvContentUpdate(f.Ctx, def, "prod", "key=prod", "editor")
-			Expect(err).NotTo(HaveOccurred())
-			_, err = f.Svc.CreateFileWithVersion(f.Ctx, *created, def.Name, "plain prod overwrite", "editor")
+			_, err = f.Svc.UpsertEnvContent(f.Ctx, def, appcfg.UpsertEnvContentParams{
+				EnvName:     "prod",
+				Content:     "key=prod",
+				Operator:    "editor",
+				Description: "plain prod overwrite",
+			})
 			Expect(err).NotTo(HaveOccurred())
 
 			items, err := f.Svc.GetMountPreview(f.Ctx, f.AppID, "prod")

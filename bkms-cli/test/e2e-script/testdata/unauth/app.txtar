@@ -1,0 +1,4 @@
+# 未认证时 app list 应报未授权
+
+! exec $BKMS_CLI_BIN app list
+stderr 'unauthorized'

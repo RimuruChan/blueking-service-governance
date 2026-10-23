@@ -1,0 +1,18 @@
+# app appspec 边界场景
+
+# 不存在的 app 应返回 not found
+! exec $BKMS_CLI_BIN app appspec view --app nonexistent-app-xyz123
+stderr 'not found'
+
+# 不存在的文件应返回 not found
+! exec $BKMS_CLI_BIN app appspec resources edit --app $BKMS_APP_ID -f /tmp/nonexistent-file-xyz.yaml
+stderr 'not found'
+
+# 不存在的 env 应退出非 0
+! exec $BKMS_CLI_BIN app appspec resources view --app $BKMS_APP_ID --env nonexistent-env-xyz123
+
+# 空文件应退出非 0 并含 "empty"
+! exec $BKMS_CLI_BIN app appspec resources edit --app $BKMS_APP_ID -f empty.yaml
+stderr 'empty'
+
+-- empty.yaml --

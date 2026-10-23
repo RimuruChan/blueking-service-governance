@@ -23,15 +23,18 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci/pipelineparam"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkrepo"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/chart/semver"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/revision"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
 	bkciapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkci"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/helmcore/credential"
 )
 
@@ -47,31 +50,12 @@ type ChartBuildResult struct {
 
 // ChartBuildService Helm Chart 构建服务，收敛所有外部依赖
 type ChartBuildService struct {
-	semverStore     semver.CounterStore
-	credStore       credential.HelmRepoCredentialStore
-	recordStore     RecordStore
-	bkciProjStore   bkci.ProjectStore
-	bkrepoProjStore bkrepo.ProjectStore
-	pipelineStore   bkci.PipelineStore
+	db *mongo.Database
 }
 
 // NewChartBuildService 创建 ChartBuildService 实例
-func NewChartBuildService(
-	semverStore semver.CounterStore,
-	credStore credential.HelmRepoCredentialStore,
-	recordStore RecordStore,
-	bkciProjStore bkci.ProjectStore,
-	bkrepoProjStore bkrepo.ProjectStore,
-	pipelineStore bkci.PipelineStore,
-) *ChartBuildService {
-	return &ChartBuildService{
-		semverStore:     semverStore,
-		credStore:       credStore,
-		recordStore:     recordStore,
-		bkciProjStore:   bkciProjStore,
-		bkrepoProjStore: bkrepoProjStore,
-		pipelineStore:   pipelineStore,
-	}
+func NewChartBuildService(db *mongo.Database) *ChartBuildService {
+	return &ChartBuildService{db: db}
 }
 
 // validate 校验阶段：纯检查，无副作用
@@ -102,30 +86,30 @@ func (s *ChartBuildService) prepare(ctx context.Context, app *bkmsapp.Applicatio
 	gitRepoConfig := app.HelmSpec.HelmSource.GitRepoConfig
 
 	// 1. 确保 Helm Git Build 流水线已初始化
-	if _, err := bkci.NewPipelineManager(app.WorkspaceID).Initialize(
+	if _, err := bkci.NewPipelineManager(s.db, app.WorkspaceID).Initialize(
 		ctx, string(bkci.PipelineTypeHelmGitBuild),
 	); err != nil {
 		return errors.Wrapf(err, "ensure helm-git-build pipeline for workspace %s", app.WorkspaceID)
 	}
 
 	// 2. 确保代码库已关联到蓝盾
-	if _, err := bkci.NewRepositoryManager(app.WorkspaceID).Initialize(
+	if _, err := bkci.NewRepositoryManager(s.db, app.WorkspaceID).Initialize(
 		ctx, gitRepoConfig.RepoURL, gitRepoConfig.RepoAlias,
 	); err != nil {
 		return errors.Wrapf(err, "ensure bkci repository for app %s", appInfo)
 	}
 
 	// 3. 确保 Helm 仓库凭证已初始化（兜底检查）
-	bkciProj, err := s.bkciProjStore.GetByWorkspace(ctx, app.WorkspaceID)
+	bkciProj, err := store.Of(s.db, bkci.ProjectMeta).Get(ctx, bkci.ByWorkspace(app.WorkspaceID))
 	if err != nil {
 		return errors.Wrapf(err, "get bkci project for workspace %s", app.WorkspaceID)
 	}
-	bkrepoProj, err := s.bkrepoProjStore.GetByWorkspace(ctx, app.WorkspaceID)
+	bkrepoProj, err := store.Of(s.db, bkrepo.ProjectMeta).Get(ctx, bkrepo.ByWorkspace(app.WorkspaceID))
 	if err != nil {
 		return errors.Wrapf(err, "get bkrepo project for workspace %s", app.WorkspaceID)
 	}
 	if err = credential.EnsureCredential(
-		ctx, s.credStore, app.WorkspaceID, bkciProj.Code, bkrepoProj.Username, bkrepoProj.Password,
+		ctx, s.db, app.WorkspaceID, bkciProj.Code, bkrepoProj.Username, bkrepoProj.Password,
 	); err != nil {
 		return errors.Wrapf(err, "ensure helm repo credential for workspace %s", app.WorkspaceID)
 	}
@@ -135,18 +119,18 @@ func (s *ChartBuildService) prepare(ctx context.Context, app *bkmsapp.Applicatio
 
 // buildPipelineParams 生成 semver 版本号并构建蓝盾流水线参数
 func (s *ChartBuildService) buildPipelineParams(
-	ctx context.Context, app *bkmsapp.Application, bumpType, branch, helmRepoURL string,
+	ctx context.Context, app *bkmsapp.Application, bumpType string, rev revision.CodeRevision, helmRepoURL string,
 ) (map[string]string, string, error) {
 	// 生成 semver 版本号（原子操作，并发安全；尽量延后，避免前序失败浪费版本号）
-	chartVersion, err := s.semverStore.Next(ctx, app.ID, semver.BumpType(bumpType))
+	chartVersion, err := semver.Next(ctx, s.db, app.ID, semver.BumpType(bumpType))
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "generate semver for app %s", app.String())
 	}
 
 	gitRepoConfig := app.HelmSpec.HelmSource.GitRepoConfig
 	params := map[string]string{
-		pipelineparam.RepoCheckoutBy:       "BRANCH",
-		pipelineparam.RepoRevision:         branch,
+		pipelineparam.RepoCheckoutBy:       rev.CheckoutBy(),
+		pipelineparam.RepoRevision:         rev.Value,
 		pipelineparam.RepoAlias:            gitRepoConfig.RepoAlias,
 		pipelineparam.HelmRepoURL:          helmRepoURL,
 		pipelineparam.HelmChartName:        app.Name,
@@ -160,12 +144,12 @@ func (s *ChartBuildService) buildPipelineParams(
 // execute 执行阶段：获取构建信息、生成版本号、触发蓝盾流水线构建、创建构建记录
 // 注意：semver 生成尽量延后，确保前序 IO 操作成功后才消费版本号，避免浪费
 func (s *ChartBuildService) execute(
-	ctx context.Context, app *bkmsapp.Application, bumpType, branch string,
+	ctx context.Context, app *bkmsapp.Application, bumpType string, rev revision.CodeRevision,
 ) (*ChartBuildResult, error) {
 	appInfo := app.String()
 
 	// 1. 获取 bkrepo HELM 仓库地址
-	bkciProj, err := s.bkciProjStore.GetByWorkspace(ctx, app.WorkspaceID)
+	bkciProj, err := store.Of(s.db, bkci.ProjectMeta).Get(ctx, bkci.ByWorkspace(app.WorkspaceID))
 	if err != nil {
 		return nil, errors.Wrapf(err, "get bkci project for workspace %s", app.WorkspaceID)
 	}
@@ -175,15 +159,15 @@ func (s *ChartBuildService) execute(
 	}
 
 	// 2. 获取流水线信息
-	pipeline, err := s.pipelineStore.GetByWorkspaceAndType(
-		ctx, app.WorkspaceID, string(bkci.PipelineTypeHelmGitBuild),
+	pipeline, err := store.Of(s.db, bkci.PipelineMeta).Get(
+		ctx, bkci.ByWorkspaceAndType(app.WorkspaceID, string(bkci.PipelineTypeHelmGitBuild)),
 	)
 	if err != nil {
 		return nil, errors.Wrapf(err, "get workspace %s helm-git-build pipeline", app.WorkspaceID)
 	}
 
 	// 3. 生成 semver 版本号并构建流水线参数
-	params, chartVersion, err := s.buildPipelineParams(ctx, app, bumpType, branch, helmRepoURL)
+	params, chartVersion, err := s.buildPipelineParams(ctx, app, bumpType, rev, helmRepoURL)
 	if err != nil {
 		return nil, err
 	}
@@ -209,8 +193,8 @@ func (s *ChartBuildService) execute(
 		Operator:     auth.MustGetUser(ctx).ID,
 		Params:       params,
 	}
-	if err = s.recordStore.Create(ctx, record); err != nil {
-		return nil, errors.Wrapf(err, "create helm chart build record for app %s", appInfo)
+	if err = CreateRecord(ctx, s.db, record); err != nil {
+		return nil, err
 	}
 
 	return &ChartBuildResult{
@@ -222,10 +206,15 @@ func (s *ChartBuildService) execute(
 
 // ExecuteChartBuild 触发 Helm Chart 构建
 // 流程：校验 → 准备（确保流水线 / 代码库 / 凭证就绪）→ 执行（获取信息 → 生成 semver → 触发构建 → 创建记录）
-// 注意：异步轮询任务由调用方（Handler）负责启动
+// 注意：异步轮询任务由调用方（Handler）负责启动；rev 的格式由调用方经 revision.Resolve 校验
 func (s *ChartBuildService) ExecuteChartBuild(
-	ctx context.Context, app *bkmsapp.Application, bumpType, branch string,
+	ctx context.Context, app *bkmsapp.Application, bumpType string, rev revision.CodeRevision,
 ) (*ChartBuildResult, error) {
+	// Helm Chart 始终从 Git 源码构建，必须指定修订；放在最前面，保证在消耗语义化版本号之前拦下
+	if rev.Value == "" {
+		return nil, errors.Wrapf(revision.ErrRequired, "execute chart build for app %s", app.String())
+	}
+
 	// 1. 校验
 	if err := s.validate(app); err != nil {
 		return nil, err
@@ -237,5 +226,5 @@ func (s *ChartBuildService) ExecuteChartBuild(
 	}
 
 	// 3. 执行（生成版本号 + 触发构建 + 创建记录）
-	return s.execute(ctx, app, bumpType, branch)
+	return s.execute(ctx, app, bumpType, rev)
 }

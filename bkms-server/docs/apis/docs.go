@@ -564,6 +564,68 @@ const docTemplate = `{
                 }
             }
         },
+        "/apps/{appID}/app-config-file-defs/{id}/helm-file": {
+            "put": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "app-config-file-defs"
+                ],
+                "summary": "保存 Helm 配置文件的名称、基础文件和 BSCP 绑定",
+                "operationId": "UpdateHelmFile",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "应用 ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "配置文件定义 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Helm 编辑保存请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/appcfgfiledef.UpdateHelmFileInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/appcfgfiledef.UpdateHelmFileOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            }
+        },
         "/apps/{appID}/app-config-file/versions": {
             "get": {
                 "security": [
@@ -8692,6 +8754,26 @@ const docTemplate = `{
                         "description": "每页数量；分页模式必填，all=true 时禁止出现",
                         "name": "pageSize",
                         "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Pod IP 精确过滤，多值取 OR",
+                        "name": "podIP",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "multi",
+                        "description": "Node IP 精确过滤，多值取 OR",
+                        "name": "nodeIP",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -11528,7 +11610,19 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "分支/Tag（仅 custom 类型使用）",
+                        "description": "代码来源类型 branch / tag / commit（仅 custom 类型使用）",
+                        "name": "revisionType",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "分支名 / Tag 名 / CommitID（仅 custom 类型使用）",
+                        "name": "revision",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "兼容字段：按分支检出，revision 为空时生效",
                         "name": "branch",
                         "in": "query"
                     }
@@ -13059,80 +13153,6 @@ const docTemplate = `{
             }
         },
         "/devmode/{appID}/envs/{envName}/publish-records": {
-            "get": {
-                "security": [
-                    {
-                        "BkUserInfo": []
-                    },
-                    {
-                        "BkUserCredential": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "devmode"
-                ],
-                "summary": "获取开发模式发布记录列表",
-                "operationId": "ListDevModePublishRecords",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "应用 ID",
-                        "name": "appID",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "环境名称",
-                        "name": "envName",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "搜索关键字",
-                        "name": "keyword",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "description": "分页页码（从 1 开始）",
-                        "name": "page",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "description": "分页大小",
-                        "name": "pageSize",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/serializer.ListPublishRecordsOutput"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
-                        }
-                    }
-                }
-            },
             "post": {
                 "security": [
                     {
@@ -13193,6 +13213,160 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            }
+        },
+        "/devmode/{appID}/publish-records": {
+            "get": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "devmode"
+                ],
+                "summary": "获取开发模式发布记录列表",
+                "operationId": "ListDevModePublishRecords",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "应用 ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "环境名称，与 envTypes 二选一",
+                        "name": "envNames",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "环境类型，与 envNames 二选一",
+                        "name": "envTypes",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "搜索关键字",
+                        "name": "keyword",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "分页页码（从 1 开始）",
+                        "name": "page",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "分页大小",
+                        "name": "pageSize",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "只返回创建时间不早于该时间的记录（RFC3339）",
+                        "name": "since",
+                        "in": "query"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "collectionFormat": "csv",
+                        "description": "状态过滤",
+                        "name": "statuses",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/serializer.ListPublishRecordsOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            }
+        },
+        "/devmode/{appID}/restart": {
+            "post": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "devmode"
+                ],
+                "summary": "开发模式进程重启",
+                "operationId": "RestartDevModeProcesses",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "应用 ID",
+                        "name": "appID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "进程重启请求体",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/serializer.RestartInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/serializer.RestartOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/bkerrs.GinErrorOutput"
                         }
@@ -18476,6 +18650,260 @@ const docTemplate = `{
                 }
             }
         },
+        "/workspaces/{workspaceID}/release-strategies": {
+            "get": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "release-strategies"
+                ],
+                "summary": "查询空间内全部发布策略",
+                "operationId": "ListReleaseStrategies",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "工作空间 ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/serializer.ListReleaseStrategiesOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "release-strategies"
+                ],
+                "summary": "新建发布策略",
+                "operationId": "CreateReleaseStrategy",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "工作空间 ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "发布策略",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/serializer.ReleaseStrategyInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/serializer.ReleaseStrategyOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            }
+        },
+        "/workspaces/{workspaceID}/release-strategies/{strategyID}": {
+            "get": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "release-strategies"
+                ],
+                "summary": "查询发布策略详情",
+                "operationId": "GetReleaseStrategy",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "工作空间 ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "发布策略 ID",
+                        "name": "strategyID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/serializer.ReleaseStrategyOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "release-strategies"
+                ],
+                "summary": "修改发布策略",
+                "operationId": "UpdateReleaseStrategy",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "工作空间 ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "发布策略 ID",
+                        "name": "strategyID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "发布策略",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/serializer.ReleaseStrategyInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/serializer.ReleaseStrategyOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BkUserInfo": []
+                    },
+                    {
+                        "BkUserCredential": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "release-strategies"
+                ],
+                "summary": "删除发布策略",
+                "operationId": "DeleteReleaseStrategy",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "工作空间 ID",
+                        "name": "workspaceID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "发布策略 ID",
+                        "name": "strategyID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_TencentBlueKing_blueking-service-governance_bkms-server_pkg_deploy_releasestrategy_serializer.EmptyOutput"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    }
+                }
+            }
+        },
         "/workspaces/{workspaceID}/role-member-groups": {
             "get": {
                 "security": [
@@ -19125,6 +19553,20 @@ const docTemplate = `{
                 }
             }
         },
+        "appcfgfiledef.BSCPConfigObj": {
+            "type": "object",
+            "properties": {
+                "bizID": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "serviceID": {
+                    "type": "string"
+                }
+            }
+        },
         "appcfgfiledef.BaseContentInfoObj": {
             "type": "object",
             "properties": {
@@ -19191,6 +19633,10 @@ const docTemplate = `{
                     "description": "版本描述",
                     "type": "string"
                 },
+                "enableEnvVarRender": {
+                    "description": "创建时可选设置环境变量渲染开关；不传时使用 ConfigKind 默认值",
+                    "type": "boolean"
+                },
                 "fileFormat": {
                     "description": "文件格式",
                     "type": "string",
@@ -19209,11 +19655,17 @@ const docTemplate = `{
                 },
                 "mountDir": {
                     "description": "容器内挂载目录（plain 必填）",
-                    "type": "string",
-                    "maxLength": 255
+                    "type": "string"
+                },
+                "mountedEnvNames": {
+                    "description": "创建时可选设置挂载环境范围；nil = 全环境生效，空数组 = 不挂载任何环境。\n环境名格式与路径参数 envName 相同。",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "name": {
-                    "description": "文件名称",
+                    "description": "文件名称，仅支持数字、字母、下划线(_)、中划线(-)、点(.)，长度 1-64 之间。",
                     "type": "string",
                     "maxLength": 64,
                     "minLength": 1
@@ -19236,6 +19688,9 @@ const docTemplate = `{
                 },
                 "baseContentInfo": {
                     "$ref": "#/definitions/appcfgfiledef.BaseContentInfoObj"
+                },
+                "bscpConfig": {
+                    "$ref": "#/definitions/appcfgfiledef.BSCPConfigObj"
                 },
                 "configKind": {
                     "type": "string"
@@ -19261,6 +19716,9 @@ const docTemplate = `{
                 },
                 "enableEnvVarRender": {
                     "type": "boolean"
+                },
+                "envContentStrategy": {
+                    "type": "string"
                 },
                 "fileFormat": {
                     "type": "string"
@@ -19318,6 +19776,9 @@ const docTemplate = `{
                 },
                 "enableEnvVarRender": {
                     "type": "boolean"
+                },
+                "envContentStrategy": {
+                    "type": "string"
                 },
                 "id": {
                     "type": "string"
@@ -19472,12 +19933,19 @@ const docTemplate = `{
                 "enableEnvVarRender": {
                     "type": "boolean"
                 },
+                "envContentStrategy": {
+                    "description": "EnvContentStrategy: overlay 表示环境内容按补丁与默认配置合并；overwrite 表示环境内容独立生效，不再继承默认配置变更。",
+                    "type": "string",
+                    "enum": [
+                        "overlay",
+                        "overwrite"
+                    ]
+                },
                 "isUnifiedConfig": {
                     "type": "boolean"
                 },
                 "mountDir": {
-                    "type": "string",
-                    "maxLength": 255
+                    "type": "string"
                 },
                 "mountedEnvNames": {
                     "type": "array",
@@ -19486,6 +19954,7 @@ const docTemplate = `{
                     }
                 },
                 "name": {
+                    "description": "文件名称，仅支持数字、字母、下划线(_)、中划线(-)、点(.)，长度 1-64 之间。",
                     "type": "string",
                     "maxLength": 64,
                     "minLength": 1
@@ -19497,6 +19966,48 @@ const docTemplate = `{
             "properties": {
                 "item": {
                     "$ref": "#/definitions/appcfgfiledef.DefSummaryObj"
+                }
+            }
+        },
+        "appcfgfiledef.UpdateHelmFileInput": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "baseAppConfigFileId": {
+                    "description": "overlay 文件必须传当前基础文件 ID，未修改时也传原值。普通文件留空。",
+                    "type": "string"
+                },
+                "bscpConfig": {
+                    "description": "BSCP 来源必须传当前绑定，未修改时也传原值。本地来源留空。",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/appcfgfiledef.BSCPConfigInput"
+                        }
+                    ]
+                },
+                "currentVersion": {
+                    "description": "编辑开始时的当前版本号，用于乐观锁冲突检测。",
+                    "type": "integer"
+                },
+                "description": {
+                    "description": "版本描述。基础文件或 BSCP 发生变化时写入版本，只改名称不写版本。",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "文件名称，仅支持数字、字母、下划线(_)、中划线(-)、点(.)，长度 1-64 之间。",
+                    "type": "string",
+                    "maxLength": 64,
+                    "minLength": 1
+                }
+            }
+        },
+        "appcfgfiledef.UpdateHelmFileOutput": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/appcfgfiledef.DefDetailObj"
                 }
             }
         },
@@ -20096,6 +20607,10 @@ const docTemplate = `{
                     "description": "代码版本",
                     "type": "string"
                 },
+                "revisionType": {
+                    "description": "代码来源类型（branch / tag / commit），与构建记录列表同一推导口径",
+                    "type": "string"
+                },
                 "startedAt": {
                     "description": "开始时间",
                     "type": "string"
@@ -20280,6 +20795,10 @@ const docTemplate = `{
                 },
                 "revision": {
                     "description": "代码版本",
+                    "type": "string"
+                },
+                "revisionType": {
+                    "description": "代码来源类型（branch / tag / commit），本功能上线前的记录为 branch",
                     "type": "string"
                 },
                 "startedAt": {
@@ -20483,6 +21002,10 @@ const docTemplate = `{
                 },
                 "displayName": {
                     "description": "应用显示名称",
+                    "type": "string"
+                },
+                "framework": {
+                    "description": "应用框架（trpc/taf/blank）；Helm/Agones 为空",
                     "type": "string"
                 },
                 "id": {
@@ -20728,12 +21251,16 @@ const docTemplate = `{
                     "description": "展示用名称",
                     "type": "string"
                 },
+                "framework": {
+                    "description": "应用框架（trpc/taf/blank）；Helm/Agones 为空",
+                    "type": "string"
+                },
                 "id": {
                     "description": "应用 ID",
                     "type": "string"
                 },
                 "language": {
-                    "description": "应用使用的编程语言（如 go、cpp），仅 trpc 类型应用有值",
+                    "description": "应用使用的编程语言（如 go、cpp）",
                     "type": "string"
                 },
                 "lastOperatedAt": {
@@ -20755,6 +21282,9 @@ const docTemplate = `{
             }
         },
         "github_com_TencentBlueKing_blueking-service-governance_bkms-server_pkg_core_workspace_serializer.EmptyOutput": {
+            "type": "object"
+        },
+        "github_com_TencentBlueKing_blueking-service-governance_bkms-server_pkg_deploy_releasestrategy_serializer.EmptyOutput": {
             "type": "object"
         },
         "github_com_TencentBlueKing_blueking-service-governance_bkms-server_pkg_deploy_serializer.EmptyOutput": {
@@ -21071,6 +21601,10 @@ const docTemplate = `{
                     "description": "当前生效版本号",
                     "type": "integer"
                 },
+                "defID": {
+                    "description": "配置文件定义 ID",
+                    "type": "string"
+                },
                 "envName": {
                     "description": "环境名称，为空表示应用级别配置，非空表示特定环境的配置",
                     "type": "string"
@@ -21346,6 +21880,10 @@ const docTemplate = `{
                     "description": "应用显示名称",
                     "type": "string"
                 },
+                "framework": {
+                    "description": "框架（兼容投影：优先 Application.Framework，否则由旧 type 推导）",
+                    "type": "string"
+                },
                 "helmSpec": {
                     "description": "Helm 应用描述规范",
                     "allOf": [
@@ -21356,6 +21894,10 @@ const docTemplate = `{
                 },
                 "id": {
                     "description": "应用 ID",
+                    "type": "string"
+                },
+                "language": {
+                    "description": "编程语言（兼容投影：优先 Application.Language，否则 TrpcSpec）",
                     "type": "string"
                 },
                 "name": {
@@ -21519,6 +22061,10 @@ const docTemplate = `{
                         "$ref": "#/definitions/serializer.PolarisInstanceInfoOutputObj"
                     }
                 },
+                "polarisWeightOverride": {
+                    "description": "北极星权重覆盖值，未单独设置时为空字符串；对该 Pod 注册的所有北极星实例生效",
+                    "type": "string"
+                },
                 "resources": {
                     "description": "主容器资源规格（集群 Pod 实际值）",
                     "allOf": [
@@ -21647,7 +22193,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "branch": {
-                    "description": "代码分支（仅构建+部署记录返回）",
+                    "description": "兼容字段：仅 revisionType 为 branch 时返回",
                     "type": "string"
                 },
                 "clusterID": {
@@ -21685,6 +22231,14 @@ const docTemplate = `{
                 },
                 "replicas": {
                     "type": "integer"
+                },
+                "revision": {
+                    "description": "分支名、Tag 名或 CommitID（仅构建+部署记录返回）",
+                    "type": "string"
+                },
+                "revisionType": {
+                    "description": "代码来源类型 branch / tag / commit；历史记录为 branch",
+                    "type": "string"
                 },
                 "status": {
                     "type": "string"
@@ -22494,6 +23048,51 @@ const docTemplate = `{
                 },
                 "trafficLaneName": {
                     "description": "部署的泳道名称（空字符串表示不使用泳道）",
+                    "type": "string"
+                }
+            }
+        },
+        "serializer.BatchInput": {
+            "type": "object",
+            "required": [
+                "pauseMode",
+                "target"
+            ],
+            "properties": {
+                "pauseMode": {
+                    "description": "本批完成后的暂停方式：none 不暂停 / duration 定时暂停 / permanent 永久暂停（需人工继续）",
+                    "type": "string",
+                    "enum": [
+                        "none",
+                        "duration",
+                        "permanent"
+                    ]
+                },
+                "pauseSeconds": {
+                    "description": "定时暂停时长（秒），仅 pauseMode 为 duration 时必填且只能在此时填写，范围 60 ~ 86400",
+                    "type": "integer",
+                    "maximum": 86400,
+                    "minimum": 60
+                },
+                "target": {
+                    "description": "本批\"累计更新到\"的实例数：正整数（如 \"1\"）或百分比（如 \"25%\"），百分比范围 1% ~ 100%",
+                    "type": "string"
+                }
+            }
+        },
+        "serializer.BatchOutputObj": {
+            "type": "object",
+            "properties": {
+                "pauseMode": {
+                    "description": "本批完成后的暂停方式：none / duration / permanent",
+                    "type": "string"
+                },
+                "pauseSeconds": {
+                    "description": "定时暂停时长（秒），pauseMode 不为 duration 时为 0",
+                    "type": "integer"
+                },
+                "target": {
+                    "description": "本批\"累计更新到\"的实例数：正整数或百分比",
                     "type": "string"
                 }
             }
@@ -23656,7 +24255,7 @@ const docTemplate = `{
                     ]
                 },
                 "name": {
-                    "description": "应用配置文件名称，包含大小写字母、数字和符号（_-），长度 1-64 之间。\ntodo 兼容前端用特性环境内部名（feat-{appID}-{n}）创建 overlay。",
+                    "description": "应用配置文件名称，仅支持数字、字母、下划线(_)、中划线(-)、点(.)，长度 1-64 之间。\ntodo 兼容前端用特性环境内部名（feat-{appID}-{n}）创建 overlay。",
                     "type": "string",
                     "maxLength": 64,
                     "minLength": 1
@@ -23799,7 +24398,7 @@ const docTemplate = `{
             ],
             "properties": {
                 "branch": {
-                    "description": "代码分支或标签，留空时由构建服务按默认逻辑处理",
+                    "description": "兼容字段：按分支检出，仅在 revision 为空且 revisionType 为空或 branch 时生效",
                     "type": "string"
                 },
                 "imageTag": {
@@ -23811,6 +24410,19 @@ const docTemplate = `{
                     "description": "自动部署时的副本数",
                     "type": "integer",
                     "minimum": 1
+                },
+                "revision": {
+                    "description": "代码修订：分支名、Tag 名或 CommitID（7–40 位十六进制）",
+                    "type": "string"
+                },
+                "revisionType": {
+                    "description": "代码来源类型（branch / tag / commit），缺省为 branch",
+                    "type": "string",
+                    "enum": [
+                        "branch",
+                        "tag",
+                        "commit"
+                    ]
                 },
                 "trafficLaneName": {
                     "description": "泳道名称，空字符串表示默认泳道",
@@ -23827,6 +24439,10 @@ const docTemplate = `{
             "properties": {
                 "imageTag": {
                     "description": "部署的镜像版本",
+                    "type": "string"
+                },
+                "releaseStrategyID": {
+                    "description": "发布策略 ID：指定时按该策略分批更新实例（仅支持非联邦集群），不指定时一次更新全部实例",
                     "type": "string"
                 },
                 "replicas": {
@@ -24025,12 +24641,25 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "branch": {
-                    "description": "构建分支或标签",
+                    "description": "兼容字段：按分支检出，仅在 revision 为空且 revisionType 为空或 branch 时生效",
                     "type": "string"
                 },
                 "imageTag": {
                     "description": "本次构建使用的镜像 Tag",
                     "type": "string"
+                },
+                "revision": {
+                    "description": "代码修订：分支名、Tag 名或 CommitID（7–40 位十六进制）",
+                    "type": "string"
+                },
+                "revisionType": {
+                    "description": "代码来源类型（branch / tag / commit），缺省为 branch",
+                    "type": "string",
+                    "enum": [
+                        "branch",
+                        "tag",
+                        "commit"
+                    ]
                 }
             }
         },
@@ -24215,14 +24844,12 @@ const docTemplate = `{
         "serializer.CreateHelmChartBuildInput": {
             "type": "object",
             "required": [
-                "branch",
                 "bumpType"
             ],
             "properties": {
                 "branch": {
-                    "description": "Git 分支名称",
-                    "type": "string",
-                    "minLength": 1
+                    "description": "兼容字段：按分支检出，仅在 revision 为空且 revisionType 为空或 branch 时生效",
+                    "type": "string"
                 },
                 "bumpType": {
                     "description": "semver 递增段类型（默认 patch）\n经典归零语义：递增 major 时 minor+patch 归零，递增 minor 时 patch 归零",
@@ -24231,6 +24858,19 @@ const docTemplate = `{
                         "patch",
                         "minor",
                         "major"
+                    ]
+                },
+                "revision": {
+                    "description": "代码修订：分支名、Tag 名或 CommitID（7–40 位十六进制），与 branch 至少填一个",
+                    "type": "string"
+                },
+                "revisionType": {
+                    "description": "代码来源类型（branch / tag / commit），缺省为 branch",
+                    "type": "string",
+                    "enum": [
+                        "branch",
+                        "tag",
+                        "commit"
                     ]
                 }
             }
@@ -27284,6 +27924,7 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "branch": {
+                    "description": "兼容字段：仅 revisionType 为 branch 时返回",
                     "type": "string"
                 },
                 "buildID": {
@@ -27315,6 +27956,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "pipelineID": {
+                    "type": "string"
+                },
+                "revision": {
+                    "description": "分支名、Tag 名或 CommitID",
+                    "type": "string"
+                },
+                "revisionType": {
+                    "description": "代码来源类型 branch / tag / commit；历史记录为 branch",
                     "type": "string"
                 },
                 "stage": {
@@ -28173,6 +28822,18 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/serializer.RedisInstanceOutputObj"
+                    }
+                }
+            }
+        },
+        "serializer.ListReleaseStrategiesOutput": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "空间内全部发布策略，按创建时间升序，不分页",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/serializer.ReleaseStrategyOutputObj"
                     }
                 }
             }
@@ -30201,10 +30862,16 @@ const docTemplate = `{
         "serializer.PublishRecordOutputObj": {
             "type": "object",
             "properties": {
+                "action": {
+                    "type": "string"
+                },
                 "binaryName": {
                     "type": "string"
                 },
                 "createdAt": {
+                    "type": "string"
+                },
+                "envName": {
                     "type": "string"
                 },
                 "fileSize": {
@@ -30491,6 +31158,91 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "vendor": {
+                    "type": "string"
+                }
+            }
+        },
+        "serializer.ReleaseStrategyInput": {
+            "type": "object",
+            "required": [
+                "batches",
+                "name"
+            ],
+            "properties": {
+                "batches": {
+                    "description": "批次列表，1 ~ 10 个；不校验跨批次递增",
+                    "type": "array",
+                    "maxItems": 10,
+                    "minItems": 1,
+                    "items": {
+                        "$ref": "#/definitions/serializer.BatchInput"
+                    }
+                },
+                "description": {
+                    "description": "策略描述，不超过 200 个字符",
+                    "type": "string",
+                    "maxLength": 200
+                },
+                "name": {
+                    "description": "策略名称，1 ~ 32 个字符，同一空间内唯一",
+                    "type": "string",
+                    "maxLength": 32
+                }
+            }
+        },
+        "serializer.ReleaseStrategyOutput": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "发布策略",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/serializer.ReleaseStrategyOutputObj"
+                        }
+                    ]
+                }
+            }
+        },
+        "serializer.ReleaseStrategyOutputObj": {
+            "type": "object",
+            "properties": {
+                "batches": {
+                    "description": "批次列表",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/serializer.BatchOutputObj"
+                    }
+                },
+                "createdAt": {
+                    "description": "创建时间",
+                    "type": "string"
+                },
+                "creator": {
+                    "description": "创建人",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "策略描述",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "策略 ID",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "策略名称",
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "description": "最近更新时间",
+                    "type": "string"
+                },
+                "updater": {
+                    "description": "最近更新人",
+                    "type": "string"
+                },
+                "workspaceID": {
+                    "description": "所属工作空间 ID",
                     "type": "string"
                 }
             }
@@ -30921,6 +31673,143 @@ const docTemplate = `{
                 "replicas": {
                     "type": "integer",
                     "minimum": 0
+                }
+            }
+        },
+        "serializer.RestartData": {
+            "type": "object",
+            "properties": {
+                "instanceCount": {
+                    "description": "InstanceCount 本次受理的实例数",
+                    "type": "integer"
+                },
+                "recordIDs": {
+                    "description": "RecordIDs 本次创建的发布记录 ID，用于精确轮询执行结果",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "requestedAt": {
+                    "description": "RequestedAt 服务端受理时间，用于按条件轮询本次提交产生的记录",
+                    "type": "string"
+                },
+                "skipped": {
+                    "description": "Skipped 被跳过的环境（仅按环境类型指定时可能出现）",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/serializer.RestartSkippedEnv"
+                    }
+                }
+            }
+        },
+        "serializer.RestartEnvTypesTarget": {
+            "type": "object",
+            "required": [
+                "types"
+            ],
+            "properties": {
+                "types": {
+                    "description": "Types 环境类型列表，不允许 production",
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "serializer.RestartEnvsTarget": {
+            "type": "object",
+            "required": [
+                "names"
+            ],
+            "properties": {
+                "names": {
+                    "description": "Names 环境名称列表",
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "serializer.RestartInput": {
+            "type": "object",
+            "properties": {
+                "envTypes": {
+                    "description": "EnvTypes 按环境类型重启（匹配环境下所有 Running 实例）",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/serializer.RestartEnvTypesTarget"
+                        }
+                    ]
+                },
+                "envs": {
+                    "description": "Envs 按环境名称重启（各环境下所有 Running 实例）",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/serializer.RestartEnvsTarget"
+                        }
+                    ]
+                },
+                "instances": {
+                    "description": "Instances 重启指定环境下的指定实例",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/serializer.RestartInstancesTarget"
+                        }
+                    ]
+                }
+            }
+        },
+        "serializer.RestartInstancesTarget": {
+            "type": "object",
+            "required": [
+                "envName",
+                "instanceIDs"
+            ],
+            "properties": {
+                "envName": {
+                    "description": "EnvName 环境名称",
+                    "type": "string"
+                },
+                "instanceIDs": {
+                    "description": "InstanceIDs 实例 ID 列表，须属于 EnvName 环境",
+                    "type": "array",
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "serializer.RestartOutput": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/serializer.RestartData"
+                }
+            }
+        },
+        "serializer.RestartSkippedEnv": {
+            "type": "object",
+            "properties": {
+                "envName": {
+                    "description": "EnvName 环境名称",
+                    "type": "string"
+                },
+                "envType": {
+                    "description": "EnvType 环境类型",
+                    "type": "string"
+                },
+                "reason": {
+                    "description": "Reason 跳过原因",
+                    "type": "string"
                 }
             }
         },
@@ -31559,21 +32448,17 @@ const docTemplate = `{
         },
         "serializer.TafSpecInput": {
             "type": "object",
-            "required": [
-                "fileName",
-                "filePath"
-            ],
             "properties": {
                 "fileContent": {
                     "description": "配置文件内容",
                     "type": "string"
                 },
                 "fileName": {
-                    "description": "配置文件名",
+                    "description": "配置文件名，创建应用时必填，写入 framework def，应用模型不保存。\ntodo 兼容：更新时可不传；传了仍同步到 def。更新改走 def 接口后，该字段只用于创建。",
                     "type": "string"
                 },
                 "filePath": {
-                    "description": "配置文件路径",
+                    "description": "配置文件路径，创建应用时必填，写入 framework def 的挂载目录，应用模型不保存。\ntodo 兼容：更新时可不传；传了仍同步到 def。更新改走 def 接口后，该字段只用于创建。",
                     "type": "string"
                 }
             }
@@ -31586,11 +32471,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "fileName": {
-                    "description": "配置文件名",
+                    "description": "配置文件名。\ntodo 兼容：详情仍返回该字段，值从 framework def 填回。调用方改读 def 后删除。",
                     "type": "string"
                 },
                 "filePath": {
-                    "description": "配置文件路径",
+                    "description": "配置文件路径。\ntodo 兼容：详情仍返回该字段，值从 framework def 填回。调用方改读 def 后删除。",
                     "type": "string"
                 }
             }
@@ -32110,8 +32995,6 @@ const docTemplate = `{
         "serializer.TrpcSpecInput": {
             "type": "object",
             "required": [
-                "fileName",
-                "filePath",
                 "language"
             ],
             "properties": {
@@ -32120,11 +33003,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "fileName": {
-                    "description": "配置文件名",
+                    "description": "配置文件名，创建应用时必填，写入 framework def，应用模型不保存。\ntodo 兼容：更新时可不传；传了仍同步到 def。更新改走 def 接口后，该字段只用于创建。",
                     "type": "string"
                 },
                 "filePath": {
-                    "description": "配置文件路径",
+                    "description": "配置文件路径，创建应用时必填，写入 framework def 的挂载目录，应用模型不保存。\ntodo 兼容：更新时可不传；传了仍同步到 def。更新改走 def 接口后，该字段只用于创建。",
                     "type": "string"
                 },
                 "language": {
@@ -32145,11 +33028,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "fileName": {
-                    "description": "配置文件名",
+                    "description": "配置文件名。\ntodo 兼容：详情仍返回该字段，值从 framework def 填回。调用方改读 def 后删除。",
                     "type": "string"
                 },
                 "filePath": {
-                    "description": "配置文件路径",
+                    "description": "配置文件路径。\ntodo 兼容：详情仍返回该字段，值从 framework def 填回。调用方改读 def 后删除。",
                     "type": "string"
                 },
                 "language": {
@@ -32248,9 +33131,6 @@ const docTemplate = `{
         },
         "serializer.UpdateAppConfigFileInput": {
             "type": "object",
-            "required": [
-                "name"
-            ],
             "properties": {
                 "baseAppConfigFileID": {
                     "description": "基础应用配置文件 ID，仅当 type 是 overlay 时生效",
@@ -32271,12 +33151,6 @@ const docTemplate = `{
                 "description": {
                     "description": "版本描述",
                     "type": "string"
-                },
-                "name": {
-                    "description": "应用配置文件名称，包含大小写字母、数字和符号（_-），长度 1-64 之间",
-                    "type": "string",
-                    "maxLength": 64,
-                    "minLength": 1
                 }
             }
         },

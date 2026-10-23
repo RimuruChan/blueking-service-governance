@@ -62,14 +62,17 @@ func (s *AppCfgFileDefService) GetEnvFileDetail(
 		return result, nil
 	}
 
-	strategy := policy.GetEnvInstanceStrategy()
+	strategy, err := policy.GetEnvContentStrategy(def)
+	if err != nil {
+		return nil, err
+	}
 	if envFile != nil {
 		result.HasEnvInstance = true
 		result.DisplayFile = envFile
-	} else if strategy == EnvInstanceStrategyOverwrite {
+	} else if strategy == EnvContentStrategyOverwrite {
 		// overwrite 策略（如 plain）：无实例时默认文件即为生效内容
 		result.DisplayFile = defaultFile
-	} else if strategy == EnvInstanceStrategyOverlay {
+	} else if strategy == EnvContentStrategyOverlay {
 		// overlay 策略（如 framework）：无实例表示无定制，内容为空
 		result.DisplayFile = nil
 	} else {
@@ -97,7 +100,7 @@ func (s *AppCfgFileDefService) loadPolicyAndEnvFiles(
 		return nil, nil, nil, err
 	}
 
-	defaultFile, err = s.FileStore.GetByDefIDAndEnv(ctx, def.ID, EnvNameDefault)
+	defaultFile, err = s.FileStore.Get(ctx, FileByDefEnv(def.ID, EnvNameDefault))
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "loading default file")
 	}
@@ -122,14 +125,14 @@ func (s *AppCfgFileDefService) fillEditorInfo(ctx context.Context, result *EnvFi
 		result.EditableContentField = string(EditableContentFieldNone)
 		return
 	}
-	editor, err := NewAppConfigFileEditor(s.FileStore, s.DefStore, result.DisplayFile)
+	editor, err := NewAppConfigFileEditor(s.db, result.DisplayFile)
 	if err != nil {
 		result.EditableContentField = string(EditableContentFieldNone)
 		return
 	}
 	result.EditableContentField = string(editor.GetEditableContentField())
 
-	provider, err := NewBaseContentProvider(s.FileStore, s.DefStore, result.DisplayFile)
+	provider, err := NewBaseContentProvider(s.db, result.DisplayFile)
 	if err != nil {
 		return
 	}
@@ -155,7 +158,7 @@ func (s *AppCfgFileDefService) GetMountPreview(
 	ctx context.Context,
 	appID, envName string,
 ) ([]MountPreviewItem, error) {
-	defs, err := s.DefStore.ListByApp(ctx, appID)
+	defs, err := ListDefsByApp(ctx, s.DefStore, appID)
 	if err != nil {
 		return nil, errors.Wrap(err, "listing defs for mount preview")
 	}
@@ -174,7 +177,7 @@ func (s *AppCfgFileDefService) GetMountPreview(
 		item := MountPreviewItem{Def: def, ContentSource: AppConfigFileTypeNormal, HasEnvFile: false}
 
 		// 查找该环境是否有独立实例
-		envFile, fErr := s.FileStore.GetByDefIDAndEnv(ctx, def.ID, envName)
+		envFile, fErr := s.FileStore.Get(ctx, FileByDefEnv(def.ID, envName))
 		if fErr != nil && !errors.Is(fErr, ErrAppConfigFileNotFound) {
 			return nil, errors.Wrapf(fErr, "querying env instance for def %s", def.ID.Hex())
 		}
@@ -182,7 +185,11 @@ func (s *AppCfgFileDefService) GetMountPreview(
 			item.HasEnvFile = true
 			item.ContentSource = envFile.Type
 			// overwrite 策略下 normal 实例语义为 overwrite
-			if policy.GetEnvInstanceStrategy() == EnvInstanceStrategyOverwrite &&
+			strategy, sErr := policy.GetEnvContentStrategy(&def)
+			if sErr != nil {
+				return nil, sErr
+			}
+			if strategy == EnvContentStrategyOverwrite &&
 				envFile.Type == AppConfigFileTypeNormal {
 				item.ContentSource = "overwrite"
 			}

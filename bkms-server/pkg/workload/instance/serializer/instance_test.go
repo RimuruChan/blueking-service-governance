@@ -69,7 +69,64 @@ var _ = Describe("Instance serializer", func() {
 			Expect(bkErr.Code()).To(Equal(bkerrs.ErrCodeInvalidArgument))
 			Expect(err.Error()).To(ContainSubstring("page must be between"))
 		})
+
+		It("accepts IP filters together with all=true", func() {
+			err := (&serializer.ListAppInstancesQueryInput{
+				All: true, PodIPs: []string{"10.0.0.1", "fd00::1"}, NodeIPs: []string{"192.168.0.1"},
+			}).Validate()
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		// IP 过滤先于模式分支校验，分页参数缺失时也优先报 IP 非法
+		DescribeTable("rejects an invalid IP filter",
+			func(query serializer.ListAppInstancesQueryInput, wantMsg string) {
+				err := query.Validate()
+				Expect(err).To(HaveOccurred())
+				var bkErr *bkerrs.Error
+				Expect(errors.As(err, &bkErr)).To(BeTrue())
+				Expect(bkErr.Code()).To(Equal(bkerrs.ErrCodeInvalidArgument))
+				Expect(err.Error()).To(ContainSubstring(wantMsg))
+			},
+			Entry("invalid podIP",
+				serializer.ListAppInstancesQueryInput{All: true, PodIPs: []string{"10.0.0.1", "10.0.0"}},
+				`podIP "10.0.0" is not a valid IP address`),
+			Entry("empty podIP",
+				serializer.ListAppInstancesQueryInput{All: true, PodIPs: []string{""}},
+				`podIP "" is not a valid IP address`),
+			Entry("invalid nodeIP",
+				serializer.ListAppInstancesQueryInput{NodeIPs: []string{"node-1"}},
+				`nodeIP "node-1" is not a valid IP address`),
+		)
 	})
+
+	DescribeTable("ListAppInstancesQueryInput.IPMatcher",
+		func(query serializer.ListAppInstancesQueryInput, podIP, nodeIP string, want bool) {
+			Expect(query.IPMatcher()(podIP, nodeIP)).To(Equal(want))
+		},
+		Entry("no filter matches everything",
+			serializer.ListAppInstancesQueryInput{}, "10.0.0.1", "192.168.0.1", true),
+		Entry("podIP hits one of multiple values",
+			serializer.ListAppInstancesQueryInput{PodIPs: []string{"10.0.0.1", "10.0.0.2"}},
+			"10.0.0.2", "192.168.0.1", true),
+		Entry("podIP is exact match rather than substring",
+			serializer.ListAppInstancesQueryInput{PodIPs: []string{"10.0.0.1"}},
+			"10.0.0.10", "192.168.0.1", false),
+		Entry("nodeIP hits",
+			serializer.ListAppInstancesQueryInput{NodeIPs: []string{"192.168.0.1"}},
+			"10.0.0.1", "192.168.0.1", true),
+		Entry("nodeIP filter does not match against pod IP",
+			serializer.ListAppInstancesQueryInput{NodeIPs: []string{"10.0.0.1"}},
+			"10.0.0.1", "192.168.0.1", false),
+		Entry("podIP and nodeIP are ORed: only nodeIP hits",
+			serializer.ListAppInstancesQueryInput{PodIPs: []string{"10.0.0.9"}, NodeIPs: []string{"192.168.0.1"}},
+			"10.0.0.1", "192.168.0.1", true),
+		Entry("neither podIP nor nodeIP hits",
+			serializer.ListAppInstancesQueryInput{PodIPs: []string{"10.0.0.9"}, NodeIPs: []string{"192.168.0.9"}},
+			"10.0.0.1", "192.168.0.1", false),
+		// Pending 的 Pod 还没分配 IP，带过滤条件时不应命中
+		Entry("pod without IP never matches an IP filter",
+			serializer.ListAppInstancesQueryInput{PodIPs: []string{"10.0.0.1"}}, "", "", false),
+	)
 
 	// 返回值直接被当作下标切片，越尾必须收敛成空区间
 	DescribeTable("ListAppInstancesQueryInput.ProjectionRange",
@@ -145,7 +202,33 @@ var _ = Describe("Instance serializer", func() {
 			Expect(output.IsHealthy).To(BeTrue())
 			Expect(output.Age).NotTo(BeEmpty())
 			Expect(output.Resources).To(Equal(serializer.AppInstanceResourcesObj{}))
+			Expect(output.PolarisWeightOverride).To(BeEmpty())
 		})
+
+		DescribeTable("returns the configured Polaris weight override", func(weight string) {
+			manifest := map[string]any{
+				"metadata": map[string]any{
+					"name": "pod-weight",
+					"annotations": map[string]any{
+						polaris.AnnotationKeyWeight: weight,
+					},
+				},
+				"spec": map[string]any{
+					"containers": []any{
+						map[string]any{"image": "example:v1"},
+					},
+				},
+				"status": map[string]any{"phase": "Running"},
+			}
+
+			output, err := new(serializer.AppInstanceOutputObj).FromPodManifest(manifest, "deploy-id")
+
+			Expect(err).NotTo(HaveOccurred())
+			Expect(output.PolarisWeightOverride).To(Equal(weight))
+		},
+			Entry("zero weight", "0"),
+			Entry("positive weight", "25"),
+		)
 
 		It("extracts main-container cpu and memory resources", func() {
 			manifest := map[string]any{

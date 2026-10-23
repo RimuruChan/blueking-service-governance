@@ -34,6 +34,7 @@
     </template>
     <div class="flex items-center justify-between mb-[12px]">
       <InstanceBatchToolbar
+        :can-adjust-weight="canAdjustWeight"
         :can-gray-deploy="canGrayDeploy"
         :disable-admin-command="isCrossPageSelection"
         :disable-delete="isCrossPageSelection"
@@ -47,6 +48,7 @@
         @gray="handleShowGrayUpgrade()"
         @monitor="instanceActions.openMonitor()"
         @remove-deploy="emit('remove-deploy')"
+        @weight="instanceActions.openSelectedWeight"
       />
       <SearchSelect
         v-model="searchValue"
@@ -55,7 +57,7 @@
         :placeholder="
           createPlaceholder({
             type: 'searchSelect',
-            labels: ['实例', '镜像 Tag', '实例状态', '健康状态', '北极星状态'],
+            labels: ['实例', 'Pod IP', 'Node IP', '镜像 Tag', '实例状态', '就绪状态', '北极星状态'],
           })
         "
         unique-select
@@ -66,7 +68,6 @@
     <InstanceTable
       ref="instanceTableRef"
       :data="tableDataMatchSearch"
-      :enable-max-height="false"
       :env-name="trpcDeployStore.curEnvItem?.name || ''"
       :filter-options="filterOptions"
       :is-federation="isFederationEnv"
@@ -108,7 +109,7 @@
   import { resolveInstanceSourceMode } from './composables/instance-watch-utils';
   import { useInstanceListController } from './composables/use-instance-list-controller';
   import { useInstanceListWatch } from './composables/use-instance-list-watch';
-  import { isPolarisHealthy } from './instance-utils';
+  import { isPolarisHealthy, matchesInstanceIPFilter } from './instance-utils';
 
   import type { InstanceListSourceMode } from './types';
   import type { ISearchValue } from 'bkui-vue/lib/search-select/utils';
@@ -173,7 +174,7 @@
   /** 是否存在生效的筛选条件（SearchSelect 与列筛选均同步到 searchValue） */
   const isFiltered = computed(() => searchValue.value.some(filter => filter.values?.length));
 
-  const { canGrayDeploy, handleRowAction, instanceActions } = useInstanceListController({
+  const { canAdjustWeight, canGrayDeploy, handleRowAction, instanceActions } = useInstanceListController({
     actionsHostRef,
     beforeRowAction: payload => {
       if (payload.action === 'gray') {
@@ -222,7 +223,7 @@
       if (instance.image) {
         imageSet.add(instance.image);
       }
-      // 健康状态
+      // 就绪状态：仍按 isHealthy 归类，不区分具体 phase
       healthySet.add(String(instance.isHealthy));
       // 北极星状态
       if (!instance.polarisInfos?.length) {
@@ -232,7 +233,7 @@
       }
     }
 
-    const healthyLabelMap: Record<string, string> = { true: 'Healthy', false: 'UnHealthy' };
+    const healthyLabelMap: Record<string, string> = { true: t('是'), false: t('否') };
     const polarisLabelMap: Record<string, string> = {
       healthy: 'Healthy',
       [EMPTY_FILTER_ID]: '--',
@@ -284,6 +285,16 @@
       multiple: false,
     },
     {
+      name: 'Pod IP',
+      id: 'podIP',
+      multiple: false,
+    },
+    {
+      name: 'Node IP',
+      id: 'nodeIP',
+      multiple: false,
+    },
+    {
       name: t('镜像 Tag'),
       id: 'image',
       multiple: true,
@@ -296,7 +307,7 @@
       children: statusOptions,
     },
     {
-      name: t('健康状态'),
+      name: t('就绪状态'),
       id: 'isHealthy',
       multiple: true,
       children: [] as { id: string; name: string }[],
@@ -323,9 +334,16 @@
     if (!searchValue.value.length) return instanceList.value;
 
     let filteredList = [...instanceList.value];
+    const podIPs = searchValue.value.find(filter => filter.id === 'podIP')?.values?.map(value => value.id) ?? [];
+    const nodeIPs = searchValue.value.find(filter => filter.id === 'nodeIP')?.values?.map(value => value.id) ?? [];
+
+    // IP 筛选是独立的 OR 组：Pod IP 与 Node IP 不能按普通字段逐项做 AND。
+    if (podIPs.length || nodeIPs.length) {
+      filteredList = filteredList.filter(instance => matchesInstanceIPFilter(instance, podIPs, nodeIPs));
+    }
 
     for (const filter of searchValue.value) {
-      if (!filter.values?.length) continue;
+      if (!filter.values?.length || filter.id === 'podIP' || filter.id === 'nodeIP') continue;
       const selectedValues = filter.values.map(v => v.id);
 
       switch (filter.id) {
@@ -344,7 +362,7 @@
           filteredList = filteredList.filter(item => selectedValues.includes(item?.status ?? ''));
           break;
         case 'isHealthy':
-          // 健康状态：布尔值转字符串匹配
+          // 就绪状态：仍按 isHealthy 过滤，未就绪包含所有不接流量的实例
           filteredList = filteredList.filter(item => selectedValues.includes(String(item.isHealthy)));
           break;
         case 'polarisStatus':

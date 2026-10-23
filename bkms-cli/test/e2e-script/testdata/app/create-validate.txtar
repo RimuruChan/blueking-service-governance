@@ -1,0 +1,107 @@
+# app create 输入校验（本地校验，不需要真实服务）
+# 这些用例全部走 CLI 本地 validator，不依赖网络
+
+# 注意：testscript 只把单引号当引号语法（双引号是普通字符，不阻止空格分词）。
+# 要在单引号串内嵌入一个单引号，需把它写两遍：'name'' is required' → name' is required
+! exec $BKMS_CLI_BIN app create -f missing-name.yaml
+stderr '''name'' is required'
+
+! exec $BKMS_CLI_BIN app create -f missing-build.yaml
+stderr '''buildConfig'' is required'
+
+! exec $BKMS_CLI_BIN app create -f invalid-name-format.yaml
+stderr '''name'' is invalid'
+
+! exec $BKMS_CLI_BIN app create -f invalid-type.yaml
+stderr '''type'' is invalid'
+
+! exec $BKMS_CLI_BIN app create -f invalid-build-source.yaml
+stderr 'is invalid'
+
+! exec $BKMS_CLI_BIN app create -f invalid-trpc-language.yaml
+stderr 'is invalid'
+
+! exec $BKMS_CLI_BIN app create -f invalid-helm-repo-type.yaml
+stderr 'is invalid'
+
+-- missing-name.yaml --
+type: trpc
+buildConfig:
+  sourceType: imageRegistry
+  imageBuildConfig:
+    name: example.com/myns/my-app
+appModelSpec:
+  trpcSpec:
+    language: go
+    fileName: trpc_go.yaml
+    filePath: /app/conf
+
+-- missing-build.yaml --
+name: my-app
+type: trpc
+appModelSpec:
+  trpcSpec:
+    language: go
+    fileName: trpc_go.yaml
+    filePath: /app/conf
+
+-- invalid-name-format.yaml --
+name: MyApp
+type: trpc
+buildConfig:
+  sourceType: imageRegistry
+  imageBuildConfig:
+    name: example.com/myns/my-app
+appModelSpec:
+  trpcSpec:
+    language: go
+    fileName: trpc_go.yaml
+    filePath: /app/conf
+
+-- invalid-type.yaml --
+name: my-app
+type: unknown
+buildConfig:
+  sourceType: imageRegistry
+  imageBuildConfig:
+    name: example.com/myns/my-app
+
+-- invalid-build-source.yaml --
+name: my-app
+type: trpc
+buildConfig:
+  sourceType: docker
+  imageBuildConfig:
+    name: example.com/myns/my-app
+appModelSpec:
+  trpcSpec:
+    language: go
+    fileName: trpc_go.yaml
+    filePath: /app/conf
+
+-- invalid-trpc-language.yaml --
+name: my-app
+type: trpc
+buildConfig:
+  sourceType: imageRegistry
+  imageBuildConfig:
+    name: example.com/myns/my-app
+appModelSpec:
+  trpcSpec:
+    language: java
+    fileName: trpc_go.yaml
+    filePath: /app/conf
+
+-- invalid-helm-repo-type.yaml --
+name: my-helm-app
+type: helm
+buildConfig:
+  sourceType: imageRegistry
+  imageBuildConfig:
+    name: example.com/myns/my-helm-app
+helmSpec:
+  helmSource:
+    repoType: SVNRepo
+    helmRepoConfig:
+      repoURL: https://charts.example.com
+      chartName: my-chart

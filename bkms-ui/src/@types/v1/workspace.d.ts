@@ -246,6 +246,14 @@ export interface BkSystemsOutputObj {
    */
   bkBCSProjectID?: string;
   /**
+   * BSCP 项目 ID
+   */
+  bkBSCPProjectID?: string;
+  /**
+   * BSCP 项目 Key（如 BK-BSCP-00012）
+   */
+  bkBSCPProjectKey?: string;
+  /**
    * bkcc 业务 ID
    */
   bkCCBizID?: string;
@@ -269,6 +277,10 @@ export interface BkSystemsOutputObj {
    * 蓝盾制品库项目 ID
    */
   bkRepoProjectID?: string;
+  /**
+   * BSCP Credential ID
+   */
+  bscpCredentialID?: string;
   /**
    * 是否绑定已有蓝盾项目
    */
@@ -359,11 +371,15 @@ export interface AppInfoOutputObj {
    */
   displayName?: string;
   /**
+   * 应用框架（trpc/taf/blank）；Helm/Agones 为空
+   */
+  framework?: string;
+  /**
    * 应用 ID
    */
   id?: string;
   /**
-   * 应用使用的编程语言（如 go、cpp），仅 trpc 类型应用有值
+   * 应用使用的编程语言（如 go、cpp）
    */
   language?: string;
   /**

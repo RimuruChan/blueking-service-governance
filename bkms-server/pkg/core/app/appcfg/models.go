@@ -42,7 +42,7 @@ type AppConfigFileDef struct {
 	// 容器内完整路径 = filepath.Join(MountDir, Name)。
 	MountDir string `bson:"mountDir,omitempty"`
 	// EnvConfigMode 环境配置模式（统一配置 / 按环境独立配置）。
-	EnvConfigMode EnvConfigMode `bson:"envConfigMode"`
+	EnvConfigMode EnvConfigMode `bson:",inline"`
 	// EnableEnvVarRender 是否启用环境变量渲染（编译期 ${{ env.KEY }} 替换 + 运行时占位符替换）。
 	// framework 始终为 true 且不可修改；plain 默认为 false，可通过 def 更新接口修改。
 	EnableEnvVarRender bool      `bson:"enableEnvVarRender"`
@@ -126,6 +126,11 @@ type EnvConfigMode struct {
 	// MountedEnvNames 表示当前文件的挂载环境范围：
 	// nil = 对所有环境生效；非 nil 空切片 = 不挂载到任何环境；非空 = 仅对列出的环境生效。
 	MountedEnvNames []string `bson:"mountedEnvNames"`
+	// EnvContentStrategy 框架文件的环境内容策略。
+	// overlay：环境内容是补丁，部署时与默认配置合并。
+	// overwrite：环境内容是完整配置，之后修改默认配置不影响已单独配置的环境。
+	// 仅 framework 定义写入该字段。新建时会写入初始值，后续创建环境实例/展示内容均读取该持久化字段。
+	EnvContentStrategy EnvContentStrategy `bson:"envContentStrategy,omitempty"`
 }
 
 // ContainsEnv 判断指定环境名是否在 MountedEnvNames 列表中。
@@ -243,16 +248,6 @@ func (acf *AppConfigFile) initializeContentFields(
 	if fileType == AppConfigFileTypeOverlay && contentSourceType == ContentSourceTypeLocal {
 		acf.OverlayContent = &emptyStr
 	}
-}
-
-// AppValuesConfig 应用的 values 文件配置，当前包含默认 values 文件 ID，后续可扩展更多字段。
-type AppValuesConfig struct {
-	// ID 唯一标识。
-	ID bson.ObjectID `bson:"_id,omitempty"`
-	// AppID 所属应用 ID。
-	AppID string `bson:"appID"`
-	// DefaultAppConfigFileID 默认配置文件 ID。
-	DefaultAppConfigFileID *bson.ObjectID `bson:"defaultAppConfigFileID,omitempty"`
 }
 
 // AppConfigFileWithDef 配置文件记录 + def 信息的组合视图，供 service/handler 层使用。

@@ -26,6 +26,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
@@ -38,21 +39,21 @@ import (
 
 // UnifiedEnvVarsReader reads env vars from all sources with unified source semantics.
 type UnifiedEnvVarsReader struct {
-	scopedEnvVarStore ScopedEnvVarStore
-	appDepsVarReader  *depenvvars.Reader
-	polarisVarReader  *polarisenvvars.Reader
+	db               *mongo.Database
+	appDepsVarReader *depenvvars.Reader
+	polarisVarReader *polarisenvvars.Reader
 }
 
 // NewUnifiedEnvVarsReader creates a new unified env vars reader.
 func NewUnifiedEnvVarsReader(
-	store ScopedEnvVarStore,
+	db *mongo.Database,
 	appDepsVarReader *depenvvars.Reader,
 	polarisVarReader *polarisenvvars.Reader,
 ) *UnifiedEnvVarsReader {
 	return &UnifiedEnvVarsReader{
-		scopedEnvVarStore: store,
-		appDepsVarReader:  appDepsVarReader,
-		polarisVarReader:  polarisVarReader,
+		db:               db,
+		appDepsVarReader: appDepsVarReader,
+		polarisVarReader: polarisVarReader,
 	}
 }
 
@@ -69,7 +70,7 @@ func (r *UnifiedEnvVarsReader) ListVars(
 ) (envvartypes.EnvVariableList, error) {
 	// Merge the "background" vars and the vars defined in AppModel. The "background" vars are those
 	// that come from builtin and scoped env var store.
-	bgVars, err := r.ListAppBgVars(ctx, environment, app)
+	bgVars, err := r.ListAppBgVars(ctx, environment, app, am)
 	if err != nil {
 		return nil, errors.Wrap(err, "list app background vars")
 	}
@@ -99,13 +100,13 @@ func (r *UnifiedEnvVarsReader) ListVars(
 func (r *UnifiedEnvVarsReader) ListEnvBgVars(
 	ctx context.Context, environment envmodel.Environment,
 ) (envvartypes.EnvVariableRichList, error) {
-	builtinVars, err := ListBuiltinVars(ctx, r.scopedEnvVarStore, environment, nil)
+	builtinVars, err := ListBuiltinVars(ctx, r.db, environment, nil, nil)
 	if err != nil {
 		return envvartypes.EnvVariableRichList{}, errors.Wrap(err, "list builtin vars")
 	}
 
-	scopedVars, err := r.scopedEnvVarStore.List(
-		ctx,
+	scopedVars, err := List(
+		ctx, r.db,
 		environment.WorkspaceID,
 		WithScopes(
 			envvartypes.ScopeWorkspace,
@@ -130,22 +131,22 @@ func (r *UnifiedEnvVarsReader) ListEnvBgVars(
 }
 
 // ListAppBgVars lists app background vars:
-// - Builtin (including app-level builtins when app is provided)
+// - Builtin (app-level builtins when app is provided, resource limit builtins when am is provided)
 // - Scoped workspace vars
 // - Scoped envType vars
 // - Scoped env vars
 // The returned list includes all vars with the same key, sorted by source priority
 // from low to high, so conflict checks can display every source.
 func (r *UnifiedEnvVarsReader) ListAppBgVars(
-	ctx context.Context, environment envmodel.Environment, app *bkmsapp.Application,
+	ctx context.Context, environment envmodel.Environment, app *bkmsapp.Application, am *appmodel.AppModel,
 ) (envvartypes.EnvVariableRichList, error) {
-	builtinVars, err := ListBuiltinVars(ctx, r.scopedEnvVarStore, environment, app)
+	builtinVars, err := ListBuiltinVars(ctx, r.db, environment, app, am)
 	if err != nil {
 		return envvartypes.EnvVariableRichList{}, errors.Wrap(err, "list builtin vars")
 	}
 
-	scopedVars, err := r.scopedEnvVarStore.List(
-		ctx,
+	scopedVars, err := List(
+		ctx, r.db,
 		environment.WorkspaceID,
 		WithScopes(
 			envvartypes.ScopeWorkspace,
@@ -193,7 +194,7 @@ func (r *UnifiedEnvVarsReader) ListAppBgVars(
 func (r *UnifiedEnvVarsReader) ListEnvVars(
 	ctx context.Context, environment envmodel.Environment,
 ) (envvartypes.EnvVariableList, error) {
-	bgVars, err := r.ListAppBgVars(ctx, environment, nil)
+	bgVars, err := r.ListAppBgVars(ctx, environment, nil, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -203,10 +204,13 @@ func (r *UnifiedEnvVarsReader) ListEnvVars(
 // ListAppBgVarsForConflicts lists app background vars used by app-level conflict checks.
 // It's different from `ListAppBgVars` in that it is not env specific and it includes all
 // scoped env vars in the workspace, to reflect the real conflict situation.
+// When am is provided, its resource limit builtins join the pool. They come from the
+// stored AppModel rather than an env-merged one, which is enough to flag the key.
 func (r *UnifiedEnvVarsReader) ListAppBgVarsForConflicts(
 	ctx context.Context,
 	workspaceID string,
 	app *bkmsapp.Application,
+	am *appmodel.AppModel,
 ) (envvartypes.EnvVariableRichList, error) {
 	// Get the builtin vars.
 	//
@@ -222,13 +226,13 @@ func (r *UnifiedEnvVarsReader) ListAppBgVarsForConflicts(
 		Type:        string(env.TypeProduction),
 		Name:        "production",
 	}
-	builtinVars, err := ListBuiltinVars(ctx, r.scopedEnvVarStore, stubEnv, app)
+	builtinVars, err := ListBuiltinVars(ctx, r.db, stubEnv, app, am)
 	if err != nil {
 		return envvartypes.EnvVariableRichList{}, errors.Wrap(err, "list builtin vars")
 	}
 
 	// Get all scoped vars in the workspace.
-	scopedVars, err := r.scopedEnvVarStore.List(ctx, workspaceID)
+	scopedVars, err := List(ctx, r.db, workspaceID)
 	if err != nil {
 		return envvartypes.EnvVariableRichList{}, errors.Wrap(err, "list workspace scoped env vars")
 	}
@@ -291,8 +295,9 @@ func (r *UnifiedEnvVarsReader) BuildAppConflictedInfoByKeys(
 	keys []string,
 	workspaceID string,
 	app *bkmsapp.Application,
+	am *appmodel.AppModel,
 ) (map[string]envvartypes.EnvVarConflictedInfo, error) {
-	bgVars, err := r.ListAppBgVarsForConflicts(ctx, workspaceID, app)
+	bgVars, err := r.ListAppBgVarsForConflicts(ctx, workspaceID, app, am)
 	if err != nil {
 		return nil, err
 	}

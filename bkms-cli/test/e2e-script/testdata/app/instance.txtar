@@ -1,0 +1,12 @@
+# app instance 子命令
+
+exec $BKMS_CLI_BIN app instance list --app $BKMS_APP_ID --env $BKMS_ENV_NAME
+stdout .
+
+# list 缺 --app
+! exec $BKMS_CLI_BIN app instance list --env test
+stderr 'required flag\(s\) "app" not set'
+
+# list 缺 --env
+! exec $BKMS_CLI_BIN app instance list --app $BKMS_APP_ID
+stderr 'required flag\(s\) "env" not set'

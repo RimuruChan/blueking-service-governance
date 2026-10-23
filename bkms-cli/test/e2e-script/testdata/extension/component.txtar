@@ -1,0 +1,19 @@
+# app component 子命令
+
+exec $BKMS_CLI_BIN app component list --app $BKMS_APP_ID
+stdout .
+
+exec $BKMS_CLI_BIN app component list --app $BKMS_APP_ID -o json
+stdout .
+
+# list 缺 --app
+! exec $BKMS_CLI_BIN app component list
+stderr 'required flag\(s\) "app" not set'
+
+# create 缺 --app
+! exec $BKMS_CLI_BIN app component create --ref some-ref
+stderr 'required flag\(s\) "app" not set'
+
+# delete 缺 --app
+! exec $BKMS_CLI_BIN app component delete --name some-name
+stderr 'required flag\(s\) "app" not set'

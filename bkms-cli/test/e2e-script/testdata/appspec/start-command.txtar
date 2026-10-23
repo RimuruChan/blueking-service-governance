@@ -1,0 +1,19 @@
+# app appspec start-command 子命令
+
+exec $BKMS_CLI_BIN app appspec start-command view --app $BKMS_APP_ID
+stdout 'Command:'
+
+exec $BKMS_CLI_BIN app appspec start-command edit --app $BKMS_APP_ID -f start-command.yaml
+exec $BKMS_CLI_BIN app appspec start-command view --app $BKMS_APP_ID
+stdout 'e2e-test'
+
+# edit 缺 -f 参数
+! exec $BKMS_CLI_BIN app appspec start-command edit --app $BKMS_APP_ID
+stderr 'required flag\(s\) "file" not set'
+
+-- start-command.yaml --
+command:
+  - /usr/local/trpc/bin/container-start.sh
+args:
+  - -conf
+  - /tmp/e2e-test.yaml

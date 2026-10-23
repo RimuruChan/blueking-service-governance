@@ -1,0 +1,36 @@
+# app appspec resources 子命令
+
+exec $BKMS_CLI_BIN app appspec resources view --app $BKMS_APP_ID
+
+exec $BKMS_CLI_BIN app appspec resources view --app $BKMS_APP_ID -o json
+
+exec $BKMS_CLI_BIN app appspec resources edit --app $BKMS_APP_ID -f resources.yaml
+exec $BKMS_CLI_BIN app appspec resources view --app $BKMS_APP_ID -o json
+jsonfield replicas=5
+
+exec $BKMS_CLI_BIN app appspec resources edit --app $BKMS_APP_ID --env $BKMS_ENV_NAME -f resources.yaml
+
+exec $BKMS_CLI_BIN app appspec resources reset --app $BKMS_APP_ID --env $BKMS_ENV_NAME
+
+# edit 缺 -f 参数
+! exec $BKMS_CLI_BIN app appspec resources edit --app $BKMS_APP_ID
+stderr '-f is required'
+
+# edit 传入非法 YAML
+! exec $BKMS_CLI_BIN app appspec resources edit --app $BKMS_APP_ID -f invalid.yaml
+
+# reset 缺 --env 参数
+! exec $BKMS_CLI_BIN app appspec resources reset --app $BKMS_APP_ID
+stderr 'reset requires --env'
+
+-- resources.yaml --
+replicas: 5
+cpuRequests: "0.1"
+cpuLimits: "1"
+memoryRequests: "50Mi"
+memoryLimits: "1Gi"
+
+-- invalid.yaml --
+---
+not valid yaml content: [[[
+this is intentionally malformed

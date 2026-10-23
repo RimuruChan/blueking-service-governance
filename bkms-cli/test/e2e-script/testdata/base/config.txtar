@@ -1,0 +1,9 @@
+# config 命令行为
+
+# config view 正常退出
+exec $BKMS_CLI_BIN config view
+stdout 'bkmsBaseUrl'
+
+# accessToken 不以明文出现在输出中（安全脱敏验证）
+exec $BKMS_CLI_BIN config view
+! stdout 'accessToken: [A-Za-z0-9]+'

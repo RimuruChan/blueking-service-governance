@@ -18,15 +18,24 @@
 
 export const STORAGE_VERSION = '0.0.1';
 export const STORAGE_KEY = '_pinia_storage';
+
+/** 与后端开启权重因子时写入的公式保持一致，用于比较和展示平台设置。 */
+export const PLATFORM_WEIGHT_FACTOR_CONFIG = {
+  func: 'linear',
+  params: { a: 1, b: 1, min: -1, max: 1.5 },
+};
+
 export const BKMS_REGEX = {
   // 名称类型正则校验
   nameRegex: /^[a-z]+[-a-z0-9]*[a-z0-9]$/,
   IDRegex: /^[a-z][a-z0-9-]$/,
-  appNameRegex: /^[a-z][a-z0-9-]{1,20}$/,
-  envNameRegex: /^[a-z][a-z0-9-]{0,19}$/,
+  appNameRegex: /^[a-z](?:[a-z0-9-]{0,18}[a-z0-9])?$/,
+  envNameRegex: /^[a-z](?:[a-z0-9-]{0,18}[a-z0-9])?$/,
   envDisplayNameRegex: /^.{1,32}$/,
   fileNameRegex: /^[a-zA-Z0-9_-]{1,20}$/,
-  spaceNameRegex: /^[a-z][a-z0-9-]{1,27}$/,
+  appConfigFileNameRegex: /^[a-zA-Z0-9_.-]{1,64}$/,
+  appConfigMountDirRegex: /^\/(?!\/)[^/]+(?:\/[^/]+)*\/?$/,
+  spaceNameRegex: /^[a-z][a-z0-9-]{0,26}[a-z0-9]$/,
   spaceDisplayNameRegex: /^.{1,32}$/,
   instanceNameRegex: /^[a-z][a-z0-9-]{0,18}[a-z0-9]$/,
   serviceNameRegex: /^[a-z]([-a-z0-9]{0,61}[a-z0-9])?$/,
@@ -85,6 +94,8 @@ export const DOC_LINKS = {
   HOST_PORT: '/p/4036088770',
   // 应用仪表盘配置指引
   DASHBOARD_GUIDE: '/p/4037840772',
+  // 配置文件说明
+  CONFIG_FILE_GUIDE: '/p/4046793147',
 };
 
 /**

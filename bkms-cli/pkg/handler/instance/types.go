@@ -114,6 +114,10 @@ type PortForwardOptions struct {
 type ListInstancesOptions struct {
 	// Status 按实例状态过滤，如 Running。
 	Status string
+	// PodIPs 按 Pod IP 精确过滤，由服务端过滤，多值取 OR。
+	PodIPs []string
+	// NodeIPs 按 Node IP 精确过滤，由服务端过滤，多值取 OR；与 PodIPs 之间也取 OR。
+	NodeIPs []string
 }
 
 // ExecAdminCmdOptions 执行管理命令的统一参数

@@ -1,8 +1,0 @@
-# 错误用例：type=trpc 时缺少 appModelSpec 段
-name: my-app
-type: trpc
-
-buildConfig:
-  sourceType: imageRegistry
-  imageBuildConfig:
-    name: example.com/myns/my-app

@@ -81,19 +81,17 @@ e2e-build: tidy ## 构建 E2E 测试专用二进制（bkms-cli-e2e），避免�
 	@mkdir -p ./build/
 	CGO_ENABLED=0 go build -ldflags ${LDFLAGS} -o ./build/bkms-cli-e2e ./main.go
 
-.PHONY: e2e-go-test
-e2e-go-test: e2e-build ginkgo ## 构建 E2E 专用二进制并执行 Go E2E 测试（自动加载 test/e2e/.env）
-	@if [ -f ./test/e2e/.env ]; then \
-		echo "加载环境变量: test/e2e/.env"; \
-		set -a && . ./test/e2e/.env && set +a && \
+.PHONY: e2e-script-test
+e2e-script-test: e2e-build ## 构建 E2E 专用二进制并执行 testscript E2E 测试（自动加载 test/e2e-script/.env）
+	@if [ -f ./test/e2e-script/.env ]; then \
+		echo "Loading env file: test/e2e-script/.env"; \
+		set -a && . ./test/e2e-script/.env && set +a && \
 		BKMS_CLI_BIN=$(shell pwd)/build/bkms-cli-e2e \
-		BKMS_CLI_BUILD_DIR=$(shell pwd)/build \
-		$(GINKGO) -v --fail-fast ./test/e2e/...; \
+		go test -v -timeout 15m ./test/e2e-script/...; \
 	else \
-		echo "未找到 test/e2e/.env，使用当前 shell 环境变量"; \
+		echo "test/e2e-script/.env not found, using current shell environment"; \
 		BKMS_CLI_BIN=$(shell pwd)/build/bkms-cli-e2e \
-		BKMS_CLI_BUILD_DIR=$(shell pwd)/build \
-		$(GINKGO) -v --fail-fast ./test/e2e/...; \
+		go test -v -timeout 15m ./test/e2e-script/...; \
 	fi
 
 ##@ 开发工具安装命令

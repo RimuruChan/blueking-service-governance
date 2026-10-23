@@ -41,31 +41,25 @@ var _ = Describe("Env delete hooks from appcfg", func() {
 	var diApp *fxtest.App
 	var ctx context.Context
 	var envSvc *bkmsenv.EnvService
-	var appStore bkmsapp.ApplicationStore
-	var envStore envmodel.EnvironmentStore
-	var fileStore appcfg.AppConfigFileStore
-	var defStore appcfg.AppConfigFileDefStore
-	var versionStore appcfg.AppConfigFileVersionStore
+	var appStore *bkmsapp.ApplicationStore
+	var fileStore *appcfg.AppConfigFileStore
+	var defStore *appcfg.AppConfigFileDefStore
 
 	BeforeEach(func() {
 		ctx = context.Background()
 		bkmsenv.ResetHooksForTest()
 
+		appStore = testutil.NewStore(GinkgoT(), bkmsapp.AppMeta)
 		diApp = fxtest.New(
 			GinkgoT(),
-			bkmsapp.FxModule,
 			appcfg.FxModule,
 			bkmsenv.FxModule,
 			fx.Populate(
 				&envSvc,
-				&appStore,
-				&envStore,
-				&fileStore,
-				&defStore,
-				&versionStore,
 			),
 		)
 		diApp.RequireStart()
+		defStore = testutil.NewStore(GinkgoT(), appcfg.AppConfigFileDefMeta)
 	})
 
 	AfterEach(func() {
@@ -79,7 +73,8 @@ var _ = Describe("Env delete hooks from appcfg", func() {
 	})
 
 	createMountedPlainEnvInstance := func(app *bkmsapp.Application, envName string) appcfg.AppConfigFileDef {
-		base := appcfg.NewBaseAppCfgFileService(defStore, fileStore, versionStore)
+		base := appcfg.NewBaseAppCfgFileService(testutil.NewDB(GinkgoT()))
+		fileStore = base.FileStore
 		cfgSvc := appcfg.NewAppCfgFileDefService(base)
 		defaultContent := "key: default\n"
 		result, err := cfgSvc.Create(ctx, appcfg.CreateCfgFileParams{
@@ -113,12 +108,14 @@ var _ = Describe("Env delete hooks from appcfg", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		envContent := "key: env\n"
-		targetFile, _, isNewFile, err := cfgSvc.PrepareEnvContentUpdate(ctx, def, envName, envContent, "tester")
+		upserted, err := cfgSvc.UpsertEnvContent(ctx, def, appcfg.UpsertEnvContentParams{
+			EnvName:     envName,
+			Content:     envContent,
+			Operator:    "tester",
+			Description: "create env file",
+		})
 		Expect(err).NotTo(HaveOccurred())
-		Expect(isNewFile).To(BeTrue())
-
-		_, err = cfgSvc.CreateFileWithVersion(ctx, *targetFile, def.Name, "create env file", "tester")
-		Expect(err).NotTo(HaveOccurred())
+		Expect(upserted.IsNewFile).To(BeTrue())
 
 		return *def
 	}
@@ -132,14 +129,14 @@ var _ = Describe("Env delete hooks from appcfg", func() {
 		defA := createMountedPlainEnvInstance(appA, environment.Name)
 		defB := createMountedPlainEnvInstance(appB, environment.Name)
 
-		appcfghooks.RegisterDeleteHooks(appStore, fileStore, defStore, versionStore)
+		appcfghooks.RegisterDeleteHooks(testutil.NewDB(GinkgoT()))
 
 		err := envSvc.Delete(ctx, environment.ID)
 		Expect(err).NotTo(HaveOccurred())
 
-		_, err = fileStore.GetByDefIDAndEnv(ctx, defA.ID, environment.Name)
+		_, err = fileStore.Get(ctx, appcfg.FileByDefEnv(defA.ID, environment.Name))
 		Expect(errors.Is(err, appcfg.ErrAppConfigFileNotFound)).To(BeTrue())
-		_, err = fileStore.GetByDefIDAndEnv(ctx, defB.ID, environment.Name)
+		_, err = fileStore.Get(ctx, appcfg.FileByDefEnv(defB.ID, environment.Name))
 		Expect(errors.Is(err, appcfg.ErrAppConfigFileNotFound)).To(BeTrue())
 
 		defAUpdated, err := defStore.GetByID(ctx, defA.ID)
@@ -152,7 +149,7 @@ var _ = Describe("Env delete hooks from appcfg", func() {
 	})
 
 	It("should fail fast when feature env owner app id is missing", func() {
-		hook := appcfghooks.NewCleanupPlainEnvInstancesHook(appStore, fileStore, defStore, versionStore)
+		hook := appcfghooks.NewCleanupPlainEnvInstancesHook(testutil.NewDB(GinkgoT()))
 
 		err := hook(ctx, envmodel.Environment{
 			Kind:        envmodel.EnvironmentKindFeature,

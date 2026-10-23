@@ -68,7 +68,7 @@
             :clearable="false"
             display-key="name"
             filterable
-            id-key="id"
+            id-key="fileId"
             :list="valuesFileState.list"
             :loading="valuesFileState.loading"
           >
@@ -185,11 +185,11 @@
   import { cloneDeep, debounce } from 'lodash-es';
   import { useI18n } from 'vue-i18n';
   import { useRoute, useRouter } from 'vue-router';
-  import { AppConfigFileOutputObj, ListAppConfigFilesOutput } from '~/@types/v1/app-config-files';
   import { CreateHelmDeployRequest, PreviewHelmDeployOutput, PreviewHelmDeployRequest } from '~/@types/v1/deploy';
   import { EnvOutput } from '~/@types/v1/env';
   import { DeployableImageTagOutputObj } from '~/@types/v1/images';
-  import { AppConfigFilesService, DeployService, ImagesService } from '~/api/modules/v1';
+  import { AppConfigFileDefsService, DeployService, ImagesService } from '~/api/modules/v1';
+  import { useAppVisibleEnvs } from '~/composables/use-app-visible-envs';
   import { envDetailLocation } from '~/composables/use-env-manager';
   import { useErrorHandler } from '~/composables/use-error-handler';
   import useLeaveConfirm from '~/composables/use-leave-confirm';
@@ -197,6 +197,8 @@
 
   import EnvUndefinedTips from './env-undefined-tips.vue';
   import { useHelmDeploy } from './use-helm-deploy';
+
+  import type { DefDetailObj } from '~/@types/v1/app-config-file-defs';
   type HelmDeployType = 'Recreate' | 'RollingUpdate';
   interface IProps {
     deployType: HelmDeployType;
@@ -209,6 +211,7 @@
   const emit = defineEmits(['close', 'deploy']);
 
   const appDetailStore = useAppDetail();
+  const { checkDeployEnv } = useAppVisibleEnvs();
   const { t } = useI18n();
   const route = useRoute();
   const router = useRouter();
@@ -242,6 +245,7 @@
   const curView = ref<'config' | 'preview'>('config');
   const previewLoading = ref(false);
   const confirmLoading = ref(false);
+  let previewRunID = 0;
 
   /** 环境变量未定义弹窗状态 */
   const isShowEnvUndefinedTips = ref(false);
@@ -274,7 +278,7 @@
     target: '',
   });
   const valuesFileState = ref({
-    list: [] as AppConfigFileOutputObj[],
+    list: [] as DefDetailObj[],
     loading: false,
   });
 
@@ -319,11 +323,11 @@
   async function getValuesFileList() {
     try {
       valuesFileState.value.loading = true;
-      const ret: ListAppConfigFilesOutput = await AppConfigFilesService.listAppConfigFiles(
+      const ret = await AppConfigFileDefsService.listDefaultFilesWithDef(
         { appID: appDetailStore.appID },
         { needRes: true },
       );
-      valuesFileState.value.list = ret?.items || [];
+      valuesFileState.value.list = (ret.items || []).filter(file => file.configKind === 'framework' && file.fileId);
     } finally {
       valuesFileState.value.loading = false;
     }
@@ -356,6 +360,7 @@
   }
 
   async function handleConfirm() {
+    if (!props.envItem?.name || !checkDeployEnv(props.envItem)) return;
     try {
       confirmLoading.value = true;
       const params = cloneDeep(deployOrPreviewParams.value) as CreateHelmDeployRequest;
@@ -384,12 +389,15 @@
 
   // 预览
   async function handleGetPreview() {
+    if (!props.envItem?.name || !checkDeployEnv(props.envItem)) return;
+    const runID = ++previewRunID;
     try {
       const valid = await formRef.value.validate().catch(() => false);
       if (!valid) return;
       previewLoading.value = true;
       const params = cloneDeep(deployOrPreviewParams.value) as PreviewHelmDeployRequest;
       const res: PreviewHelmDeployOutput = await DeployService.previewHelmDeploy(params, { needRes: true });
+      if (runID !== previewRunID || !isShow.value) return;
       const envVars = res.missingEnvVars ?? [];
       const otherVars = res.missingVars ?? [];
       // 存在未定义变量时展示预检弹窗
@@ -486,6 +494,7 @@
   }
 
   watch(isShow, async newVal => {
+    previewRunID += 1;
     if (newVal) {
       await Promise.all([getValuesFileList(), getListAppImages()]);
       // 记忆最近一次部署的参数

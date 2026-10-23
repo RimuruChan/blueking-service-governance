@@ -38,8 +38,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/httpstream"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/portforward"
+	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/client-go/transport/spdy"
+	utilexec "k8s.io/client-go/util/exec"
 
 	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/utils/trace"
@@ -148,6 +151,59 @@ func (c *PodClient) OpenLogsStream(
 		return nil, errors.Wrapf(err, "stream logs for pod '%s/%s'", namespace, podName)
 	}
 	return reader, nil
+}
+
+// ExecResult pod 内命令执行结果
+type ExecResult struct {
+	// Stdout 标准输出
+	Stdout string
+	// Stderr 标准错误
+	Stderr string
+	// ExitCode 命令退出码
+	ExitCode int
+}
+
+// Exec 在 pod 的指定容器内执行命令（无 stdin、无 TTY），返回输出和退出码
+//
+// 命令以非 0 退出码结束时不视为错误，通过 ExecResult.ExitCode 返回；仅连接、流传输等异常返回 error。
+func (c *PodClient) Exec(
+	ctx context.Context, namespace, podName, container string, cmd []string,
+) (*ExecResult, error) {
+	clientSet, err := kubernetes.NewForConfig(c.cfg.Rest)
+	if err != nil {
+		return nil, errors.Wrap(err, "create kubernetes clientset")
+	}
+
+	req := clientSet.CoreV1().RESTClient().
+		Post().
+		Resource("pods").
+		Namespace(namespace).
+		Name(podName).
+		SubResource("exec").
+		VersionedParams(&corev1.PodExecOptions{
+			Container: container,
+			Command:   cmd,
+			Stdout:    true,
+			Stderr:    true,
+		}, scheme.ParameterCodec)
+
+	executor, err := remotecommand.NewSPDYExecutor(c.cfg.Rest, http.MethodPost, req.URL())
+	if err != nil {
+		return nil, errors.Wrapf(err, "create spdy executor for pod '%s/%s'", namespace, podName)
+	}
+
+	var stdout, stderr bytes.Buffer
+	err = executor.StreamWithContext(ctx, remotecommand.StreamOptions{Stdout: &stdout, Stderr: &stderr})
+	result := &ExecResult{Stdout: stdout.String(), Stderr: stderr.String()}
+	if err != nil {
+		var exitErr utilexec.ExitError
+		if errors.As(err, &exitErr) && exitErr.Exited() {
+			result.ExitCode = exitErr.ExitStatus()
+			return result, nil
+		}
+		return nil, errors.Wrapf(err, "exec command in pod '%s/%s'", namespace, podName)
+	}
+	return result, nil
 }
 
 // SendHTTPRequest 通过 port-forward 向 pod 发送 HTTP 请求

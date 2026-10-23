@@ -29,15 +29,17 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci/pipelineparam"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/revision"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/config"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
 	bkciapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkci"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 	bkmsreg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/image/registry"
 )
 
@@ -56,9 +58,11 @@ const (
 // 返回值：流水线构建状态，流水线构建启动参数，错误
 func ExecuteBKCIPipelineBuild(
 	ctx context.Context,
+	db *mongo.Database,
 	app *bkmsapp.Application,
 	cfg *Config,
-	branch, imageTag string,
+	rev revision.CodeRevision,
+	imageTag string,
 ) (*bkciapi.PipelineBuildState, map[string]string, error) {
 	appInfo := fmt.Sprintf("<workspace: %s, appID: %s>", app.WorkspaceID, app.ID)
 
@@ -70,19 +74,19 @@ func ExecuteBKCIPipelineBuild(
 			return nil, nil, errors.Errorf("code repo config not found")
 		}
 		// 构建来源是代码库时，需要在蓝盾上初始化代码仓库
-		_, err := bkci.NewRepositoryManager(app.WorkspaceID).Initialize(
+		_, err := bkci.NewRepositoryManager(db, app.WorkspaceID).Initialize(
 			ctx, cfg.CodeRepo.RepoURL, cfg.CodeRepo.RepoAlias,
 		)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "ensure bkci repository")
 		}
 		// 虽然工作空间创建时候就会初始化 dockerfile 通用构建流水线，但是这里还是需要重新初始化，因为可能会有模板版本更新
-		_, err = bkci.NewPipelineManager(app.WorkspaceID).Initialize(ctx, string(bkci.PipelineTypeDockerfile))
+		_, err = bkci.NewPipelineManager(db, app.WorkspaceID).Initialize(ctx, string(bkci.PipelineTypeDockerfile))
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "init builtin dockerfile pipeline")
 		}
 		// 根据配置生成流水线参数
-		params, err = genPipelineBuildParams(ctx, app, cfg, branch, imageTag)
+		params, err = genPipelineBuildParams(ctx, db, app, cfg, rev, imageTag)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "generate pipeline build params for %s", appInfo)
 		}
@@ -92,12 +96,12 @@ func ExecuteBKCIPipelineBuild(
 		}
 		// 构建来源为蓝盾流水线时，需要初始化以确保流水线存在
 		// 在实际触发构建的时候才初始化流水线，避免前期反复添加不同流水线造成多余数据
-		_, err := bkci.NewPipelineManager(app.WorkspaceID).Initialize(ctx, cfg.Pipeline.PipelineID)
+		_, err := bkci.NewPipelineManager(db, app.WorkspaceID).Initialize(ctx, cfg.Pipeline.PipelineID)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "init pipeline")
 		}
 		// 根据配置生成流水线参数（镜像相关）
-		params, err = genPipelineBuildRepoAndImageParams(ctx, app, branch, imageTag)
+		params, err = genPipelineBuildRepoAndImageParams(ctx, db, app, rev, imageTag)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "generate pipeline build image params for %s", appInfo)
 		}
@@ -113,11 +117,8 @@ func ExecuteBKCIPipelineBuild(
 	}
 
 	// 获取流水线
-	store, err := bkci.NewPipelineStoreMongo(database.Client(), database.Name())
-	if err != nil {
-		return nil, nil, errors.Wrapf(err, "create pipeline store")
-	}
-	pipeline, err := store.GetByWorkspaceAndType(ctx, app.WorkspaceID, cfg.PipelineType)
+	pipeline, err := store.Of(db, bkci.PipelineMeta).
+		Get(ctx, bkci.ByWorkspaceAndType(app.WorkspaceID, cfg.PipelineType))
 	if err != nil {
 		return nil, nil, errors.Wrapf(err, "get workspace %s type %s pipeline", app.WorkspaceID, cfg.PipelineType)
 	}
@@ -141,7 +142,12 @@ func ExecuteBKCIPipelineBuild(
 
 // genPipelineBuildParams 生成蓝盾流水线构建参数
 func genPipelineBuildParams(
-	ctx context.Context, app *bkmsapp.Application, cfg *Config, branch, imageTag string,
+	ctx context.Context,
+	db *mongo.Database,
+	app *bkmsapp.Application,
+	cfg *Config,
+	rev revision.CodeRevision,
+	imageTag string,
 ) (map[string]string, error) {
 	// 如果没有代码仓库配置，则无法生成蓝盾流水线参数
 	if cfg.CodeRepo == nil {
@@ -170,7 +176,7 @@ func genPipelineBuildParams(
 	}
 
 	// 镜像相关参数
-	params, err := genPipelineBuildRepoAndImageParams(ctx, app, branch, imageTag)
+	params, err := genPipelineBuildRepoAndImageParams(ctx, db, app, rev, imageTag)
 	if err != nil {
 		return nil, errors.Wrapf(err, "generate pipeline build image params for %s", app.ID)
 	}
@@ -306,17 +312,17 @@ func getPlatformDockerfileLanguage(app *bkmsapp.Application) (string, error) {
 
 // genPipelineBuildRepoAndImageParams 生成蓝盾流水线构建参数（镜像和仓库版本信息相关）
 func genPipelineBuildRepoAndImageParams(
-	ctx context.Context, app *bkmsapp.Application, branch, imageTag string,
+	ctx context.Context, db *mongo.Database, app *bkmsapp.Application, rev revision.CodeRevision, imageTag string,
 ) (map[string]string, error) {
-	registry, err := workspace.GetWorkspaceImageRegistry(ctx, app.WorkspaceID)
+	registry, err := workspace.GetWorkspaceImageRegistry(ctx, db, app.WorkspaceID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "get workspace image registry")
 	}
 
 	return map[string]string{
-		// 代码库相关参数（仅版本部分）TODO 目前仅支持 git 分支构建
-		pipelineparam.RepoCheckoutBy: "BRANCH",
-		pipelineparam.RepoRevision:   branch,
+		// 代码库相关参数（仅版本部分），修订按用户填写原样传递，CommitID 不截断
+		pipelineparam.RepoCheckoutBy: rev.CheckoutBy(),
+		pipelineparam.RepoRevision:   rev.Value,
 		// 镜像仓库相关参数
 		pipelineparam.ImageRegistry:     registry.Registry,
 		pipelineparam.ImageRegistryHost: sourceImageRegistryHost(registry),

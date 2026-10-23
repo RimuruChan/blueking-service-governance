@@ -1,0 +1,17 @@
+# 登录与登出行为
+
+# 有效 token 登录成功（实际输出 "User login... Success!"，注意首字母大写）
+exec $BKMS_CLI_BIN login --access-token $BKMS_TOKEN
+stdout 'Success'
+
+# 无效 token 登录失败（后端返回 400 token 校验失败）
+! exec $BKMS_CLI_BIN login --access-token invalid-token-xyz
+stderr 'validate access token failed'
+
+# --access-token 与 --bk-ticket 不能同时使用
+! exec $BKMS_CLI_BIN login --access-token $BKMS_TOKEN --bk-ticket some-ticket
+stderr 'cannot use both'
+
+# logout 成功（实际输出 "logout success"）
+exec $BKMS_CLI_BIN logout
+stdout 'logout success'

@@ -24,10 +24,11 @@ import (
 	"github.com/TencentBlueKing/gopkg/stringx"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 )
 
 var _ = Describe("Audit", func() {
@@ -35,22 +36,29 @@ var _ = Describe("Audit", func() {
 		It("displays port-forward attribute name", func() {
 			Expect(AttributePortForward.DisplayName()).To(Equal("端口转发"))
 		})
+
+		It("displays app config file attribute name", func() {
+			Expect(AttributeAppConfigFile).To(Equal(Attribute("appConfigFile")))
+			Expect(AttributeAppConfigFile.DisplayName()).To(Equal("配置文件"))
+		})
 	})
 
-	var store OperationRecordStore
+	var records *OperationRecordStore
 	var ctx context.Context
 
-	BeforeEach(func() {
-		var err error
-		store, err = NewOperationRecordStoreMongo(database.Client(), database.Name())
-		Expect(err).NotTo(HaveOccurred())
+	// getRecord 按 AddOperationRecord 返回的 hex ID 读取记录
+	getRecord := func(id string) (*OperationRecord, error) {
+		return records.Get(ctx, store.ByID(lo.Must(bson.ObjectIDFromHex(id))))
+	}
 
+	BeforeEach(func() {
+		records = testutil.NewStore(GinkgoT(), OperationRecordMeta)
 		ctx = context.Background()
 	})
 
 	AfterEach(func() {
 		// Clean up test database
-		err := testutil.CleanupCollection(collectionName)
+		err := testutil.CleanupMetaColl(OperationRecordMeta)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
@@ -76,7 +84,7 @@ var _ = Describe("Audit", func() {
 				Expect(id).NotTo(BeEmpty())
 
 				// Verify record exists
-				record, err := store.Get(ctx, id)
+				record, err := getRecord(id)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(record.Username).To(Equal(username))
 				Expect(record.OperationType).To(Equal(operationType))
@@ -104,7 +112,7 @@ var _ = Describe("Audit", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(id).NotTo(BeEmpty())
 
-				record, err := store.Get(ctx, id)
+				record, err := getRecord(id)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(record.AccessType).To(Equal(AccessTypeClient))
 				Expect(record.Attribute).To(Equal(attribute))
@@ -127,7 +135,7 @@ var _ = Describe("Audit", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(id).NotTo(BeEmpty())
 
-				record, err := store.Get(ctx, id)
+				record, err := getRecord(id)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(record.Group.WorkspaceID).To(Equal(workspaceID))
 				Expect(record.Group.AppID).To(Equal(appID))
@@ -148,7 +156,7 @@ var _ = Describe("Audit", func() {
 				Expect(err).NotTo(HaveOccurred())
 				Expect(id).NotTo(BeEmpty())
 
-				record, err := store.Get(ctx, id)
+				record, err := getRecord(id)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(record.Group.WorkspaceID).To(Equal(group.WorkspaceID))
 				Expect(record.Group.AppID).To(Equal(group.AppID))

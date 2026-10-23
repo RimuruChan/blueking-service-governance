@@ -1,0 +1,16 @@
+# app appspec lifecycle 子命令
+
+exec $BKMS_CLI_BIN app appspec lifecycle view --app $BKMS_APP_ID
+
+exec $BKMS_CLI_BIN app appspec lifecycle view --app $BKMS_APP_ID -o json
+
+exec $BKMS_CLI_BIN app appspec lifecycle edit --app $BKMS_APP_ID -f lifecycle.yaml
+exec $BKMS_CLI_BIN app appspec lifecycle view --app $BKMS_APP_ID -o json
+jsonfield terminationGracePeriodSeconds=60
+
+exec $BKMS_CLI_BIN app appspec lifecycle edit --app $BKMS_APP_ID --env $BKMS_ENV_NAME -f lifecycle.yaml
+
+exec $BKMS_CLI_BIN app appspec lifecycle reset --app $BKMS_APP_ID --env $BKMS_ENV_NAME
+
+-- lifecycle.yaml --
+terminationGracePeriodSeconds: 60

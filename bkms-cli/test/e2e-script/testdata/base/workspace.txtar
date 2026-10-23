@@ -1,0 +1,9 @@
+# workspace 基本命令
+
+# workspace list 正常退出
+exec $BKMS_CLI_BIN workspace list
+stdout .
+
+# workspace set 设置当前工作区
+exec $BKMS_CLI_BIN workspace set $BKMS_WORKSPACE_ID
+stdout .

@@ -1,0 +1,278 @@
+<!--
+ - TencentBlueKing is pleased to support the open source community by making
+ - 蓝鲸智云 - 服务治理 (BlueKing Service Governance) available.
+ - Copyright (C) Tencent. All rights reserved.
+ - Licensed under the MIT License (the "License"); you may not use this file except
+ - in compliance with the License. You may obtain a copy of the License at
+ -
+ -  http://opensource.org/licenses/MIT
+ -
+ - Unless required by applicable law or agreed to in writing, software distributed under
+ - the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
+ - either express or implied. See the License for the specific language governing permissions and
+ - limitations under the License.
+ -
+ - We undertake not to change the open source license (MIT license) applicable
+ - to the current version of the project delivered to anyone in the future.
+-->
+
+<template>
+  <Sideslider
+    v-model:is-show="visible"
+    :before-close="handleBeforeClose"
+    render-directive="if"
+    :width="960"
+  >
+    <template #header>
+      <DividerHeader
+        :show-divider="!!formData.name"
+        :title="$t('新建配置文件')"
+        :title-size="16"
+      >
+        <span
+          v-if="formData.name"
+          class="truncate"
+          >{{ formData.name }}</span
+        >
+      </DividerHeader>
+    </template>
+    <div
+      class="overflow-y-auto px-[24px] pb-[32px] pt-[20px]"
+      style="max-height: calc(100vh - 106px)"
+    >
+      <Form
+        ref="formRef"
+        form-type="vertical"
+        :model="formData"
+        :rules="rules"
+      >
+        <Form.FormItem
+          :label="$t('文件名')"
+          property="name"
+          required
+        >
+          <Input
+            v-model.trim="formData.name"
+            :maxlength="64"
+            :placeholder="$t('请输入由数字、字母、下划线(_)、中划线(-)、点(.) 组成的文件名')"
+          />
+        </Form.FormItem>
+        <Form.FormItem
+          :label="$t('挂载路径')"
+          property="mountDir"
+          required
+        >
+          <Input
+            v-model.trim="formData.mountDir"
+            clearable
+            :placeholder="$t('请输入容器内目录，例如 /data/conf')"
+          />
+          <div class="mt-[4px] text-[12px] text-[#979BA5]">
+            {{ $t('文件最终挂载到 {0}', [mountPathPreview]) }}
+          </div>
+        </Form.FormItem>
+        <Form.FormItem
+          class="mount-env-form-item"
+          :label="$t('挂载环境')"
+          property="mountedEnvNames"
+          :required="formData.scope === 'envs'"
+        >
+          <MountScopeField
+            v-model:env-names="formData.mountedEnvNames"
+            v-model:scope="formData.scope"
+            :env-list="envList"
+            @update:scope="handleScopeChange"
+          />
+        </Form.FormItem>
+        <Form.FormItem :label="$t('渲染环境变量')">
+          <div class="flex items-center">
+            <Switcher
+              v-model="formData.enableEnvVarRender"
+              size="small"
+              theme="primary"
+            />
+            <span class="ml-[10px] text-[12px] text-[#979BA5]">
+              {{ $t('开启后，文件内容中的 {0} 会在下发前被渲染为实际值', [envVarPlaceholder]) }}
+            </span>
+          </div>
+        </Form.FormItem>
+      </Form>
+    </div>
+    <template #footer>
+      <Button
+        :loading="loading"
+        theme="primary"
+        @click="handleSubmit"
+        >{{ $t('确定') }}</Button
+      >
+      <Button
+        class="ml-[8px]"
+        @click="handleCancel"
+        >{{ $t('取消') }}</Button
+      >
+    </template>
+  </Sideslider>
+</template>
+
+<script setup lang="ts">
+  import { computed, reactive, ref, watch } from 'vue';
+
+  import { Button, Form, Input, Sideslider, Switcher } from 'bkui-vue';
+  import { useI18n } from 'vue-i18n';
+  import { BKMS_REGEX } from '~/common/const';
+  import useLeaveConfirm from '~/composables/use-leave-confirm';
+  import MountScopeField from '~/pages/application/detail/app-config/components/mount-scope-field.vue';
+  import {
+    createMountDirRules,
+    formatMountPathPreview,
+    normalizeMountDir,
+  } from '~/pages/application/detail/app-config/config-file-utils';
+
+  import type { EnvOutput } from '~/@types/v1/env';
+  import type { MountScope } from '~/pages/application/detail/app-config/components/mount-scope-field.vue';
+  import type { PlainFileCreateInput } from '~/pages/application/detail/app-config/use-config-file-defs';
+
+  const props = withDefaults(
+    defineProps<{
+      /** 可选挂载环境列表 */
+      envList: EnvOutput[];
+      isShow: boolean;
+      /** 提交中状态（父组件控制，用于按钮 loading） */
+      loading?: boolean;
+    }>(),
+    { loading: false },
+  );
+  const emit = defineEmits<{
+    /** 提交创建参数，由父组件完成实际创建 */
+    submit: [value: PlainFileCreateInput];
+    'update:isShow': [value: boolean];
+  }>();
+  const { t } = useI18n();
+
+  const envVarPlaceholder = '${{ env.<Key> }}';
+
+  const visible = computed({
+    get: () => props.isShow,
+    set: value => emit('update:isShow', value),
+  });
+  /** 表单数据 */
+  const formData = reactive({
+    /** 是否开启环境变量渲染 */
+    enableEnvVarRender: false,
+    /** 容器内挂载目录 */
+    mountDir: '',
+    /** 指定环境下的环境名集合 */
+    mountedEnvNames: [] as string[],
+    /** 文件名 */
+    name: '',
+    /** 挂载范围 */
+    scope: 'all' as MountScope,
+  });
+  const mountPathPreview = computed(() => formatMountPathPreview(formData.mountDir, formData.name));
+  const { confirmBox, forceCleanDirtyTag, withPausedWatch } = useLeaveConfirm(formData);
+
+  function handleBeforeClose() {
+    return confirmBox();
+  }
+
+  defineExpose({ confirmLeave: handleBeforeClose });
+
+  async function handleCancel() {
+    if (await handleBeforeClose()) visible.value = false;
+  }
+
+  /** 表单 ref */
+  const formRef = ref<InstanceType<typeof Form> | null>(null);
+
+  /** 表单校验规则 */
+  const rules = {
+    name: [
+      {
+        message: t('文件名仅支持数字、字母、下划线(_)、中划线(-)、点(.)'),
+        trigger: 'blur',
+        validator: (val: string) => BKMS_REGEX.appConfigFileNameRegex.test(val),
+      },
+    ],
+    mountDir: createMountDirRules(t),
+    mountedEnvNames: [
+      {
+        required: true,
+        message: t('挂载环境不能为空'),
+        trigger: 'blur',
+        validator: () => formData.scope !== 'envs' || formData.mountedEnvNames.length > 0,
+      },
+    ],
+  };
+
+  function handleScopeChange(scope: MountScope) {
+    if (scope === 'all') formRef.value?.clearValidate('mountedEnvNames');
+  }
+
+  // 挂载环境由自定义组件承载，bkui Form 无法感知其变更触发校验，满足校验条件时手动清除错误提示
+  watch(
+    () => [formData.scope, formData.mountedEnvNames.length] as const,
+    ([scope, envCount]) => {
+      if (scope === 'envs' && envCount > 0) formRef.value?.clearValidate('mountedEnvNames');
+    },
+  );
+
+  /** 校验表单并触发 submit 事件 */
+  async function handleSubmit() {
+    const valid = await formRef.value
+      ?.validate()
+      .then(() => true)
+      .catch(() => false);
+    if (!valid) return;
+
+    emit('submit', {
+      enableEnvVarRender: formData.enableEnvVarRender,
+      // 落库前归一化（合并重复斜杠、去掉末尾斜杠），与预览展示保持一致
+      mountDir: normalizeMountDir(formData.mountDir),
+      // 全部环境不传该字段；指定环境时传所选环境名集合。
+      mountedEnvNames: formData.scope === 'all' ? undefined : [...formData.mountedEnvNames],
+      name: formData.name,
+    });
+  }
+
+  // 每次打开抽屉时重置表单为默认值
+  watch(
+    () => props.isShow,
+    value => {
+      if (!value) return;
+      withPausedWatch(() => {
+        Object.assign(formData, {
+          enableEnvVarRender: false,
+          mountDir: '',
+          mountedEnvNames: [],
+          name: '',
+          scope: 'all',
+        });
+      });
+      forceCleanDirtyTag();
+    },
+  );
+</script>
+
+<style lang="postcss" scoped>
+  .mount-env-form-item :deep(.bk-form-content) {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mount-env-form-item :deep(.bk-radio-group) {
+    display: contents;
+  }
+
+  .mount-env-form-item :deep(.bk-form-error) {
+    position: static;
+    order: 1;
+  }
+
+  .mount-env-form-item :deep(.bk-radio-group > :last-child) {
+    order: 2;
+  }
+
+  :deep(.bk-sideslider-footer) {
+    margin-top: 0;
+  }
+</style>

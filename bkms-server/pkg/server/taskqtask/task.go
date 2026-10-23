@@ -37,6 +37,7 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/buildpoll"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/chartbuildpoll"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/depsvcredis"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/devmoderestart"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/example"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/helmdeploypoll"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/polarisapply"
@@ -61,7 +62,7 @@ func Setup(mux *asynq.ServeMux) error {
 	// Workspace 初始化
 	mux.Handle(workspace.Initialization.Name(), workspace.Initialization.Handler())
 	// Redis 生命周期 tasks
-	if err := depsvcredis.Init(storereg.G().DepSvcInstStore); err != nil {
+	if err := depsvcredis.Init(storereg.G().DB); err != nil {
 		return errors.Wrap(err, "init depsvcredis")
 	}
 	mux.Handle(depsvcredis.CreateTask.Name(), depsvcredis.CreateTask.Handler())
@@ -74,6 +75,8 @@ func Setup(mux *asynq.ServeMux) error {
 	// 告警策略同步/清理 tasks
 	mux.Handle(alertstrategysync.SyncTask.Name(), alertstrategysync.SyncTask.Handler())
 	mux.Handle(alertstrategysync.CleanupTask.Name(), alertstrategysync.CleanupTask.Handler())
+	// 开发模式进程重启
+	mux.Handle(devmoderestart.Task.Name(), devmoderestart.Task.Handler())
 	// 示例任务
 	mux.Handle(example.ExampleTask.Name(), example.ExampleTask.Handler())
 	return nil

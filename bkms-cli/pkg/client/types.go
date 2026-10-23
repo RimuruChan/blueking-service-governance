@@ -45,11 +45,17 @@ type Client interface {
 		appID, envName string,
 		opts DevModePublishReportOptions,
 	) error
-	// ListDevModePublishRecords 获取开发模式发布记录列表
+	// ListDevModePublishRecords 获取开发模式发布记录列表（按环境名称、环境类型或记录 ID）
 	ListDevModePublishRecords(
 		ctx context.Context,
-		appID, envName, keyword string,
-	) ([]DevModePublishRecord, error)
+		appID string, query DevModePublishRecordsQuery,
+	) ([]DevModePublishRecord, int64, error)
+	// RestartDevModeProcesses 开发模式进程重启
+	RestartDevModeProcesses(
+		ctx context.Context,
+		appID string,
+		opts DevModeRestartOptions,
+	) (*DevModeRestartData, error)
 
 	// ---------- 工作空间 ----------
 

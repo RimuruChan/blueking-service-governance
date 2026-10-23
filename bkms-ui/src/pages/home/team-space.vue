@@ -44,7 +44,7 @@
             class="w-[552px]"
             :maxlength="24"
             :minlength="2"
-            :placeholder="rules.name[0].message"
+            :placeholder="rules.id[1].message"
           />
         </Form.FormItem>
         <Form.FormItem
@@ -152,6 +152,7 @@
         </Form.FormItem>
         <ColRadio
           v-model="repositoryType"
+          class="image-repository-options"
           :data="imageGitList"
         >
           <template #current>
@@ -222,6 +223,12 @@
                 </div>
               </div>
             </div>
+            <Alert
+              v-else
+              class="my-[8px]"
+              theme="warning"
+              :title="$t('平台提供的镜像仓库资源有限，不适合大规模镜像拉取，请谨慎选择。')"
+            />
           </template>
         </ColRadio>
       </Form>
@@ -247,7 +254,7 @@
 <script lang="ts" setup>
   import { computed, reactive, ref, watch } from 'vue';
 
-  import { Button, Form, Input, Message, Popover, Select, Sideslider } from 'bkui-vue';
+  import { Alert, Button, Form, Input, Message, Popover, Select, Sideslider } from 'bkui-vue';
   import { cloneDeep } from 'lodash-es';
   import { useI18n } from 'vue-i18n';
   import { BCSProjectOutput } from '~/@types/v1/bkintegrations-bcs';
@@ -300,16 +307,16 @@
       value: 'external' | 'system';
     }[] => [
       {
-        value: 'system',
-        name: t('新建'),
-        tips: t('在容器项目{0}的制品库中新建名为 repo 的 docker 仓库', [
-          `${formData.bkCIProjectID ? `（${formData.bkCIProjectID}）` : ''}`,
-        ]),
+        value: 'external',
+        name: t('绑定已有镜像仓库'),
         isHideIcon: true,
       },
       {
-        value: 'external',
-        name: t('绑定已有镜像仓库'),
+        value: 'system',
+        name: t('使用平台镜像仓库'),
+        tips: t('在容器项目{0}的制品库中新建名为 repo 的 docker 仓库', [
+          `${formData.bkCIProjectID ? `（${formData.bkCIProjectID}）` : ''}`,
+        ]),
         isHideIcon: true,
       },
     ],
@@ -351,9 +358,14 @@
   };
   const formData = reactive<FormData>(cloneDeep(defaultData));
   const { confirmBox, forceCleanDirtyTag, withPausedWatch } = useLeaveConfirm(formData);
-  const repositoryType = ref<'external' | 'system'>('system');
+  const repositoryType = ref<'external' | 'system'>('external');
   const rules = {
-    name: [
+    id: [
+      {
+        validator: () => !(formData.id || '').endsWith('-'),
+        message: t('不能以中划线结尾'),
+        trigger: 'blur',
+      },
       {
         validator: () => BKMS_REGEX.spaceNameRegex.test(formData.id || ''),
         message: t('请输入 1-27 字符的空间 ID，由小写字母、数字、中划线组成，以小写字母开头，提交后不可修改'),
@@ -469,11 +481,6 @@
             message: t('空间创建成功'),
           });
         });
-      } else {
-        Message({
-          theme: 'error',
-          message: t('空间创建失败'),
-        });
       }
     } finally {
       isLoading.value = false;
@@ -508,6 +515,7 @@
   // 重置数据
   watch(isShow, () => {
     if (!isShow.value) {
+      repositoryType.value = 'external';
       withPausedWatch(() => {
         // 重置数据
         Object.assign(formData, cloneDeep(defaultData));
@@ -520,6 +528,11 @@
 </script>
 
 <style lang="postcss" scoped>
+  .image-repository-options :deep(.bk-radio-label) {
+    min-width: 0;
+    white-space: normal;
+  }
+
   :deep(.bk-form-label) {
     font-size: 12px;
   }

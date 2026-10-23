@@ -37,6 +37,9 @@ import (
 	publishplugin "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/watch/plugin/publish"
 )
 
+// Watch 基础层通过 PodSource 读集群 Pod；断言放在组装处，避免 infras 反向依赖 workload
+var _ watch.PodSource = (*k8sclient.PodClient)(nil)
+
 // WatchAppInstances 订阅应用实例投影变更（SSE）
 // 本函数只做编排：绑定参数、鉴权取部署记录、从续传位点起推增量
 //
@@ -123,16 +126,12 @@ func (h *Handler) newWatchManager(clusterID, appID, envName string) *watch.Manag
 	return watch.NewManager(
 		k8sclient.NewPodClient(cluster.NewConfig(clusterID)),
 		polarisplugin.New(func(ctx context.Context) ([]*polaris.PolarisServiceInstances, error) {
-			mgr := polaris.NewPolarisPlatformManager(
-				h.registry.DepSvcStore,
-				h.registry.DepSvcInstStore,
-				h.registry.PolarisConfigStore,
-			)
+			mgr := polaris.NewPolarisPlatformManager(h.registry.DB)
 			return mgr.ListPolarisServiceInstances(ctx, appID, envName)
 		}),
 		publishplugin.New(
 			func(ctx context.Context, instanceIDs []string) (map[string]*devmode.PublishRecord, error) {
-				return h.registry.PublishRecordStore.ListLatestByInstance(ctx, appID, envName, instanceIDs)
+				return devmode.ListLatestByInstance(ctx, h.registry.DB, appID, envName, instanceIDs)
 			},
 		),
 	)

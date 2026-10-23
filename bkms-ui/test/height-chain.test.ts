@@ -22,7 +22,7 @@ import { mount } from '@vue/test-utils';
 import { createPinia } from 'pinia';
 import { describe, expect, it, vi } from 'vitest';
 import AppDetailShell from '~/pages/application/detail.vue';
-import FrameworkConfig from '~/pages/application/detail/app-config/framework-config.vue';
+import ConfigFiles from '~/pages/application/detail/app-config/config-files.vue';
 import AppConfigIndex from '~/pages/application/detail/app-config/index.vue';
 import AppDetailObservation from '~/pages/application/detail/observation.vue';
 
@@ -40,48 +40,9 @@ import AppDetailObservation from '~/pages/application/detail/observation.vue';
 // ── 重依赖 mock：掐断 API / store / router / i18n 链，页面 mount 只为得到真实模板 DOM ──
 // （jsdom 环境垫片 ResizeObserver / PointerEvent 在 test/setup.ts，经 setupFiles 先于组件加载执行）
 
-vi.mock('~/api/modules/bkmsserver', () => ({
-  ApiServerService: {
-    ListApps: vi.fn().mockResolvedValue([]),
-    GetWorkspace: vi.fn().mockResolvedValue(undefined),
-    GetApp: vi.fn().mockResolvedValue(undefined),
-    // observation.vue fetchApmData 会调用；当前测试环境 store 为空靠前置 guard 短路，
-    // 此处显式 stub，避免未来 guard 调整后以 TypeError 形式挂掉
-    GetApmServiceName: vi.fn().mockResolvedValue(null),
-  },
-}));
-
-// v1 API 模块导出大量 service 且部分子组件在顶层 .bind() 引用：
-// 用自相似 Proxy 兜底——任意导出名均得到可调用、可 bind 的节点（测试路径不触达其返回值）。
-// 注意：symbol/then/__esModule 必须透传 undefined，否则 vi.mock 的 await 会把 factory
-// 结果误判为 thenable 导致 vitest 挂死；模块层须为 object（vitest 校验 factory 返回值）
-vi.mock('~/api/modules/v1', () => {
-  const makeNode = (): unknown =>
-    new Proxy(function stub() {} as unknown as Record<PropertyKey, unknown>, {
-      get: (target, prop) => {
-        if (typeof prop === 'symbol' || prop === 'then' || prop === '__esModule' || prop === 'default') {
-          return undefined;
-        }
-        if (!(prop in target)) {
-          target[prop] = makeNode();
-        }
-        return target[prop];
-      },
-      apply: () => Promise.resolve(undefined),
-    });
-  const moduleCache: Record<PropertyKey, unknown> = {};
-  return new Proxy(moduleCache, {
-    get: (target, prop) => {
-      if (typeof prop === 'symbol' || prop === 'then' || prop === '__esModule') {
-        return undefined;
-      }
-      if (!(prop in target)) {
-        target[prop] = makeNode();
-      }
-      return target[prop];
-    },
-  });
-});
+// API mock 工厂见 helpers/mock-api.ts（§3.7 共享 helpers；同款 mock 亦用于 app-detail-shell）
+vi.mock('~/api/modules/bkmsserver', async () => (await import('./helpers/mock-api')).bkmsserverShellMockFactory());
+vi.mock('~/api/modules/v1', async () => (await import('./helpers/mock-api')).v1ProxyMockFactory());
 
 vi.mock('vue-router', () => {
   const currentRoute = ref({ params: {}, query: {}, name: '' });
@@ -94,6 +55,11 @@ vi.mock('vue-router', () => {
       replace: vi.fn().mockResolvedValue(undefined),
       currentRoute,
     }),
+    // 路由守卫导出：detail.vue:134 的 onBeforeRouteUpdate 在真实包里要求
+    // 「router-view 子组件」上下文，mount 直挂壳层不存在该上下文 → no-op
+    onBeforeRouteUpdate: vi.fn(),
+    onBeforeRouteLeave: vi.fn(),
+    onBeforeRouteEnter: vi.fn(),
   };
 });
 
@@ -130,7 +96,7 @@ function mountOptions(extraStubs: Record<string, boolean | { template: string }>
         RouterView: { template: '<div data-test="router-view" />' },
         // <component :is> 动态组件 shallow 拦不住，显式封住三个子页
         DeployConfig: true,
-        FrameworkConfig: true,
+        ConfigFiles: true,
         EnvVariable: true,
         // 宿主容器藏在多层 slot 里，透传渲染
         Skeleton: { template: '<div data-test="skeleton"><slot /></div>' },
@@ -184,18 +150,21 @@ describe('高度链契约（关键页面的高度角色声明）', () => {
     wrapper.unmount();
   });
 
-  it('框架配置文件 framework-config.vue：根容器声明 flex h-full min-h-0 flex-col', () => {
-    const wrapper = mount(FrameworkConfig, mountOptions());
-    expect(wrapper.classes(), '框架配置页根容器必须撑满父级并允许收缩').toEqual(
-      expect.arrayContaining(['flex', 'flex-col', 'h-full', 'min-h-0']),
+  it('配置文件 config-files.vue：根容器声明 h-full min-h-0', () => {
+    const wrapper = mount(ConfigFiles, mountOptions());
+    expect(wrapper.classes(), '配置文件页根容器必须撑满父级并允许收缩').toEqual(
+      expect.arrayContaining(['h-full', 'min-h-0']),
     );
     wrapper.unmount();
   });
 
-  it('框架配置文件 framework-config.vue：编辑器宿主区声明 flex-1 + min-h-0（Monaco 高度链收口环）', () => {
-    const wrapper = mount(FrameworkConfig, mountOptions());
-    const host = wrapper.find('div.flex-1.min-h-0');
-    expect(host.exists(), '编辑器宿主区必须存在且声明 flex-1 min-h-0').toBe(true);
+  it('配置文件 config-files.vue：分栏容器声明 h-full min-h-0', () => {
+    const wrapper = mount(ConfigFiles, mountOptions());
+    const layout = wrapper.find('resize-layout-stub');
+    expect(layout.exists(), '配置文件分栏容器必须存在').toBe(true);
+    expect(layout.classes(), '配置文件分栏容器必须撑满父级并允许收缩').toEqual(
+      expect.arrayContaining(['h-full', 'min-h-0']),
+    );
     wrapper.unmount();
   });
 });

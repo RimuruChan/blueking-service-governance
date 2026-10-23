@@ -1,8 +1,0 @@
-# 错误用例：type=helm 时缺少 helmSpec 段
-name: my-helm-app
-type: helm
-
-buildConfig:
-  sourceType: imageRegistry
-  imageBuildConfig:
-    name: example.com/myns/my-helm-app

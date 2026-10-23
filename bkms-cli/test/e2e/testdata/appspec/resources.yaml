@@ -1,5 +1,0 @@
-replicas: 1
-cpuRequests: "0.1"
-cpuLimits: "1"
-memoryRequests: "50Mi"
-memoryLimits: "1Gi"

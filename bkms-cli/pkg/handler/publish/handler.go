@@ -99,6 +99,14 @@ func (h *Publisher) PreCheck(instanceIDs []string, publishAll bool) error {
 	if preflight.DevMode == nil {
 		return errors.New("server returned empty devMode config")
 	}
+	// 兜底：路径缺失时拼出的 /bin、/restart.sh 位于容器根目录，继续执行只会得到难以排查的 exit code 127
+	if preflight.DevMode.WorkPath == "" || preflight.DevMode.MountPath == "" {
+		return errors.Errorf(
+			"server returned incomplete devMode config for app %s env %s (workPath=%q, mountPath=%q), "+
+				"please run `bkms-cli app appspec dev-mode enable --app %s --env %s` and retry",
+			h.appID, h.envName, preflight.DevMode.WorkPath, preflight.DevMode.MountPath, h.appID, h.envName,
+		)
+	}
 	// WorkPath 由 server 端根据应用类型（trpc/taf）返回，如 /data/bkms/dev-mode/trpc 或 /data/bkms/dev-mode/taf
 	h.devModeBinPath = osfilepath.Join(preflight.DevMode.WorkPath, "/bin")
 	h.restartScriptPath = osfilepath.Join(preflight.DevMode.MountPath, "/restart.sh")

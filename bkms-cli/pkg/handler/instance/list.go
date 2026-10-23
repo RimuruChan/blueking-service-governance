@@ -42,6 +42,8 @@ func ListInstances(
 		listOpts := client.ListAppInstancesOptions{
 			Page:     page,
 			PageSize: client.DefaultListAppInstancesPageSize,
+			PodIPs:   opts.PodIPs,
+			NodeIPs:  opts.NodeIPs,
 		}
 
 		resp, err := cli.ListAppInstances(ctx, appID, envName, listOpts)
@@ -59,6 +61,8 @@ func ListInstances(
 			"page", listOpts.Page,
 			"pageSize", listOpts.PageSize,
 			"statusFilter", opts.Status,
+			"podIPFilter", opts.PodIPs,
+			"nodeIPFilter", opts.NodeIPs,
 			"resultsCount", len(resp.Results),
 			"totalCount", resp.Count,
 		)

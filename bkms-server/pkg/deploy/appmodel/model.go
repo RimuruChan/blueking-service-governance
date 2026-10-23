@@ -26,6 +26,8 @@ import (
 	"github.com/TencentBlueKing/gopkg/collection/set"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/batchrelease"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/releasestrategy"
 	k8sworkload "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/kubernetes/workload"
 )
 
@@ -90,6 +92,9 @@ const (
 	StatusFailed Status = "failed"
 	// StatusCanceled 取消部署（用户取消：部署中时重新部署，自动取消之前的部署）
 	StatusCanceled Status = "canceled"
+	// StatusRolledBack 分批发布已回滚：Kourse 完全回滚后所有 Pod 恢复旧版本，
+	// 但工作负载 spec 与部署记录中的镜像仍为本次部署的新版本
+	StatusRolledBack Status = "rolled-back"
 
 	// StatusPollingTimeout 轮询超时
 	StatusPollingTimeout Status = "polling-timeout"
@@ -103,7 +108,8 @@ func (s Status) IsStable() bool {
 	case StatusDeployed,
 		StatusUninstalled,
 		StatusFailed,
-		StatusCanceled:
+		StatusCanceled,
+		StatusRolledBack:
 		return true
 	case StatusPollingTimeout,
 		StatusPollingBroken:
@@ -122,9 +128,13 @@ const (
 	// 部署记录 Extras 字段 key
 	// ExtraKeyDeploySource 标记本次部署记录的来源
 	ExtraKeyDeploySource = "deploySource"
-	// ExtraKeyBuildBranch 记录触发本次部署的代码分支
+	// ExtraKeyBuildBranch 记录触发本次部署的代码分支，仅按分支检出时写入
 	ExtraKeyBuildBranch = "buildBranch"
-	// ExtraKeyBuildCommitID 记录触发本次部署的提交 ID
+	// ExtraKeyBuildRevisionType 记录代码来源类型 branch / tag / commit
+	ExtraKeyBuildRevisionType = "buildRevisionType"
+	// ExtraKeyBuildRevision 记录分支名、Tag 名或 CommitID
+	ExtraKeyBuildRevision = "buildRevision"
+	// ExtraKeyBuildCommitID 记录构建完成后的提交哈希，与检出用的修订不是同一字段
 	ExtraKeyBuildCommitID = "buildCommitID"
 )
 
@@ -136,9 +146,59 @@ const (
 	DeploySourceDirectDeploy = "directDeploy"
 )
 
+// ReleaseMode 发布方式
+type ReleaseMode string
+
+const (
+	// ReleaseModeAll 一次更新全部实例；存量部署记录未写入发布方式，同样视为该值
+	ReleaseModeAll ReleaseMode = "all"
+	// ReleaseModeBatch 按发布策略分批更新（Kourse Rollout Canary）
+	ReleaseModeBatch ReleaseMode = "batch"
+)
+
+// ReleaseStrategySnapshot 发起分批发布时所用发布策略的快照；
+// 策略后续被修改或删除不影响已发起的发布，进度查询以快照为准
+type ReleaseStrategySnapshot struct {
+	// ID 策略 ID
+	ID string `bson:"id"`
+	// Name 策略名称
+	Name string `bson:"name"`
+	// Batches 下发时的批次
+	Batches []releasestrategy.Batch `bson:"batches"`
+}
+
+// BatchProgress 分批发布进度，由部署轮询任务读取 Rollout CR 状态后写入
+type BatchProgress struct {
+	// CurrentBatchIndex 当前批次序号，从 0 开始，-1 表示回滚。
+	// 发布尚未进入批次、或全部批次走完后 stepStatus 被清空，此时为 nil，必须和 0 区分
+	CurrentBatchIndex *int64 `bson:"currentBatchIndex,omitempty"`
+	// BatchPhase 当前批次状态
+	BatchPhase batchrelease.BatchPhase `bson:"batchPhase"`
+	// RolloutPhase Rollout 原始 phase
+	RolloutPhase string `bson:"rolloutPhase"`
+	// Message Rollout 提示信息
+	Message string `bson:"message"`
+	// PauseStartTime 当前批次暂停开始时间（未暂停时为空）
+	PauseStartTime *time.Time `bson:"pauseStartTime,omitempty"`
+	// UpdatedReplicas 已更新为新版本的实例数
+	UpdatedReplicas int32 `bson:"updatedReplicas"`
+	// Replicas 总实例数
+	Replicas int32 `bson:"replicas"`
+	// OldImageTag 旧镜像标签
+	OldImageTag string `bson:"oldImageTag"`
+	// NewImageTag 新镜像标签
+	NewImageTag string `bson:"newImageTag"`
+}
+
 // BuildAutoDeployInfo 表示构建阶段透传到部署记录中的构建信息快照。
 type BuildAutoDeployInfo struct {
-	Branch   string
+	// Branch 兼容字段，仅按分支检出时有值
+	Branch string
+	// RevisionType 代码来源类型 branch / tag / commit
+	RevisionType string
+	// Revision 分支名、Tag 名或 CommitID
+	Revision string
+	// CommitID 构建完成后的提交哈希
 	CommitID string
 }
 
@@ -149,6 +209,12 @@ func NewBuildAutoDeployExtras(info *BuildAutoDeployInfo) map[string]string {
 	}
 	extras := map[string]string{
 		ExtraKeyDeploySource: DeploySourceBuildAutoDeploy,
+	}
+	if info.RevisionType != "" {
+		extras[ExtraKeyBuildRevisionType] = info.RevisionType
+	}
+	if info.Revision != "" {
+		extras[ExtraKeyBuildRevision] = info.Revision
 	}
 	if info.Branch != "" {
 		extras[ExtraKeyBuildBranch] = info.Branch
@@ -193,6 +259,13 @@ type Record struct {
 	// ResourceKeys 本次部署关联的资源
 	ResourceKeys ResourceKeys `bson:"resourceKeys"`
 
+	// ReleaseMode 发布方式，为空时视为一次更新全部（存量记录无需迁移），读取时使用 GetReleaseMode
+	ReleaseMode ReleaseMode `bson:"releaseMode,omitempty"`
+	// ReleaseStrategy 分批发布所用策略的快照，仅分批发布时有值
+	ReleaseStrategy *ReleaseStrategySnapshot `bson:"releaseStrategy,omitempty"`
+	// BatchProgress 分批发布进度，仅分批发布时有值
+	BatchProgress *BatchProgress `bson:"batchProgress,omitempty"`
+
 	// Message 部署相关信息
 	Message string `bson:"message"`
 	// Status 部署状态
@@ -230,4 +303,21 @@ func (r *Record) MainWorkload() (kind, name string) {
 		return "", ""
 	}
 	return kind, r.ResourceKeys.NameByKind(kind)
+}
+
+// GetReleaseMode 返回发布方式，未写入时（存量记录）视为一次更新全部
+func (r *Record) GetReleaseMode() ReleaseMode {
+	if r.ReleaseMode == "" {
+		return ReleaseModeAll
+	}
+	return r.ReleaseMode
+}
+
+// IsBatchReleasing 判断是否处于分批发布中：发布方式为分批且状态为部署中。
+// 对环境 / 泳道的最新部署记录调用，用于拦截与分批发布冲突的操作；没有部署记录（nil）时返回 false。
+func (r *Record) IsBatchReleasing() bool {
+	if r == nil {
+		return false
+	}
+	return r.GetReleaseMode() == ReleaseModeBatch && r.Status == StatusDeploying
 }

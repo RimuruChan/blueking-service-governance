@@ -67,30 +67,26 @@ func (h *Handler) ListAppConfigFileVersions(c *gin.Context) {
 		return
 	}
 
-	opts, err := queryInput.ToVersionListOptions(app.ID)
+	filter, err := queryInput.ToVersionListOpt()
 	if err != nil {
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidArgument, "parse appConfigFileID"))
 		return
 	}
 
-	acfService := appcfg.NewAppConfigFileService(
-		h.registry.AppConfigFileStore,
-		h.registry.AppConfigFileDefStore,
-		h.registry.AppConfigFileVersionStore,
-	)
-	versions, total, err := acfService.ListVersions(ctx, opts)
+	acfService := appcfg.NewAppConfigFileService(h.registry.DB)
+	versions, err := acfService.ListVersions(ctx, app.ID, queryInput.Page, queryInput.PageSize, filter)
 	if err != nil {
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "list app config file versions"))
 		return
 	}
 
-	items := make([]*serializer.AppConfigFileVersionOutputObj, 0, len(versions))
-	for _, version := range versions {
+	items := make([]*serializer.AppConfigFileVersionOutputObj, 0, len(versions.Items))
+	for _, version := range versions.Items {
 		items = append(items, new(serializer.AppConfigFileVersionOutputObj).FromModel(version))
 	}
 	ginutils.OK(c, serializer.ListAppConfigFileVersionsOutput{
 		Data: &serializer.PaginatedAppConfigFileVersionOutputObjs{
-			Count:   total,
+			Count:   versions.Total,
 			Results: items,
 		},
 	})
@@ -130,9 +126,7 @@ func (h *Handler) GetAppConfigFileVersion(c *gin.Context) {
 	}
 
 	acfService := appcfg.NewAppConfigFileService(
-		h.registry.AppConfigFileStore,
-		h.registry.AppConfigFileDefStore,
-		h.registry.AppConfigFileVersionStore,
+		h.registry.DB,
 	)
 	version, err := acfService.GetVersionByAppAndID(ctx, app.ID, id)
 	if err != nil {
@@ -180,9 +174,7 @@ func (h *Handler) CompareAppConfigFileVersions(c *gin.Context) {
 	}
 
 	acfService := appcfg.NewAppConfigFileService(
-		h.registry.AppConfigFileStore,
-		h.registry.AppConfigFileDefStore,
-		h.registry.AppConfigFileVersionStore,
+		h.registry.DB,
 	)
 	previous, current, err := acfService.CompareVersions(ctx, app.ID, previousID, currentID)
 	if err != nil {
@@ -240,16 +232,14 @@ func (h *Handler) RollbackAppConfigFileVersion(c *gin.Context) {
 	}
 
 	acfService := appcfg.NewAppConfigFileService(
-		h.registry.AppConfigFileStore,
-		h.registry.AppConfigFileDefStore,
-		h.registry.AppConfigFileVersionStore,
+		h.registry.DB,
 	)
 	targetVersion, err := acfService.GetVersionByAppAndID(ctx, app.ID, id)
 	if err != nil {
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeNotFound, "get rollback target version"))
 		return
 	}
-	acf, err := h.registry.AppConfigFileStore.GetByID(ctx, targetVersion.AppConfigFileID)
+	acf, err := h.configFiles().GetByID(ctx, targetVersion.AppConfigFileID)
 	if err != nil {
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "get app config file"))
 		return
@@ -269,6 +259,10 @@ func (h *Handler) RollbackAppConfigFileVersion(c *gin.Context) {
 		rollbackDescription,
 		input.CurrentVersion,
 	); err != nil {
+		if errors.Is(err, appcfg.ErrInvalidConfigSpec) {
+			bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidArgument, "create rollback version"))
+			return
+		}
 		if errors.Is(err, appcfg.ErrAppConfigFileVersionConflict) {
 			bkerrs.AbortWithErr(c, bkerrs.WrapAppConfigFileVersionConflict(err, app.ID, id.Hex()))
 			return
@@ -325,9 +319,7 @@ func (h *Handler) DeleteAppConfigFileVersion(c *gin.Context) {
 
 	deleter := auth.MustGetUser(ctx).ID
 	acfService := appcfg.NewAppConfigFileService(
-		h.registry.AppConfigFileStore,
-		h.registry.AppConfigFileDefStore,
-		h.registry.AppConfigFileVersionStore,
+		h.registry.DB,
 	)
 	version, _, err := acfService.DeleteVersion(ctx, app.ID, id, deleter)
 	if err != nil {
@@ -343,14 +335,13 @@ func (h *Handler) DeleteAppConfigFileVersion(c *gin.Context) {
 		return
 	}
 
-	go audit.AddOperationRecordAsync(
+	h.addAppConfigFileAudit(
 		ctx,
+		app,
+		version.EnvName,
 		audit.OperationTypeDelete,
-		audit.ResourceTypeApp,
-		app.ID,
-		audit.WithWorkspaceID(app.WorkspaceID),
-		audit.WithAppID(app.ID),
-		audit.WithDataBefore(new(serializer.AppConfigFileVersionOutputObj).FromModel(*version)),
+		new(serializer.AppConfigFileVersionOutputObj).FromModel(*version),
+		nil,
 	)
 	ginutils.OK(c, serializer.AppConfigFileEmptyOutput{})
 }

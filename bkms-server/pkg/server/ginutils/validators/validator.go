@@ -32,6 +32,9 @@ func init() {
 		if err := v.RegisterValidation("uri_slug", validateURISlug); err != nil {
 			panic("failed to register uri_slug validator: " + err.Error())
 		}
+		if err := v.RegisterValidation("mount_dir", validateMountDir); err != nil {
+			panic("failed to register mount_dir validator: " + err.Error())
+		}
 	}
 }
 
@@ -39,4 +42,11 @@ func init() {
 // 也可以被用来快速验证路径中的 AppName、EnvName 等字段（在不需要过强校验需求时推荐）。
 func validateURISlug(fl validator.FieldLevel) bool {
 	return uriSlugPattern.MatchString(fl.Field().String())
+}
+
+// validateMountDir 校验容器内挂载目录：必须是以 / 开头的绝对路径。
+// 允许 "/"：实际挂载路径还会再拼接文件名，不会把 volume 直接挂到根目录。
+func validateMountDir(fl validator.FieldLevel) bool {
+	s := fl.Field().String()
+	return len(s) >= 1 && s[0] == '/'
 }

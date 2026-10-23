@@ -1,0 +1,9 @@
+# app list 基本行为
+
+# app list 正常退出
+exec $BKMS_CLI_BIN app list
+stdout .
+
+# app list 指定不存在的 workspace 返回 null（服务端返回空数据）
+exec $BKMS_CLI_BIN app list --workspace nonexistent-workspace-xyz
+stdout 'null'

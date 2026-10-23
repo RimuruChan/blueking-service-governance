@@ -44,7 +44,7 @@
         >
           <Input
             v-model="formData.name"
-            :placeholder="rules.name[0].message"
+            :placeholder="rules.name[1].message"
           />
         </Form.FormItem>
         <Form.FormItem
@@ -210,7 +210,6 @@
   import { BKMS_REGEX } from '~/common/const';
   import useClusterSelector from '~/components/cluster-selector/use-cluster-selector';
   import { envTypeMap } from '~/composables/use-env-manager';
-  import { useErrorHandler } from '~/composables/use-error-handler';
   import useLeaveConfirm from '~/composables/use-leave-confirm';
   import { useSpaceStore } from '~/stores/space';
 
@@ -286,8 +285,13 @@
   const rules = ref({
     name: [
       {
+        validator: () => !(formData.value.name || '').endsWith('-'),
+        message: t('不能以中划线结尾'),
+        trigger: 'blur',
+      },
+      {
         validator: () => BKMS_REGEX.envNameRegex.test(formData.value.name || ''),
-        message: t('请输入 1-20 个字符小写字母、数字、中划线，以小写字母开头，提交后不可修改'),
+        message: t('请输入 1-20 个字符的小写字母、数字、中划线，以小写字母开头，提交后不可修改'),
         trigger: 'blur',
       },
     ],
@@ -349,9 +353,6 @@
         isShow.value = false;
         emit('confirm');
       });
-    } catch (err: unknown) {
-      const { handleError } = useErrorHandler();
-      handleError((err as { error: { code?: string; message?: string } }).error);
     } finally {
       isLoading.value = false;
     }

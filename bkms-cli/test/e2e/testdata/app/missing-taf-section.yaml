@@ -1,8 +1,0 @@
-# 错误用例：type=taf 时缺少 appModelSpec 段
-name: my-taf-app
-type: taf
-
-buildConfig:
-  sourceType: imageRegistry
-  imageBuildConfig:
-    name: example.com/myns/my-taf-app

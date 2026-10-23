@@ -20,15 +20,19 @@
 package handler
 
 import (
-	"errors"
+	"context"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pkg/errors"
 	"github.com/samber/lo"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/serializer"
 	envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
@@ -61,21 +65,14 @@ func (h *Handler) ListAppEnvVars(c *gin.Context) {
 		return
 	}
 
-	var am *appmodel.AppModel
-	am, err = h.registry.AppModelStore.GetAppModel(ctx, app.ID)
+	am, err := h.getEnvEffectiveAppModel(ctx, app.ID, env.Name)
 	if err != nil {
-		if !errors.Is(err, appmodel.ErrAppModelNotFound) {
-			bkerrs.AbortWithErr(
-				c,
-				bkerrs.Wrapf(err, bkerrs.ErrCodeInternalServerError, "get app model for app id=%s", app.ID),
-			)
-			return
-		}
-		am = nil
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "get env effective app model"))
+		return
 	}
 
 	reader := envvars.NewUnifiedEnvVarsReader(
-		h.registry.ScopedEnvVarStore,
+		h.registry.DB,
 		h.registry.AppDepsVarReader,
 		h.registry.PolarisVarReader,
 	)
@@ -125,7 +122,7 @@ func (h *Handler) ListEnvBgEnvVars(c *gin.Context) {
 	}
 
 	reader := envvars.NewUnifiedEnvVarsReader(
-		h.registry.ScopedEnvVarStore,
+		h.registry.DB,
 		h.registry.AppDepsVarReader,
 		h.registry.PolarisVarReader,
 	)
@@ -173,18 +170,25 @@ func (h *Handler) ListAppBgEnvVars(c *gin.Context) {
 		return
 	}
 
-	env, err := h.registry.EnvStore.GetByName(ctx, app.WorkspaceID, app.ID, uriInput.EnvName)
+	env, err := store.Of(h.registry.DB, envmodel.EnvMeta).
+		Get(ctx, envmodel.AppEnvByName(app.WorkspaceID, app.ID, uriInput.EnvName))
 	if err != nil {
 		bkerrs.AbortWithErr(c, bkerrs.Wrapf(err, bkerrs.ErrCodeNotFound, "get env by name"))
 		return
 	}
 
+	am, err := h.getEnvEffectiveAppModel(ctx, app.ID, env.Name)
+	if err != nil {
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "get env effective app model"))
+		return
+	}
+
 	reader := envvars.NewUnifiedEnvVarsReader(
-		h.registry.ScopedEnvVarStore,
+		h.registry.DB,
 		h.registry.AppDepsVarReader,
 		h.registry.PolarisVarReader,
 	)
-	bgVars, err := reader.ListAppBgVars(ctx, *env, app)
+	bgVars, err := reader.ListAppBgVars(ctx, *env, app, am)
 	if err != nil {
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "list app background env vars"))
 		return
@@ -198,4 +202,27 @@ func (h *Handler) ListAppBgEnvVars(c *gin.Context) {
 			},
 		),
 	})
+}
+
+// getEnvEffectiveAppModel returns the AppModel with the env app spec applied, the same
+// model the workload builder uses, so resource limit builtins match the container.
+// It returns nil when the app has no AppModel, e.g. Helm-based apps.
+func (h *Handler) getEnvEffectiveAppModel(
+	ctx context.Context, appID, envName string,
+) (*appmodel.AppModel, error) {
+	am, err := store.Of(h.registry.DB, appmodel.AppModelMeta).Get(ctx, appmodel.ByApp(appID))
+	if err != nil {
+		if errors.Is(err, appmodel.ErrAppModelNotFound) {
+			return nil, nil
+		}
+		return nil, errors.Wrapf(err, "get app model for app id=%s", appID)
+	}
+
+	effective, _, err := appspec.ModelForEnv(
+		ctx, h.registry.DB, appID, envName, am,
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "apply env app spec for app id=%s env=%s", appID, envName)
+	}
+	return effective, nil
 }

@@ -24,37 +24,37 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars"
 	envvartypes "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/envvars/types"
 )
 
 // Service renders env vars into import-compatible dotenv text.
 type Service struct {
-	scopedEnvVarStore envvars.ScopedEnvVarStore
-	appModelStore     appmodel.AppModelStore
-	reader            *envvars.UnifiedEnvVarsReader
+	db     *mongo.Database
+	reader *envvars.UnifiedEnvVarsReader
 }
 
 // NewService creates an export service.
 func NewService(
-	scopedEnvVarStore envvars.ScopedEnvVarStore,
-	appModelStore appmodel.AppModelStore,
+	db *mongo.Database,
 	reader *envvars.UnifiedEnvVarsReader,
 ) *Service {
 	return &Service{
-		scopedEnvVarStore: scopedEnvVarStore,
-		appModelStore:     appModelStore,
-		reader:            reader,
+		db:     db,
+		reader: reader,
 	}
 }
 
 // ExportPublic exports workspace/envType scoped vars.
 func (s *Service) ExportPublic(ctx context.Context, workspaceID string) (string, error) {
-	vars, err := s.scopedEnvVarStore.ListPublic(ctx, workspaceID)
+	vars, err := envvars.ListPublic(ctx, s.db, workspaceID)
 	if err != nil {
 		return "", err
 	}
@@ -80,8 +80,8 @@ func (s *Service) ExportPublic(ctx context.Context, workspaceID string) (string,
 // ExportEnv exports vars directly defined in the target env scope.
 // 目标环境由页面上下文提供，因此导出的 env file 不携带 scope 元数据。
 func (s *Service) ExportEnv(ctx context.Context, environment envmodel.Environment) (string, error) {
-	vars, err := s.scopedEnvVarStore.List(
-		ctx,
+	vars, err := envvars.List(
+		ctx, s.db,
 		environment.WorkspaceID,
 		envvars.WithScopes(envvartypes.ScopeEnv(environment.Name)),
 	)
@@ -103,7 +103,7 @@ func (s *Service) ExportEnv(ctx context.Context, environment envmodel.Environmen
 
 // ExportAppDefined exports app-defined env vars only.
 func (s *Service) ExportAppDefined(ctx context.Context, appID string) (string, error) {
-	vars, err := s.appModelStore.ListAppDefinedEnvVars(ctx, appID)
+	vars, err := appmodel.ListAppDefinedEnvVars(ctx, s.db, appID)
 	if err != nil {
 		if errors.Is(err, appmodel.ErrAppModelNotFound) {
 			return "", nil
@@ -129,12 +129,16 @@ func (s *Service) ExportEffectiveAppEnv(
 	app *bkmsapp.Application,
 	environment *envmodel.Environment,
 ) (string, error) {
-	am, err := s.appModelStore.GetAppModel(ctx, app.ID)
+	am, err := store.Of(s.db, appmodel.AppModelMeta).Get(ctx, appmodel.ByApp(app.ID))
 	if err != nil && !errors.Is(err, appmodel.ErrAppModelNotFound) {
 		return "", err
 	}
 	if errors.Is(err, appmodel.ErrAppModelNotFound) {
 		am = nil
+	}
+	am, _, err = appspec.ModelForEnv(ctx, s.db, app.ID, environment.Name, am)
+	if err != nil {
+		return "", err
 	}
 
 	vars, err := envvars.BuildAppEnvVars(ctx, app, am, environment, s.reader)

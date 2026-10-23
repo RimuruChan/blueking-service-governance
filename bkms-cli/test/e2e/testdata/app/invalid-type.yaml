@@ -1,8 +1,0 @@
-# 错误用例：type 值非法
-name: my-app
-type: unknown
-
-buildConfig:
-  sourceType: imageRegistry
-  imageBuildConfig:
-    name: example.com/myns/my-app

@@ -1,3 +1,0 @@
-annotations:
-  e2e-test: "true"
-  description: "appspec e2e test annotation"

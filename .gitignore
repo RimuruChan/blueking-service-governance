@@ -28,6 +28,7 @@ docs/superpowers
 !bkms-server/pkg/build/
 !bkms-server/pkg/build/build/
 !bkms-server/pkg/build/image/
+!bkms-cli/pkg/handler/build/
 !bkms-cli/cmd/app/build/
 
 # Unit test / coverage reports
@@ -69,7 +70,7 @@ bkms-server/tests/utdeps_db/mongo8/*
 test-reports/
 
 # bkms-cli E2E 测试本地环境变量
-bkms-cli/test/e2e/.env
+bkms-cli/test/e2e-script/.env
 
 # E2E BDD 测试中间产物
 e2e/node_modules/

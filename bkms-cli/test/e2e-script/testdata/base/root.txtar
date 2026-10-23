@@ -1,0 +1,17 @@
+# 根命令基本行为
+
+# 无参数时输出 help 并以 0 退出
+exec $BKMS_CLI_BIN
+stdout 'bkms-cli'
+
+# --help 输出帮助文本
+exec $BKMS_CLI_BIN --help
+stdout 'bkms-cli'
+
+# version 子命令输出版本信息
+exec $BKMS_CLI_BIN version
+stdout 'Version'
+
+# 未知子命令以非零退出
+! exec $BKMS_CLI_BIN foobar
+stderr 'unknown command'

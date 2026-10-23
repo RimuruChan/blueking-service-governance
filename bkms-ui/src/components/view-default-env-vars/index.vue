@@ -39,7 +39,7 @@
         @change="handleChange"
       >
         <Radio.Button
-          v-for="item in envList"
+          v-for="item in sortedEnvList"
           :key="item.id"
           :label="item.name"
         >
@@ -63,7 +63,7 @@
       >
         <Table
           ref="tableRef"
-          :auto-resize="false"
+          auto-resize
           :data="tableDataMatchSearch"
           :height="tableHeight"
           row-class-name="group"
@@ -83,7 +83,7 @@
           <TableColumn
             field="name"
             label="Key"
-            min-width="80"
+            min-width="140"
           >
             <template #default="{ row }">
               <div class="text-[12px] flex items-center gap-[5px]">
@@ -161,6 +161,7 @@
   import { AppEnvVarOutputObj } from '~/@types/app';
   import { useCopy } from '~/composables/use-copy';
   import { useElementHeight } from '~/composables/use-element-height';
+  import { sortEnvsByType } from '~/composables/use-env-manager';
   import { type IInputKey, useTableSearchInput } from '~/composables/use-search';
   import useTableEmpty from '~/composables/use-table-empty';
 
@@ -237,6 +238,7 @@
 
   // 当前环境
   const curEnv = ref<string>('');
+  const sortedEnvList = computed(() => sortEnvsByType(props.envList));
   const tableRef = ref();
   const loading = ref(false);
 
@@ -295,7 +297,7 @@
     () => props.envList,
     val => {
       if (val.length > 0) {
-        curEnv.value = val[0]!.name ?? '';
+        curEnv.value = sortedEnvList.value[0]?.name ?? '';
         fetchWorkspaceEnvVarList();
       }
     },

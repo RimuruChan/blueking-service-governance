@@ -1,0 +1,26 @@
+# app appspec view 聚合视图
+
+# 缺 --app 参数应退出非 0
+! exec $BKMS_CLI_BIN app appspec view
+stderr 'required flag\(s\) "app" not set'
+
+# 正常聚合视图，输出各 section 标题
+exec $BKMS_CLI_BIN app appspec view --app $BKMS_APP_ID
+stdout '=== Resources ==='
+stdout '=== Update Strategy ==='
+stdout '=== Lifecycle ==='
+
+# -o json 输出含 resources/updateStrategy/underlayIP，不含 devMode
+exec $BKMS_CLI_BIN app appspec view --app $BKMS_APP_ID -o json
+jsonhas 'resources'
+jsonhas 'updateStrategy'
+jsonhas 'underlayIP'
+! jsonhas 'devMode'
+
+# --env + -o json 含 underlayIP 和 devMode
+exec $BKMS_CLI_BIN app appspec view --app $BKMS_APP_ID --env $BKMS_ENV_NAME -o json
+jsonhas 'underlayIP'
+jsonhas 'devMode'
+
+# --env 正常退出
+exec $BKMS_CLI_BIN app appspec view --app $BKMS_APP_ID --env $BKMS_ENV_NAME

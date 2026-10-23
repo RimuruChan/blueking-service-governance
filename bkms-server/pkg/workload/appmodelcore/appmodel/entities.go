@@ -31,14 +31,15 @@ package appmodel
 import (
 	"time"
 
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/appruntime"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component"
 )
 
 const (
-	// LanguageGo 指明 trpc 应用使用 Go 语言
-	LanguageGo = "go"
-	// LanguageCpp 指明 trpc 应用使用 C++ 语言
-	LanguageCpp = "cpp"
+	// LanguageGo 指明应用使用 Go 语言
+	LanguageGo = appruntime.LanguageGo
+	// LanguageCpp 指明应用使用 C++ 语言
+	LanguageCpp = appruntime.LanguageCpp
 )
 
 const (
@@ -131,7 +132,8 @@ type AppModel struct {
 
 // Workload represents a workload definition
 type Workload struct {
-	// Type 工作负载类型，为空时默认为 tRPC
+	// Type 工作负载类型（兼容字段）。空值不得再被新规范化层视为 tRPC；
+	// 旧 plugin 注册表仍可能回退 tRPC，直到阶段 3 改分派。
 	Type string `bson:"type"`
 	// Name 工作负载名称, 通常与 App 保持一致
 	Name string `bson:"name"`
@@ -176,9 +178,14 @@ type Workload struct {
 	// TerminationGracePeriodSeconds Pod 优雅终止超时时间（秒）
 	TerminationGracePeriodSeconds *int64 `bson:"terminationGracePeriodSeconds,omitempty"`
 
-	// TrpcConfig tRPC 配置, 仅当 Type 为 tRPC 时有效
+	// FrameworkConfig 框架扩展配置，通用模型不依赖具体框架结构体。
+	FrameworkConfig map[string]any `bson:"frameworkConfig,omitempty"`
+	// FrameworkConfigVersion 描述 FrameworkConfig 的 schema 版本，初始为 1。
+	FrameworkConfigVersion int `bson:"frameworkConfigVersion,omitempty"`
+
+	// TrpcConfig 旧 tRPC 配置兼容 DTO，阶段 5 前回读仍以它为主数据之一。
 	TrpcConfig TrpcConfig `bson:"trpcConfig,omitempty"`
-	// TafConfig TAF 配置, 仅当 Type 为 TAF 时有效
+	// TafConfig 旧 TAF 配置兼容 DTO，阶段 5 前回读仍以它为主数据之一。
 	TafConfig TafConfig `bson:"tafConfig,omitempty"`
 }
 
@@ -313,15 +320,17 @@ type Variable struct {
 	UpdatedAt time.Time `bson:"updatedAt"`
 }
 
-// TrpcConfig represents tRPC config
+// TrpcConfig is the compatibility DTO for persisted tRPC framework fields.
 // NOTE: 配置文件实际内容存储于 AppConfigFile 表, 通过 appID 字段关联, appID-envName 唯一确定一个配置文件,
 //
 //	当 AppConfigFile.EnvName = "" 时, 表示应用级别的默认配置;
 //	当 AppConfigFile.EnvName != "" 时, 表示环境级别的配置, 默认为覆盖层配置，通过与默认配置合并得到最终的配置文件;
 type TrpcConfig struct {
-	// FileName tRPC 配置文件名
+	// FileName tRPC 配置文件名。
+	// todo 兼容：已迁到 framework def。字段留给未迁移文档，迁移完成后删除。
 	FileName string `bson:"fileName"`
-	// FilePath tRPC 配置文件在 workload 容器内的路径
+	// FilePath tRPC 配置文件在 workload 容器内的路径。
+	// todo 兼容：已迁到 framework def。字段留给未迁移文档，迁移完成后删除。
 	FilePath string `bson:"filePath"`
 	// FileContent tRPC 配置文件内容
 	// 配置内容已迁移到 AppConfigFile 存储，该字段仅用于计算过程中临时存储结果
@@ -330,12 +339,14 @@ type TrpcConfig struct {
 	Language string `bson:"language"`
 }
 
-// TafConfig represents TAF config
+// TafConfig is the compatibility DTO for persisted TAF framework fields.
 // NOTE: 配置文件实际内容存储于 AppConfigFile 表, 通过 appID 字段关联
 type TafConfig struct {
-	// FileName TAF 配置文件名
+	// FileName TAF 配置文件名。
+	// todo 兼容：已迁到 framework def。字段留给未迁移文档，迁移完成后删除。
 	FileName string `bson:"fileName"`
-	// FilePath TAF 配置文件在 workload 容器内的路径
+	// FilePath TAF 配置文件在 workload 容器内的路径。
+	// todo 兼容：已迁到 framework def。字段留给未迁移文档，迁移完成后删除。
 	FilePath string `bson:"filePath"`
 	// FileContent TAF 配置文件内容
 	FileContent string `bson:"fileContent"`

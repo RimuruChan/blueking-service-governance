@@ -33,6 +33,12 @@ bkms-cli app instance list --app myapp --env test -o 'jq=[.[] | select(.status =
 
 # 查看特定实例的北极星信息
 bkms-cli app instance list --app myapp --env test -o 'jq=[.[] | select(.id=="pod1") | .polarisInfos]'
+
+# 按 Pod IP 精确查找实例（可重复传入，多值取 OR）
+bkms-cli app instance list --app myapp --env test --pod-ip 10.0.0.1 --pod-ip 10.0.0.2
+
+# 查找运行在指定节点上的实例
+bkms-cli app instance list --app myapp --env test --node-ip 192.168.0.1
 ```
 
 ### 参数说明
@@ -41,6 +47,8 @@ bkms-cli app instance list --app myapp --env test -o 'jq=[.[] | select(.id=="pod
 |------|------|------|
 | `--app` | 是 | 应用 ID |
 | `--env` | 是 | 环境名称 |
+| `--pod-ip` | 否 | 按 Pod IP 精确过滤，可重复或逗号分隔 |
+| `--node-ip` | 否 | 按 Node IP 精确过滤，可重复或逗号分隔；与 `--pod-ip` 同时传时取 OR |
 | `-o, --output` | 否 | 输出格式：json / yaml / table / jq=\<expr\> |
 
 ## polaris

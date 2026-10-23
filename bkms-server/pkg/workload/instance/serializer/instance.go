@@ -21,10 +21,12 @@ package serializer
 
 import (
 	"fmt"
+	"net"
 	"slices"
 	"time"
 
 	"github.com/TencentBlueKing/gopkg/mapx"
+	"github.com/samber/lo"
 	corev1 "k8s.io/api/core/v1"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
@@ -89,11 +91,23 @@ type ListAppInstancesQueryInput struct {
 	Page *int64 `form:"page"`
 	// 每页数量，仅支持固定枚举值；分页模式必填，all=true 时禁止出现
 	PageSize *int64 `form:"pageSize"`
+	// 按 Pod IP 精确过滤，可重复传入多个值
+	PodIPs []string `form:"podIP"`
+	// 按 Node IP 精确过滤，可重复传入多个值
+	NodeIPs []string `form:"nodeIP"`
 }
 
 // Validate 校验全量与分页参数互斥，以及分页模式下的必填与取值
 // 必须在 Bind 之后单独调用：Bind 只做解析，条件校验放这里才能让 all=true 不带分页通过
 func (q *ListAppInstancesQueryInput) Validate() error {
+	// IP 过滤与全量/分页两种模式都能组合，先于模式分支校验
+	if err := validateIPs("podIP", q.PodIPs); err != nil {
+		return err
+	}
+	if err := validateIPs("nodeIP", q.NodeIPs); err != nil {
+		return err
+	}
+
 	if q.All {
 		if q.Page != nil || q.PageSize != nil {
 			return bkerrs.New(
@@ -119,6 +133,35 @@ func (q *ListAppInstancesQueryInput) Validate() error {
 		return bkerrs.New(bkerrs.ErrCodeInvalidArgument, "pageSize must be one of 5, 10, 20, 50, 100")
 	}
 	return nil
+}
+
+// validateIPs 校验 IP 过滤值均为合法 IP；精确匹配下非法值不可能命中，直接 400 比静默返回空列表更明确
+func validateIPs(field string, ips []string) error {
+	for _, ip := range ips {
+		if net.ParseIP(ip) == nil {
+			return bkerrs.Errorf(bkerrs.ErrCodeInvalidArgument, "%s %q is not a valid IP address", field, ip)
+		}
+	}
+	return nil
+}
+
+// HasIPFilter 是否带了 Pod IP 或 Node IP 过滤条件
+func (q *ListAppInstancesQueryInput) HasIPFilter() bool {
+	return len(q.PodIPs) > 0 || len(q.NodeIPs) > 0
+}
+
+// IPMatcher 返回 IP 精确匹配函数，所有过滤值之间取 OR，未带过滤条件时恒为 true
+func (q *ListAppInstancesQueryInput) IPMatcher() func(podIP, nodeIP string) bool {
+	if !q.HasIPFilter() {
+		return func(string, string) bool { return true }
+	}
+
+	podIPSet, nodeIPSet := lo.Keyify(q.PodIPs), lo.Keyify(q.NodeIPs)
+	return func(podIP, nodeIP string) bool {
+		_, podHit := podIPSet[podIP]
+		_, nodeHit := nodeIPSet[nodeIP]
+		return podHit || nodeHit
+	}
 }
 
 // ProjectionRange 返回需要投影的 [start, end) 下标
@@ -280,6 +323,14 @@ type AppInstanceResourcesObj struct {
 	MemoryRequests string `json:"memoryRequests,omitempty"`
 }
 
+// AppInstancePolarisObj 应用实例的北极星信息。
+type AppInstancePolarisObj struct {
+	// 北极星实例状态列表（一个 Pod 可能注册到多个北极星服务）
+	PolarisInfos []*PolarisInstanceInfoOutputObj `json:"polarisInfos"`
+	// 北极星权重覆盖值，未单独设置时为空字符串；对该 Pod 注册的所有北极星实例生效
+	PolarisWeightOverride string `json:"polarisWeightOverride"`
+}
+
 // AppInstanceOutputObj 单个应用实例（即一个 Pod）。
 type AppInstanceOutputObj struct {
 	// 实例 ID（即 k8s pod 的 name）
@@ -304,8 +355,8 @@ type AppInstanceOutputObj struct {
 	NodeIP string `json:"nodeIP"`
 	// 主容器资源规格（集群 Pod 实际值）
 	Resources AppInstanceResourcesObj `json:"resources"`
-	// 北极星实例状态列表（一个 Pod 可能注册到多个北极星服务）
-	PolarisInfos []*PolarisInstanceInfoOutputObj `json:"polarisInfos"`
+	// 北极星实例状态及权重覆盖配置
+	AppInstancePolarisObj
 	// 最近一次开发模式发布状态
 	LatestPublish *PublishStatusOutputObj `json:"latestPublish,omitempty"`
 }
@@ -348,6 +399,9 @@ func (o *AppInstanceOutputObj) FromPodManifest(
 
 	isHealthy := podstatus.IsReady(manifest)
 
+	// 平台侧覆盖单实例权重的唯一入口是给 Pod 打 AnnotationKeyWeight 注解
+	polarisWeightOverride := mapx.GetStr(manifest, []string{"metadata", "annotations", polaris.AnnotationKeyWeight})
+
 	*o = AppInstanceOutputObj{
 		ID:           podName,
 		DeployID:     deployID,
@@ -360,6 +414,8 @@ func (o *AppInstanceOutputObj) FromPodManifest(
 		IsHealthy:    isHealthy,
 		Age:          timex.CalcAge(mapx.GetStr(manifest, "metadata.creationTimestamp")),
 		Resources:    resources,
+
+		AppInstancePolarisObj: AppInstancePolarisObj{PolarisWeightOverride: polarisWeightOverride},
 	}
 	return o, nil
 }

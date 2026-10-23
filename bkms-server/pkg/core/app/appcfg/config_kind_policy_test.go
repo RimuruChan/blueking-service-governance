@@ -19,6 +19,8 @@
 package appcfg_test
 
 import (
+	"errors"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -53,9 +55,97 @@ var _ = Describe("FrameworkPolicy", func() {
 		})
 	})
 
-	Describe("GetEnvInstanceStrategy", func() {
-		It("should return overlay strategy", func() {
-			Expect(policy.GetEnvInstanceStrategy()).To(Equal(appcfg.EnvInstanceStrategyOverlay))
+	Describe("ValidateCreateParams", func() {
+		It("should reject disable enableEnvVarRender", func() {
+			enableEnvVarRender := false
+			err := policy.ValidateCreateParams(appcfg.CreateCfgFileParams{
+				EnableEnvVarRender: &enableEnvVarRender,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("enableEnvVarRender"))
+		})
+
+		It("should reject mountedEnvNames", func() {
+			mountedEnvNames := []string{"prod"}
+			err := policy.ValidateCreateParams(appcfg.CreateCfgFileParams{
+				MountedEnvNames: &mountedEnvNames,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("mountedEnvNames"))
+		})
+
+		DescribeTable("should reject a mount dir unless the app type allows it",
+			func(appType string) {
+				err := policy.ValidateCreateParams(appcfg.CreateCfgFileParams{
+					AppType:  appType,
+					MountDir: "/etc/a",
+				})
+				Expect(err).To(HaveOccurred())
+				Expect(errors.Is(err, appcfg.ErrInvalidConfigSpec)).To(BeTrue())
+				Expect(err.Error()).To(ContainSubstring("mountDir"))
+			},
+			Entry("helm", "helm"),
+			Entry("agones", "agones"),
+			Entry("empty app type", ""),
+		)
+
+		DescribeTable("should allow a framework file to set a mount dir",
+			func(appType string) {
+				Expect(policy.ValidateCreateParams(appcfg.CreateCfgFileParams{
+					AppType:  appType,
+					MountDir: "/usr/local/trpc/bin",
+				})).To(Succeed())
+			},
+			Entry("trpc", "trpc"),
+			Entry("taf", "taf"),
+		)
+	})
+
+	Describe("InitializeEnvConfigMode", func() {
+		It("should initialize overwrite strategy for trpc framework", func() {
+			mode := &appcfg.EnvConfigMode{}
+			policy.InitializeEnvConfigMode(mode, appcfg.CreateCfgFileParams{AppType: "trpc"})
+			Expect(mode.EnvContentStrategy).To(Equal(appcfg.EnvContentStrategyOverwrite))
+		})
+
+		It("should initialize overlay strategy for helm framework", func() {
+			mode := &appcfg.EnvConfigMode{}
+			policy.InitializeEnvConfigMode(mode, appcfg.CreateCfgFileParams{AppType: "helm"})
+			Expect(mode.EnvContentStrategy).To(Equal(appcfg.EnvContentStrategyOverlay))
+		})
+	})
+
+	Describe("GetEnvContentStrategy", func() {
+		It("should return persisted strategy from framework def", func() {
+			strategy, err := policy.GetEnvContentStrategy(&appcfg.AppConfigFileDef{
+				ConfigKind: appcfg.ConfigKindFramework,
+				EnvConfigMode: appcfg.EnvConfigMode{
+					EnvContentStrategy: appcfg.EnvContentStrategyOverwrite,
+				},
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(strategy).To(Equal(appcfg.EnvContentStrategyOverwrite))
+		})
+
+		It("should reject empty persisted framework strategy", func() {
+			_, err := policy.GetEnvContentStrategy(&appcfg.AppConfigFileDef{
+				ConfigKind:         appcfg.ConfigKindFramework,
+				EnvConfigMode:      appcfg.EnvConfigMode{},
+				EnableEnvVarRender: true,
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("envContentStrategy"))
+		})
+
+		It("should reject invalid persisted framework strategy", func() {
+			_, err := policy.GetEnvContentStrategy(&appcfg.AppConfigFileDef{
+				ConfigKind: appcfg.ConfigKindFramework,
+				EnvConfigMode: appcfg.EnvConfigMode{
+					EnvContentStrategy: "invalid",
+				},
+			})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("envContentStrategy"))
 		})
 	})
 
@@ -68,15 +158,45 @@ var _ = Describe("FrameworkPolicy", func() {
 		})
 	})
 
+	Describe("AllowNameUpdate", func() {
+		It("should not allow renaming a trpc framework file", func() {
+			Expect(policy.AllowNameUpdate("trpc")).To(BeFalse())
+		})
+
+		It("should allow renaming taf and helm framework files", func() {
+			Expect(policy.AllowNameUpdate("taf")).To(BeTrue())
+			Expect(policy.AllowNameUpdate("helm")).To(BeTrue())
+			Expect(policy.AllowNameUpdate("")).To(BeTrue())
+		})
+	})
+
 	Describe("AllowMountDirUpdate", func() {
-		It("should not allow mount dir update", func() {
-			Expect(policy.AllowMountDirUpdate()).To(BeFalse())
+		It("should not allow mount dir update for helm", func() {
+			Expect(policy.AllowMountDirUpdate("helm")).To(BeFalse())
+			Expect(policy.AllowMountDirUpdate("")).To(BeFalse())
+		})
+
+		It("should allow mount dir update for trpc and taf", func() {
+			Expect(policy.AllowMountDirUpdate("trpc")).To(BeTrue())
+			Expect(policy.AllowMountDirUpdate("taf")).To(BeTrue())
+		})
+	})
+
+	Describe("AllowMountedEnvNamesUpdate", func() {
+		It("should not allow mountedEnvNames update", func() {
+			Expect(policy.AllowMountedEnvNamesUpdate()).To(BeFalse())
 		})
 	})
 
 	Describe("AllowEnableEnvVarRenderUpdate", func() {
 		It("should not allow enableEnvVarRender update", func() {
 			Expect(policy.AllowEnableEnvVarRenderUpdate()).To(BeFalse())
+		})
+	})
+
+	Describe("AllowEnvContentStrategyUpdate", func() {
+		It("should allow envContentStrategy update", func() {
+			Expect(policy.AllowEnvContentStrategyUpdate()).To(BeTrue())
 		})
 	})
 
@@ -189,9 +309,37 @@ var _ = Describe("PlainPolicy", func() {
 		})
 	})
 
+	Describe("AllowMountedEnvNamesUpdate", func() {
+		It("should allow mountedEnvNames update", func() {
+			Expect(policy.AllowMountedEnvNamesUpdate()).To(BeTrue())
+		})
+	})
+
 	Describe("AllowEnableEnvVarRenderUpdate", func() {
 		It("should allow enableEnvVarRender update", func() {
 			Expect(policy.AllowEnableEnvVarRenderUpdate()).To(BeTrue())
+		})
+	})
+
+	Describe("AllowEnvContentStrategyUpdate", func() {
+		It("should reject envContentStrategy update", func() {
+			Expect(policy.AllowEnvContentStrategyUpdate()).To(BeFalse())
+		})
+	})
+
+	Describe("InitializeEnvConfigMode", func() {
+		It("should not write persisted strategy for plain config", func() {
+			mode := &appcfg.EnvConfigMode{}
+			policy.InitializeEnvConfigMode(mode, appcfg.CreateCfgFileParams{AppType: "trpc"})
+			Expect(mode.EnvContentStrategy).To(BeEmpty())
+		})
+	})
+
+	Describe("GetEnvContentStrategy", func() {
+		It("should always return overwrite strategy", func() {
+			strategy, err := policy.GetEnvContentStrategy(nil)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(strategy).To(Equal(appcfg.EnvContentStrategyOverwrite))
 		})
 	})
 

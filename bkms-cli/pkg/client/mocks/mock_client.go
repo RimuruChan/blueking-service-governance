@@ -2026,155 +2026,6 @@ func (_c *MockClient_DevModePublishPreflight_Call) RunAndReturn(run func(ctx con
 	return _c
 }
 
-// ReportDevModePublish provides a mock function for the type MockClient
-func (_mock *MockClient) ReportDevModePublish(ctx context.Context, appID string, envName string, opts client.DevModePublishReportOptions) error {
-	ret := _mock.Called(ctx, appID, envName, opts)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ReportDevModePublish")
-	}
-
-	var r0 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, client.DevModePublishReportOptions) error); ok {
-		r0 = returnFunc(ctx, appID, envName, opts)
-	} else {
-		r0 = ret.Error(0)
-	}
-	return r0
-}
-
-// MockClient_ReportDevModePublish_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReportDevModePublish'
-type MockClient_ReportDevModePublish_Call struct {
-	*mock.Call
-}
-
-// ReportDevModePublish is a helper method to define mock.On call
-//   - ctx context.Context
-//   - appID string
-//   - envName string
-//   - opts client.DevModePublishReportOptions
-func (_e *MockClient_Expecter) ReportDevModePublish(ctx any, appID any, envName any, opts any) *MockClient_ReportDevModePublish_Call {
-	return &MockClient_ReportDevModePublish_Call{Call: _e.mock.On("ReportDevModePublish", ctx, appID, envName, opts)}
-}
-
-func (_c *MockClient_ReportDevModePublish_Call) Run(run func(ctx context.Context, appID string, envName string, opts client.DevModePublishReportOptions)) *MockClient_ReportDevModePublish_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 string
-		if args[1] != nil {
-			arg1 = args[1].(string)
-		}
-		var arg2 string
-		if args[2] != nil {
-			arg2 = args[2].(string)
-		}
-		var arg3 client.DevModePublishReportOptions
-		if args[3] != nil {
-			arg3 = args[3].(client.DevModePublishReportOptions)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-			arg3,
-		)
-	})
-	return _c
-}
-
-func (_c *MockClient_ReportDevModePublish_Call) Return(err error) *MockClient_ReportDevModePublish_Call {
-	_c.Call.Return(err)
-	return _c
-}
-
-func (_c *MockClient_ReportDevModePublish_Call) RunAndReturn(run func(ctx context.Context, appID string, envName string, opts client.DevModePublishReportOptions) error) *MockClient_ReportDevModePublish_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// ListDevModePublishRecords provides a mock function for the type MockClient
-func (_mock *MockClient) ListDevModePublishRecords(ctx context.Context, appID string, envName string, keyword string) ([]client.DevModePublishRecord, error) {
-	ret := _mock.Called(ctx, appID, envName, keyword)
-
-	if len(ret) == 0 {
-		panic("no return value specified for ListDevModePublishRecords")
-	}
-
-	var r0 []client.DevModePublishRecord
-	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) ([]client.DevModePublishRecord, error)); ok {
-		return returnFunc(ctx, appID, envName, keyword)
-	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) []client.DevModePublishRecord); ok {
-		r0 = returnFunc(ctx, appID, envName, keyword)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]client.DevModePublishRecord)
-		}
-	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
-		r1 = returnFunc(ctx, appID, envName, keyword)
-	} else {
-		r1 = ret.Error(1)
-	}
-	return r0, r1
-}
-
-// MockClient_ListDevModePublishRecords_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListDevModePublishRecords'
-type MockClient_ListDevModePublishRecords_Call struct {
-	*mock.Call
-}
-
-// ListDevModePublishRecords is a helper method to define mock.On call
-//   - ctx context.Context
-//   - appID string
-//   - envName string
-//   - keyword string
-func (_e *MockClient_Expecter) ListDevModePublishRecords(ctx any, appID any, envName any, keyword any) *MockClient_ListDevModePublishRecords_Call {
-	return &MockClient_ListDevModePublishRecords_Call{Call: _e.mock.On("ListDevModePublishRecords", ctx, appID, envName, keyword)}
-}
-
-func (_c *MockClient_ListDevModePublishRecords_Call) Run(run func(ctx context.Context, appID string, envName string, keyword string)) *MockClient_ListDevModePublishRecords_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		var arg0 context.Context
-		if args[0] != nil {
-			arg0 = args[0].(context.Context)
-		}
-		var arg1 string
-		if args[1] != nil {
-			arg1 = args[1].(string)
-		}
-		var arg2 string
-		if args[2] != nil {
-			arg2 = args[2].(string)
-		}
-		var arg3 string
-		if args[3] != nil {
-			arg3 = args[3].(string)
-		}
-		run(
-			arg0,
-			arg1,
-			arg2,
-			arg3,
-		)
-	})
-	return _c
-}
-
-func (_c *MockClient_ListDevModePublishRecords_Call) Return(devModePublishRecords []client.DevModePublishRecord, err error) *MockClient_ListDevModePublishRecords_Call {
-	_c.Call.Return(devModePublishRecords, err)
-	return _c
-}
-
-func (_c *MockClient_ListDevModePublishRecords_Call) RunAndReturn(run func(ctx context.Context, appID string, envName string, keyword string) ([]client.DevModePublishRecord, error)) *MockClient_ListDevModePublishRecords_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // ExchangeBkTicketForToken provides a mock function for the type MockClient
 func (_mock *MockClient) ExchangeBkTicketForToken(username string, bkTicket string) (string, error) {
 	ret := _mock.Called(username, bkTicket)
@@ -4538,6 +4389,86 @@ func (_c *MockClient_ListDashboardDirectoryTree_Call) RunAndReturn(run func(ctx 
 	return _c
 }
 
+// ListDevModePublishRecords provides a mock function for the type MockClient
+func (_mock *MockClient) ListDevModePublishRecords(ctx context.Context, appID string, query client.DevModePublishRecordsQuery) ([]client.DevModePublishRecord, int64, error) {
+	ret := _mock.Called(ctx, appID, query)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ListDevModePublishRecords")
+	}
+
+	var r0 []client.DevModePublishRecord
+	var r1 int64
+	var r2 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.DevModePublishRecordsQuery) ([]client.DevModePublishRecord, int64, error)); ok {
+		return returnFunc(ctx, appID, query)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.DevModePublishRecordsQuery) []client.DevModePublishRecord); ok {
+		r0 = returnFunc(ctx, appID, query)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]client.DevModePublishRecord)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.DevModePublishRecordsQuery) int64); ok {
+		r1 = returnFunc(ctx, appID, query)
+	} else {
+		r1 = ret.Get(1).(int64)
+	}
+	if returnFunc, ok := ret.Get(2).(func(context.Context, string, client.DevModePublishRecordsQuery) error); ok {
+		r2 = returnFunc(ctx, appID, query)
+	} else {
+		r2 = ret.Error(2)
+	}
+	return r0, r1, r2
+}
+
+// MockClient_ListDevModePublishRecords_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListDevModePublishRecords'
+type MockClient_ListDevModePublishRecords_Call struct {
+	*mock.Call
+}
+
+// ListDevModePublishRecords is a helper method to define mock.On call
+//   - ctx context.Context
+//   - appID string
+//   - query client.DevModePublishRecordsQuery
+func (_e *MockClient_Expecter) ListDevModePublishRecords(ctx any, appID any, query any) *MockClient_ListDevModePublishRecords_Call {
+	return &MockClient_ListDevModePublishRecords_Call{Call: _e.mock.On("ListDevModePublishRecords", ctx, appID, query)}
+}
+
+func (_c *MockClient_ListDevModePublishRecords_Call) Run(run func(ctx context.Context, appID string, query client.DevModePublishRecordsQuery)) *MockClient_ListDevModePublishRecords_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 client.DevModePublishRecordsQuery
+		if args[2] != nil {
+			arg2 = args[2].(client.DevModePublishRecordsQuery)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_ListDevModePublishRecords_Call) Return(devModePublishRecords []client.DevModePublishRecord, n int64, err error) *MockClient_ListDevModePublishRecords_Call {
+	_c.Call.Return(devModePublishRecords, n, err)
+	return _c
+}
+
+func (_c *MockClient_ListDevModePublishRecords_Call) RunAndReturn(run func(ctx context.Context, appID string, query client.DevModePublishRecordsQuery) ([]client.DevModePublishRecord, int64, error)) *MockClient_ListDevModePublishRecords_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ListEnvScopedEnvVars provides a mock function for the type MockClient
 func (_mock *MockClient) ListEnvScopedEnvVars(ctx context.Context, envID string) ([]client.ScopedEnvVarDetailed, error) {
 	ret := _mock.Called(ctx, envID)
@@ -5735,6 +5666,75 @@ func (_c *MockClient_PreviewPublicEnvVars_Call) RunAndReturn(run func(ctx contex
 	return _c
 }
 
+// ReportDevModePublish provides a mock function for the type MockClient
+func (_mock *MockClient) ReportDevModePublish(ctx context.Context, appID string, envName string, opts client.DevModePublishReportOptions) error {
+	ret := _mock.Called(ctx, appID, envName, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ReportDevModePublish")
+	}
+
+	var r0 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, client.DevModePublishReportOptions) error); ok {
+		r0 = returnFunc(ctx, appID, envName, opts)
+	} else {
+		r0 = ret.Error(0)
+	}
+	return r0
+}
+
+// MockClient_ReportDevModePublish_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ReportDevModePublish'
+type MockClient_ReportDevModePublish_Call struct {
+	*mock.Call
+}
+
+// ReportDevModePublish is a helper method to define mock.On call
+//   - ctx context.Context
+//   - appID string
+//   - envName string
+//   - opts client.DevModePublishReportOptions
+func (_e *MockClient_Expecter) ReportDevModePublish(ctx any, appID any, envName any, opts any) *MockClient_ReportDevModePublish_Call {
+	return &MockClient_ReportDevModePublish_Call{Call: _e.mock.On("ReportDevModePublish", ctx, appID, envName, opts)}
+}
+
+func (_c *MockClient_ReportDevModePublish_Call) Run(run func(ctx context.Context, appID string, envName string, opts client.DevModePublishReportOptions)) *MockClient_ReportDevModePublish_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
+		var arg3 client.DevModePublishReportOptions
+		if args[3] != nil {
+			arg3 = args[3].(client.DevModePublishReportOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+			arg3,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_ReportDevModePublish_Call) Return(err error) *MockClient_ReportDevModePublish_Call {
+	_c.Call.Return(err)
+	return _c
+}
+
+func (_c *MockClient_ReportDevModePublish_Call) RunAndReturn(run func(ctx context.Context, appID string, envName string, opts client.DevModePublishReportOptions) error) *MockClient_ReportDevModePublish_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // ResolveApp provides a mock function for the type MockClient
 func (_mock *MockClient) ResolveApp(ctx context.Context, workspaceID string, input string) (string, error) {
 	ret := _mock.Called(ctx, workspaceID, input)
@@ -5803,6 +5803,80 @@ func (_c *MockClient_ResolveApp_Call) Return(s string, err error) *MockClient_Re
 }
 
 func (_c *MockClient_ResolveApp_Call) RunAndReturn(run func(ctx context.Context, workspaceID string, input string) (string, error)) *MockClient_ResolveApp_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// RestartDevModeProcesses provides a mock function for the type MockClient
+func (_mock *MockClient) RestartDevModeProcesses(ctx context.Context, appID string, opts client.DevModeRestartOptions) (*client.DevModeRestartData, error) {
+	ret := _mock.Called(ctx, appID, opts)
+
+	if len(ret) == 0 {
+		panic("no return value specified for RestartDevModeProcesses")
+	}
+
+	var r0 *client.DevModeRestartData
+	var r1 error
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.DevModeRestartOptions) (*client.DevModeRestartData, error)); ok {
+		return returnFunc(ctx, appID, opts)
+	}
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, client.DevModeRestartOptions) *client.DevModeRestartData); ok {
+		r0 = returnFunc(ctx, appID, opts)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*client.DevModeRestartData)
+		}
+	}
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, client.DevModeRestartOptions) error); ok {
+		r1 = returnFunc(ctx, appID, opts)
+	} else {
+		r1 = ret.Error(1)
+	}
+	return r0, r1
+}
+
+// MockClient_RestartDevModeProcesses_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RestartDevModeProcesses'
+type MockClient_RestartDevModeProcesses_Call struct {
+	*mock.Call
+}
+
+// RestartDevModeProcesses is a helper method to define mock.On call
+//   - ctx context.Context
+//   - appID string
+//   - opts client.DevModeRestartOptions
+func (_e *MockClient_Expecter) RestartDevModeProcesses(ctx any, appID any, opts any) *MockClient_RestartDevModeProcesses_Call {
+	return &MockClient_RestartDevModeProcesses_Call{Call: _e.mock.On("RestartDevModeProcesses", ctx, appID, opts)}
+}
+
+func (_c *MockClient_RestartDevModeProcesses_Call) Run(run func(ctx context.Context, appID string, opts client.DevModeRestartOptions)) *MockClient_RestartDevModeProcesses_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		var arg0 context.Context
+		if args[0] != nil {
+			arg0 = args[0].(context.Context)
+		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
+		var arg2 client.DevModeRestartOptions
+		if args[2] != nil {
+			arg2 = args[2].(client.DevModeRestartOptions)
+		}
+		run(
+			arg0,
+			arg1,
+			arg2,
+		)
+	})
+	return _c
+}
+
+func (_c *MockClient_RestartDevModeProcesses_Call) Return(devModeRestartData *client.DevModeRestartData, err error) *MockClient_RestartDevModeProcesses_Call {
+	_c.Call.Return(devModeRestartData, err)
+	return _c
+}
+
+func (_c *MockClient_RestartDevModeProcesses_Call) RunAndReturn(run func(ctx context.Context, appID string, opts client.DevModeRestartOptions) (*client.DevModeRestartData, error)) *MockClient_RestartDevModeProcesses_Call {
 	_c.Call.Return(run)
 	return _c
 }

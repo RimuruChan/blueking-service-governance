@@ -1,0 +1,24 @@
+# app 创建/查询/删除完整流程
+# $UNIQUE 由 Setup 注入（格式 e2e-<毫秒时间戳>），保证每次运行资源名不冲突。
+# $APP_SPEC 由 Setup 在 $WORK 中生成含 $UNIQUE 名称的 spec 文件路径。
+#
+# 注意：testscript 内嵌 txtar 文件段中的 $VAR 不展开，动态 spec 须由 Setup 生成。
+
+exec $BKMS_CLI_BIN app create -f $APP_SPEC
+stdout 'App created successfully'
+stdout $UNIQUE
+
+exec $BKMS_CLI_BIN app get --app $UNIQUE -o json
+jsonhas name
+jsonfield type=trpc
+
+! exec $BKMS_CLI_BIN app get --app nonexistent-app-xyz-e2e
+stderr 'not found'
+
+! exec $BKMS_CLI_BIN app get
+stderr 'required flag\(s\) "app" not set'
+
+! exec $BKMS_CLI_BIN app delete --app nonexistent-app-xyz-e2e --yes
+
+exec $BKMS_CLI_BIN app delete --app $UNIQUE --yes
+stdout 'deleted successfully'

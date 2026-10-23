@@ -33,6 +33,7 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/bkintegrations/bkci/pipelinevar"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/autodeploy"
 	build "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/revision"
 	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
 	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
 	appmodeldeploysvc "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel/service"
@@ -168,6 +169,12 @@ func startDeployAfterBuild(ctx context.Context, record *build.Record, args Args)
 	if err != nil {
 		return "", errors.Wrap(err, "init appmodel deploy service")
 	}
+	// 以流水线实际检出方式为准；空修订在 CheckoutBy 已回落成 BRANCH
+	rev := revision.CodeRevision{
+		Type:  revision.TypeFromCheckoutBy(record.Params[pipelineparam.RepoCheckoutBy]),
+		Value: record.Params[pipelineparam.RepoRevision],
+	}
+
 	deployID, err := deployService.DeployByAppID(ctx, args.AppID, appmodeldeploysvc.DeployParams{
 		EnvName:         args.AutoDeploy.EnvName,
 		TrafficLaneName: args.AutoDeploy.TrafficLaneName,
@@ -175,8 +182,10 @@ func startDeployAfterBuild(ctx context.Context, record *build.Record, args Args)
 		UpdateStrategy:  string(tkex.RollingGameDeploymentUpdateStrategyType),
 		Replicas:        args.AutoDeploy.Replicas,
 		BuildAutoDeployInfo: &appmodeldeploy.BuildAutoDeployInfo{
-			Branch:   record.Params[pipelineparam.RepoRevision],
-			CommitID: record.Extras[pipelinevar.GitRepoHeadCommitID],
+			Branch:       rev.LegacyBranch(),
+			RevisionType: string(rev.Type),
+			Revision:     rev.Value,
+			CommitID:     record.Extras[pipelinevar.GitRepoHeadCommitID],
 		},
 	})
 	if err != nil {
@@ -204,7 +213,7 @@ func startDeployAfterBuild(ctx context.Context, record *build.Record, args Args)
 // imageTag 非空则强制同步该 tag，避免同 tag 重建后详情不更新；空则走默认刷新。
 func refreshSnapshots(ctx context.Context, appID, imageTag string) error {
 	reg := storereg.G()
-	svc := snapshot.NewService(reg.SnapshotStore, reg.BuildConfigStore, reg.AppStore)
+	svc := snapshot.NewService(reg.DB)
 	var forceTags []string
 	if imageTag != "" {
 		forceTags = []string{imageTag}
@@ -220,32 +229,9 @@ func refreshSnapshots(ctx context.Context, appID, imageTag string) error {
 // newAppModelDeployService 从 registry 组装 AppModel 部署服务，供构建成功后自动部署使用
 func newAppModelDeployService(reg *storereg.Registry) (*appmodeldeploysvc.Service, error) {
 	return appmodeldeploysvc.NewService(appmodeldeploysvc.ServiceDeps{
-		AppStore:       reg.AppStore,
-		EnvStore:       reg.EnvStore,
-		PromotionStore: reg.PromotionStore,
-		SnapshotService: snapshot.NewService(
-			reg.SnapshotStore,
-			reg.BuildConfigStore,
-			reg.AppStore,
-		),
-		AppModelStore:                       reg.AppModelStore,
-		WorkspaceStore:                      reg.WorkspaceStore,
-		ImageRegistryStore:                  reg.ImageRegistryStore,
-		ScopedEnvVarStore:                   reg.ScopedEnvVarStore,
-		AppDepsVarReader:                    reg.AppDepsVarReader,
-		PolarisVarReader:                    reg.PolarisVarReader,
-		WorkspaceCompsStore:                 reg.WorkspaceCompsStore,
-		PolarisConfigStore:                  reg.PolarisConfigStore,
-		HostPortStore:                       reg.HostPortStore,
-		BscpCfgStore:                        reg.BscpCfgStore,
-		AppSpecStore:                        reg.AppSpecStore,
-		BuildConfigStore:                    reg.BuildConfigStore,
-		BuildAutoDeployRecordStore:          reg.BuildAutoDeployRecordStore,
-		AppModelDeployRecordStore:           reg.AppModelDeployRecordStore,
-		AppModelDeployResourceSnapshotStore: reg.AppModelDeployResourceSnapshotStore,
-		AppConfigFileStore:                  reg.AppConfigFileStore,
-		AppConfigFileDefStore:               reg.AppConfigFileDefStore,
-		AppConfigFileVersionStore:           reg.AppConfigFileVersionStore,
-		ClusterAddonDefStore:                reg.ClusterAddonDefStore,
+		DB:               reg.DB,
+		SnapshotService:  snapshot.NewService(reg.DB),
+		AppDepsVarReader: reg.AppDepsVarReader,
+		PolarisVarReader: reg.PolarisVarReader,
 	})
 }

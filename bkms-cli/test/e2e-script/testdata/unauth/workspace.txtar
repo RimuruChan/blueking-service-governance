@@ -1,0 +1,4 @@
+# 未认证时 workspace 命令应报未授权
+
+! exec $BKMS_CLI_BIN workspace list
+stderr 'unauthorized'

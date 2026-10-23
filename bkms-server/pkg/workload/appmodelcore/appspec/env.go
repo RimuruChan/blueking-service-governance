@@ -21,15 +21,18 @@ package appspec
 import (
 	"context"
 
+	"github.com/jinzhu/copier"
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
 	resourcessection "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec/sections/resources"
 )
 
 // GetEnv gets app spec for a specific environment.
-func GetEnv(ctx context.Context, store AppSpecStore, appID, envName string) (*AppSpec, error) {
-	spec, err := store.Get(ctx, appID, envName)
+func GetEnv(ctx context.Context, db *mongo.Database, appID, envName string) (*AppSpec, error) {
+	spec, err := store.Of(db, AppSpecMeta).Get(ctx, ByAppEnv(appID, envName))
 	if err != nil {
 		if errors.Is(err, ErrAppSpecNotFound) {
 			return nil, err
@@ -42,16 +45,15 @@ func GetEnv(ctx context.Context, store AppSpecStore, appID, envName string) (*Ap
 // GetEnvEffective gets the effective app spec for a specific environment.
 func GetEnvEffective(
 	ctx context.Context,
-	store AppSpecStore,
-	appModelStore appmodel.AppModelStore,
+	db *mongo.Database,
 	appID, envName string,
 ) (*AppSpec, error) {
-	defaultSpec, err := GetDefault(ctx, store, appModelStore, appID)
+	defaultSpec, err := GetDefault(ctx, db, appID)
 	if err != nil {
 		return nil, errors.Wrapf(err, "getting default app spec for app %s", appID)
 	}
 
-	envSpec, err := GetEnv(ctx, store, appID, envName)
+	envSpec, err := GetEnv(ctx, db, appID, envName)
 	if err != nil {
 		if errors.Is(err, ErrAppSpecNotFound) {
 			effective := Clone(defaultSpec)
@@ -63,8 +65,33 @@ func GetEnvEffective(
 	return Merge(defaultSpec, envSpec), nil
 }
 
+// ModelForEnv returns a deep copy of base with the environment's effective app spec applied.
+// base is not modified, so callers can reuse it across environments.
+// A nil base returns nil, nil, nil. The returned spec is the one applied to the copy.
+func ModelForEnv(
+	ctx context.Context,
+	db *mongo.Database,
+	appID, envName string,
+	base *appmodel.AppModel,
+) (*appmodel.AppModel, *AppSpec, error) {
+	if base == nil {
+		return nil, nil, nil
+	}
+
+	var copied appmodel.AppModel
+	if err := copier.CopyWithOption(&copied, base, copier.Option{DeepCopy: true}); err != nil {
+		return nil, nil, errors.Wrap(err, "copying app model")
+	}
+	spec, err := GetEnvEffective(ctx, db, appID, envName)
+	if err != nil {
+		return nil, nil, err
+	}
+	ApplyToAppModel(spec, &copied)
+	return &copied, spec, nil
+}
+
 // SetEnv stores app spec for a specific environment.
-func SetEnv(ctx context.Context, store AppSpecStore, spec *AppSpec) error {
+func SetEnv(ctx context.Context, db *mongo.Database, spec *AppSpec) error {
 	if spec == nil {
 		return errors.New("app spec is nil")
 	}
@@ -76,18 +103,15 @@ func SetEnv(ctx context.Context, store AppSpecStore, spec *AppSpec) error {
 		return wrapValidationErr(err)
 	}
 
-	if err := store.Upsert(ctx, spec); err != nil {
+	if _, err := store.Of(db, AppSpecMeta).Upsert(ctx, spec, ByAppEnv(spec.AppID, spec.EnvName)); err != nil {
 		return errors.Wrapf(err, "upserting app spec for app %s env %s", spec.AppID, spec.EnvName)
 	}
 	return nil
 }
 
 // DeleteEnv deletes app spec for a specific environment.
-func DeleteEnv(ctx context.Context, store AppSpecStore, appID, envName string) error {
-	if err := store.Delete(ctx, appID, envName); err != nil {
-		if errors.Is(err, ErrAppSpecNotFound) {
-			return nil
-		}
+func DeleteEnv(ctx context.Context, db *mongo.Database, appID, envName string) error {
+	if err := store.Of(db, AppSpecMeta).DeleteIfExists(ctx, ByAppEnv(appID, envName)); err != nil {
 		return errors.Wrapf(err, "deleting app spec for app %s env %s", appID, envName)
 	}
 	return nil
@@ -96,13 +120,13 @@ func DeleteEnv(ctx context.Context, store AppSpecStore, appID, envName string) e
 // Misc functions
 
 // SetReplicas sets only replicas for a specific environment.
-func SetReplicas(ctx context.Context, store AppSpecStore, appID, envName string, replicas int32) error {
+func SetReplicas(ctx context.Context, db *mongo.Database, appID, envName string, replicas int32) error {
 	if err := resourcessection.ValidateReplicas(&replicas); err != nil {
 		return wrapValidationErr(err)
 	}
 	if err := SetEnvSection(
 		ctx,
-		store,
+		db,
 		appID,
 		envName,
 		ResourcesSection,

@@ -1,0 +1,20 @@
+# app appspec annotations 子命令
+
+exec $BKMS_CLI_BIN app appspec annotations view --app $BKMS_APP_ID
+
+exec $BKMS_CLI_BIN app appspec annotations view --app $BKMS_APP_ID -o json
+
+exec $BKMS_CLI_BIN app appspec annotations edit --app $BKMS_APP_ID -f annotations.yaml
+exec $BKMS_CLI_BIN app appspec annotations view --app $BKMS_APP_ID -o json
+jsonhas annotations
+
+exec $BKMS_CLI_BIN app appspec annotations edit --app $BKMS_APP_ID --env $BKMS_ENV_NAME -f annotations.yaml
+exec $BKMS_CLI_BIN app appspec annotations view --app $BKMS_APP_ID --env $BKMS_ENV_NAME -o json
+jsonhas annotations
+
+exec $BKMS_CLI_BIN app appspec annotations reset --app $BKMS_APP_ID --env $BKMS_ENV_NAME
+
+-- annotations.yaml --
+annotations:
+  e2e-test: "true"
+  description: "appspec e2e test annotation"

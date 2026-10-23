@@ -36,10 +36,9 @@ import (
 var _ = Describe("GetFrameworkMountableFile", func() {
 	var diApp *fxtest.App
 	var ctx context.Context
-	var appStore bkmsapp.ApplicationStore
-	var store appcfg.AppConfigFileStore
-	var defStore appcfg.AppConfigFileDefStore
-	var versionStore appcfg.AppConfigFileVersionStore
+	var appStore *bkmsapp.ApplicationStore
+	var files *appcfg.AppConfigFileStore
+	var defStore *appcfg.AppConfigFileDefStore
 	var app *bkmsapp.Application
 	var provider appcfg.MountableFileProvider
 	var svc *appcfg.AppCfgFileDefService
@@ -55,27 +54,31 @@ var _ = Describe("GetFrameworkMountableFile", func() {
 		err = testutil.CleanupCollection("applications")
 		Expect(err).NotTo(HaveOccurred())
 
+		appStore = testutil.NewStore(GinkgoT(), bkmsapp.AppMeta)
 		diApp = fxtest.New(
 			GinkgoT(),
-			bkmsapp.FxModule,
 			appcfg.FxModule,
-			fx.Populate(&appStore, &store, &defStore, &versionStore),
+			fx.Populate(),
 		)
 		diApp.RequireStart()
+		defStore = testutil.NewStore(GinkgoT(), appcfg.AppConfigFileDefMeta)
 
 		app = dbfactory.Application(ctx, appStore)
-		provider = appcfg.NewMountableFileProvider(store, defStore, versionStore)
-		base := appcfg.NewBaseAppCfgFileService(defStore, store, versionStore)
+		files = testutil.NewStore(GinkgoT(), appcfg.AppConfigFileMeta)
+		provider = appcfg.NewMountableFileProvider(testutil.NewDB(GinkgoT()))
+		base := appcfg.NewBaseAppCfgFileService(testutil.NewDB(GinkgoT()))
 		svc = appcfg.NewAppCfgFileDefService(base)
 	})
 
 	createDef := func(name string) bson.ObjectID {
-		id, err := defStore.Add(ctx, appcfg.AppConfigFileDef{
+		def := &appcfg.AppConfigFileDef{
 			AppID:      app.ID,
 			Name:       name,
 			ConfigKind: appcfg.ConfigKindFramework,
 			Creator:    "tester",
-		})
+		}
+		err := defStore.Create(ctx, def)
+		id := def.ID
 		Expect(err).NotTo(HaveOccurred())
 		return id
 	}
@@ -105,7 +108,7 @@ var _ = Describe("GetFrameworkMountableFile", func() {
 		BeforeEach(func() {
 			defID := createDef(appcfg.DefaultAppConfigFileName)
 			defaultContent := "server:\n  address: 0.0.0.0:8080\n"
-			_, err := store.Add(ctx, appcfg.AppConfigFile{
+			err := files.Create(ctx, &appcfg.AppConfigFile{
 				DefID:   defID,
 				AppID:   app.ID,
 				EnvName: appcfg.EnvNameDefault,
@@ -130,7 +133,7 @@ var _ = Describe("GetFrameworkMountableFile", func() {
 		BeforeEach(func() {
 			defID := createDef(appcfg.DefaultAppConfigFileName)
 			defaultContent := "server:\n  address: 0.0.0.0:8080\n"
-			_, err := store.Add(ctx, appcfg.AppConfigFile{
+			err := files.Create(ctx, &appcfg.AppConfigFile{
 				DefID:   defID,
 				AppID:   app.ID,
 				EnvName: appcfg.EnvNameDefault,
@@ -144,7 +147,7 @@ var _ = Describe("GetFrameworkMountableFile", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			prodContent := "server:\n  address: 0.0.0.0:9090\n"
-			_, err = store.Add(ctx, appcfg.AppConfigFile{
+			err = files.Create(ctx, &appcfg.AppConfigFile{
 				DefID:   defID,
 				AppID:   app.ID,
 				EnvName: "prod",
@@ -175,7 +178,7 @@ var _ = Describe("GetFrameworkMountableFile", func() {
 		It("should return the compiled content after overlay merge", func() {
 			defID := createDef(appcfg.DefaultAppConfigFileName)
 			baseContent := "database:\n  host: ${{ env.BASE_HOST }}\n  port: 3306\n"
-			baseID, err := store.Add(ctx, appcfg.AppConfigFile{
+			baseAcf := &appcfg.AppConfigFile{
 				DefID:   defID,
 				AppID:   app.ID,
 				EnvName: appcfg.EnvNameDefault,
@@ -185,11 +188,13 @@ var _ = Describe("GetFrameworkMountableFile", func() {
 					Format:            appcfg.FileFormatYAML,
 					Content:           &baseContent,
 				},
-			})
+			}
+			err := files.Create(ctx, baseAcf)
+			baseID := baseAcf.ID
 			Expect(err).NotTo(HaveOccurred())
 
 			overlayContent := "overlayVersion: \"2\"\npatches:\n- database:\n    host: ${{ env.OVERLAY_HOST }}\n"
-			_, err = store.Add(ctx, appcfg.AppConfigFile{
+			err = files.Create(ctx, &appcfg.AppConfigFile{
 				DefID:   defID,
 				AppID:   app.ID,
 				EnvName: "prod",
@@ -225,12 +230,15 @@ var _ = Describe("GetFrameworkMountableFile", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			overlay := "overlayVersion: \"2\"\npatches:\n- database:\n    host: ${{ env.OVERLAY_HOST }}\n"
-			envFile, compiled, isNewFile, err := svc.PrepareEnvContentUpdate(ctx, def, "prod", overlay, "editor")
+			upserted, err := svc.UpsertEnvContent(ctx, def, appcfg.UpsertEnvContentParams{
+				EnvName:     "prod",
+				Content:     overlay,
+				Operator:    "editor",
+				Description: "create prod overlay",
+			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(isNewFile).To(BeTrue())
-			Expect(compiled).To(Equal("database:\n  host: ${{ env.OVERLAY_HOST }}\n  port: 3306\n"))
-			_, err = svc.CreateFileWithVersion(ctx, *envFile, def.Name, "create prod overlay", "editor")
-			Expect(err).NotTo(HaveOccurred())
+			Expect(upserted.IsNewFile).To(BeTrue())
+			Expect(upserted.CompiledContent).To(Equal("database:\n  host: ${{ env.OVERLAY_HOST }}\n  port: 3306\n"))
 
 			frameworkFile, err := provider.GetFrameworkMountableFile(ctx, app.ID, "prod")
 			Expect(err).NotTo(HaveOccurred())
@@ -253,10 +261,9 @@ var _ = Describe("GetFrameworkMountableFile", func() {
 var _ = Describe("ListPlainMountableFiles", func() {
 	var diApp *fxtest.App
 	var ctx context.Context
-	var appStore bkmsapp.ApplicationStore
-	var store appcfg.AppConfigFileStore
-	var defStore appcfg.AppConfigFileDefStore
-	var versionStore appcfg.AppConfigFileVersionStore
+	var appStore *bkmsapp.ApplicationStore
+	var files *appcfg.AppConfigFileStore
+	var defStore *appcfg.AppConfigFileDefStore
 	var app *bkmsapp.Application
 	var provider appcfg.MountableFileProvider
 
@@ -271,16 +278,18 @@ var _ = Describe("ListPlainMountableFiles", func() {
 		err = testutil.CleanupCollection("applications")
 		Expect(err).NotTo(HaveOccurred())
 
+		appStore = testutil.NewStore(GinkgoT(), bkmsapp.AppMeta)
 		diApp = fxtest.New(
 			GinkgoT(),
-			bkmsapp.FxModule,
 			appcfg.FxModule,
-			fx.Populate(&appStore, &store, &defStore, &versionStore),
+			fx.Populate(),
 		)
 		diApp.RequireStart()
+		defStore = testutil.NewStore(GinkgoT(), appcfg.AppConfigFileDefMeta)
 
 		app = dbfactory.Application(ctx, appStore)
-		provider = appcfg.NewMountableFileProvider(store, defStore, versionStore)
+		files = testutil.NewStore(GinkgoT(), appcfg.AppConfigFileMeta)
+		provider = appcfg.NewMountableFileProvider(testutil.NewDB(GinkgoT()))
 	})
 
 	AfterEach(func() {
@@ -288,19 +297,21 @@ var _ = Describe("ListPlainMountableFiles", func() {
 	})
 
 	createPlainDef := func(name, mountDir string) bson.ObjectID {
-		id, err := defStore.Add(ctx, appcfg.AppConfigFileDef{
+		def := &appcfg.AppConfigFileDef{
 			AppID:      app.ID,
 			Name:       name,
 			ConfigKind: appcfg.ConfigKindPlain,
 			MountDir:   mountDir,
 			Creator:    "tester",
-		})
+		}
+		err := defStore.Create(ctx, def)
+		id := def.ID
 		Expect(err).NotTo(HaveOccurred())
 		return id
 	}
 
 	addDefaultFile := func(defID bson.ObjectID, content string) {
-		_, err := store.Add(ctx, appcfg.AppConfigFile{
+		err := files.Create(ctx, &appcfg.AppConfigFile{
 			DefID:   defID,
 			AppID:   app.ID,
 			EnvName: appcfg.EnvNameDefault,
@@ -342,7 +353,7 @@ var _ = Describe("ListPlainMountableFiles", func() {
 		addDefaultFile(defID, "default-content")
 
 		envContent := "prod-content"
-		_, err := store.Add(ctx, appcfg.AppConfigFile{
+		err := files.Create(ctx, &appcfg.AppConfigFile{
 			DefID:   defID,
 			AppID:   app.ID,
 			EnvName: "prod",
@@ -375,7 +386,7 @@ var _ = Describe("ListPlainMountableFiles", func() {
 	})
 
 	It("should return empty when mounted env names is explicitly empty", func() {
-		defID, err := defStore.Add(ctx, appcfg.AppConfigFileDef{
+		def := &appcfg.AppConfigFileDef{
 			AppID:      app.ID,
 			Name:       "app.conf",
 			ConfigKind: appcfg.ConfigKindPlain,
@@ -385,7 +396,9 @@ var _ = Describe("ListPlainMountableFiles", func() {
 				IsUnifiedConfig: true,
 				MountedEnvNames: []string{},
 			},
-		})
+		}
+		err := defStore.Create(ctx, def)
+		defID := def.ID
 		Expect(err).NotTo(HaveOccurred())
 		addDefaultFile(defID, "default-content")
 
@@ -394,4 +407,16 @@ var _ = Describe("ListPlainMountableFiles", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result).To(BeEmpty())
 	})
+})
+
+var _ = Describe("mount path identity", func() {
+	DescribeTable("NormalizeMountDir",
+		func(input, expected string) {
+			Expect(appcfg.NormalizeMountDir(input)).To(Equal(expected))
+		},
+		Entry("empty stays empty", "", ""),
+		Entry("strips a trailing slash", "/etc/app/", "/etc/app"),
+		Entry("keeps root", "/", "/"),
+		Entry("cleans parent segments", "/etc/foo/../app", "/etc/app"),
+	)
 })

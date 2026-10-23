@@ -26,12 +26,15 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cast"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/bscpcfg/model"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
 	bscpapi "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bscp"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/metrics"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 	bscpworkload "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/bscpcfg"
 )
 
@@ -39,13 +42,14 @@ import (
 type Manager struct {
 	client bscpapi.ConfigClient
 
-	configStore model.Store
+	metadata    *model.MetadataStore
+	envBindings *model.EnvBindingStore
 }
 
 // NewManager 创建 Manager
 func NewManager(
 	user auth.User,
-	configStore model.Store,
+	db *mongo.Database,
 ) (*Manager, error) {
 	configClient, err := bscpapi.NewConfigClient(user)
 	if err != nil {
@@ -54,7 +58,8 @@ func NewManager(
 
 	return &Manager{
 		client:      configClient,
-		configStore: configStore,
+		metadata:    store.Of(db, model.MetadataMeta),
+		envBindings: store.Of(db, model.EnvBindingMeta),
 	}, nil
 }
 
@@ -66,7 +71,7 @@ func (m *Manager) InitMetadata(
 	params *InitMetadataParams,
 ) (*model.Metadata, error) {
 	// 先检查是否已存在
-	existing, err := m.configStore.GetMetadata(ctx, params.AppID)
+	existing, err := m.metadata.Get(ctx, model.ByApp(params.AppID))
 	if err == nil {
 		return existing, nil
 	}
@@ -94,16 +99,20 @@ func (m *Manager) InitMetadata(
 		Operator:     params.Operator,
 	}
 
-	if err = m.configStore.CreateMetadata(ctx, meta); err != nil {
+	if err = m.metadata.Create(ctx, meta); err != nil {
 		return nil, errors.Wrap(err, "create metadata")
 	}
 
 	return meta, nil
 }
 
-// PatchMetadata 批量更新 Metadata 字段。
-func (m *Manager) PatchMetadata(ctx context.Context, appID string, updateData *model.MetadataUpdate) error {
-	return m.configStore.UpdateMetadata(ctx, appID, updateData)
+// PatchMetadata 局部更新 Metadata，fields 的 key 为待更新的字段名，未出现的字段保持不变。
+// fields 为空时返回 store.ErrNoFieldsToUpdate，Metadata 不存在时返回 ErrMetadataNotFound
+func (m *Manager) PatchMetadata(ctx context.Context, appID string, fields map[string]any) error {
+	if err := m.metadata.Update(ctx, fields, model.ByApp(appID)); err != nil {
+		return errors.Wrapf(err, "update metadata of app %s", appID)
+	}
+	return nil
 }
 
 // === EnvBinding 管理 ===
@@ -114,7 +123,7 @@ func (m *Manager) CreateEnvBinding(
 	params *CreateEnvBindingParams,
 ) (*model.Snapshot, error) {
 	// 1. 检查 Metadata 是否存在且启用
-	meta, err := m.configStore.GetMetadata(ctx, params.AppID)
+	meta, err := m.metadata.Get(ctx, model.ByApp(params.AppID))
 	if err != nil {
 		if errors.Is(err, model.ErrMetadataNotFound) {
 			return nil, errors.New("bscpcfg metadata is not initialized")
@@ -125,15 +134,10 @@ func (m *Manager) CreateEnvBinding(
 		return nil, errors.New("bscpcfg is disabled")
 	}
 
-	bizID := params.Workspace.BkSystems.BkCCBizID
-	projectIDStr := params.Workspace.BkSystems.BkBSCPProjectID
-	if projectIDStr == "" {
-		return nil, errors.New("workspace is not bound to a BSCP project")
+	bizID, projectID, err := bscpProject(params.Workspace)
+	if err != nil {
+		return nil, err
 	}
-	if params.Workspace.BkSystems.BscpCredentialID == "" {
-		return nil, errors.New("workspace bscp credential is not ready")
-	}
-	projectID := cast.ToInt64(projectIDStr)
 
 	// 2. 按 envName 匹配或创建 BSCP 环境（类型由 bkms 环境类型映射而来）
 	bscpEnv, err := m.getOrCreateBscpEnv(ctx, bizID, projectID, params.EnvName, params.EnvType)
@@ -164,20 +168,8 @@ func (m *Manager) CreateEnvBinding(
 	}
 
 	// 4. 绑定后置脚本
-	if postHookID := cast.ToInt64(meta.PostHookID); meta.PostHookID != "" && postHookID != 0 {
-		bscpAppID := cast.ToInt64(bscpApp.ID)
-		if err = m.client.UpdateConfigHook(ctx, &bscpapi.UpdateConfigHookReq{
-			BizID:      bizID,
-			ProjectID:  projectID,
-			EnvID:      bscpEnv.ID,
-			AppID:      bscpAppID,
-			PostHookID: postHookID,
-		}); err != nil {
-			metrics.BscpcfgStepFailed("bind_post_hook")
-			return nil, errors.Wrap(err, "bind post hook to bscp app")
-		}
-		log.Infof(ctx, "bound post hook %d to bscp app %d (biz %s, project %d, env %s)",
-			postHookID, bscpAppID, bizID, projectID, envID)
+	if err = m.bindPostHook(ctx, meta, bizID, projectID, bscpEnv.ID, bscpApp.ID, envID); err != nil {
+		return nil, err
 	}
 
 	// 5. 刷新 Credential Scope
@@ -196,7 +188,7 @@ func (m *Manager) CreateEnvBinding(
 		Operator:    params.Operator,
 	}
 
-	if err = m.configStore.CreateEnvBinding(ctx, binding); err != nil {
+	if err = m.envBindings.Create(ctx, binding); err != nil {
 		return nil, errors.Wrap(err, "create env binding in store")
 	}
 
@@ -206,17 +198,56 @@ func (m *Manager) CreateEnvBinding(
 	}, nil
 }
 
+func bscpProject(ws *workspace.Workspace) (string, int64, error) {
+	bizID := ws.BkSystems.BkCCBizID
+	projectID := ws.BkSystems.BkBSCPProjectID
+	if projectID == "" {
+		return "", 0, errors.New("workspace is not bound to a BSCP project")
+	}
+	if ws.BkSystems.BscpCredentialID == "" {
+		return "", 0, errors.New("workspace bscp credential is not ready")
+	}
+	return bizID, cast.ToInt64(projectID), nil
+}
+
+func (m *Manager) bindPostHook(
+	ctx context.Context,
+	meta *model.Metadata,
+	bizID string,
+	projectID, bscpEnvID int64,
+	bscpAppID, envID string,
+) error {
+	postHookID := cast.ToInt64(meta.PostHookID)
+	if meta.PostHookID == "" || postHookID == 0 {
+		return nil
+	}
+	appID := cast.ToInt64(bscpAppID)
+	if err := m.client.UpdateConfigHook(ctx, &bscpapi.UpdateConfigHookReq{
+		BizID:      bizID,
+		ProjectID:  projectID,
+		EnvID:      bscpEnvID,
+		AppID:      appID,
+		PostHookID: postHookID,
+	}); err != nil {
+		metrics.BscpcfgStepFailed("bind_post_hook")
+		return errors.Wrap(err, "bind post hook to bscp app")
+	}
+	log.Infof(ctx, "bound post hook %d to bscp app %d (biz %s, project %d, env %s)",
+		postHookID, appID, bizID, projectID, envID)
+	return nil
+}
+
 // GetSnapshot 获取指定 app+env 的聚合快照。
 func (m *Manager) GetSnapshot(
 	ctx context.Context,
 	appID, envName string,
 ) (*model.Snapshot, error) {
-	meta, err := m.configStore.GetMetadata(ctx, appID)
+	meta, err := m.metadata.Get(ctx, model.ByApp(appID))
 	if err != nil {
 		return nil, errors.Wrap(err, "get metadata")
 	}
 
-	binding, err := m.configStore.GetEnvBinding(ctx, appID, envName)
+	binding, err := m.envBindings.Get(ctx, model.ByAppAndEnv(appID, envName))
 	if err != nil {
 		return nil, errors.Wrap(err, "get env binding")
 	}
@@ -232,7 +263,7 @@ func (m *Manager) ListSnapshots(
 	ctx context.Context,
 	appID string,
 ) ([]*model.Snapshot, error) {
-	meta, err := m.configStore.GetMetadata(ctx, appID)
+	meta, err := m.metadata.Get(ctx, model.ByApp(appID))
 	if err != nil {
 		if errors.Is(err, model.ErrMetadataNotFound) {
 			return nil, model.ErrEnvBindingNotFound
@@ -240,16 +271,16 @@ func (m *Manager) ListSnapshots(
 		return nil, errors.Wrap(err, "get metadata")
 	}
 
-	bindings, err := m.configStore.ListEnvBindingsByApp(ctx, appID)
+	bindings, err := m.envBindings.List(ctx, model.ByApp(appID))
 	if err != nil {
 		return nil, errors.Wrap(err, "list env bindings")
 	}
 
 	results := make([]*model.Snapshot, 0, len(bindings))
-	for _, binding := range bindings {
+	for i := range bindings {
 		results = append(results, &model.Snapshot{
 			Metadata:   meta,
-			EnvBinding: binding,
+			EnvBinding: &bindings[i],
 		})
 	}
 
@@ -258,18 +289,20 @@ func (m *Manager) ListSnapshots(
 
 // DeleteEnvBinding 删除指定环境绑定。
 func (m *Manager) DeleteEnvBinding(ctx context.Context, appID, envName string) error {
-	return m.configStore.DeleteEnvBinding(ctx, appID, envName)
+	if err := m.envBindings.Delete(ctx, model.ByAppAndEnv(appID, envName)); err != nil {
+		return errors.Wrapf(err, "delete env binding of app %s env %s", appID, envName)
+	}
+	return nil
 }
 
 // DeleteByApp 删除应用下所有配置（级联删除）。
 func (m *Manager) DeleteByApp(ctx context.Context, appID string) error {
 	// 先删除所有 EnvBinding
-	if err := m.configStore.DeleteEnvBindingsByApp(ctx, appID); err != nil {
+	if _, err := m.envBindings.DeleteMany(ctx, model.ByApp(appID)); err != nil {
 		return errors.Wrap(err, "delete env bindings by app")
 	}
 	// 再删除 Metadata
-	if err := m.configStore.DeleteMetadata(ctx, appID); err != nil &&
-		!errors.Is(err, model.ErrMetadataNotFound) {
+	if err := m.metadata.DeleteIfExists(ctx, model.ByApp(appID)); err != nil {
 		return errors.Wrap(err, "delete metadata")
 	}
 	return nil

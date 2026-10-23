@@ -22,21 +22,28 @@ package handler
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/hibiken/asynq"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
+	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
+	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	appmodeldeploy "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/deploy/appmodel"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/hostport"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/addon/polaris"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/perm"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/taskq"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/observability/metrics"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
 	ginperm "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
 	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/appmodeldeploypoll"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/workload"
 	instanceroute "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance"
@@ -55,22 +62,17 @@ func New(registry *storereg.Registry) *Handler {
 	return &Handler{registry: registry}
 }
 
+func (h *Handler) envs() *envmodel.EnvironmentStore {
+	return store.Of(h.registry.DB, envmodel.EnvMeta)
+}
+
 func (h *Handler) newMountableFileProvider() appcfg.MountableFileProvider {
 	return appcfg.NewMountableFileProvider(
-		h.registry.AppConfigFileStore,
-		h.registry.AppConfigFileDefStore,
-		h.registry.AppConfigFileVersionStore,
+		h.registry.DB,
 	)
 }
 
-// ListAppInstances 按最新部署记录的 LabelSelector 列出匹配 Pod 并投影为实例
-// 本函数只做编排：绑定参数、鉴权取部署记录、拉 Pod、投影、合并北极星
-//
-// 查询模式互斥：all=true 且不带 page/pageSize 为全量；未传 all 时 page/pageSize 必填走分页
-// 全量时单个 Pod 投影失败则跳过并写入 skipped，count 为成功投影数（不含跳过项）
-// 分页时当前页解析失败整次 500（与改造前一致，供 CLI）；count 为 LabelSelector 匹配 Pod 总数
-// 北极星拉取失败不阻塞 Pod 输出，降级为空 polarisInfos，与未注册北极星同形
-// 成功响应带 resourceVersion，供 Watch 从该位点续传
+// ListAppInstances 获取应用实例列表，支持全量或分页查询，可按 Pod IP / Node IP 过滤
 //
 //	@ID			ListAppInstances
 //	@Summary	获取应用实例列表
@@ -85,6 +87,8 @@ func (h *Handler) newMountableFileProvider() appcfg.MountableFileProvider {
 //	@Param		all				query		bool	false	"为 true 时一次返回全量实例；禁止同时带 page 或 pageSize"
 //	@Param		page			query		int		false	"页码，取值 1-10000；分页模式必填，all=true 时禁止出现"
 //	@Param		pageSize		query		int		false	"每页数量；分页模式必填，all=true 时禁止出现"
+//	@Param		podIP			query		[]string	false	"Pod IP 精确过滤，多值取 OR"	collectionFormat(multi)
+//	@Param		nodeIP			query		[]string	false	"Node IP 精确过滤，多值取 OR"	collectionFormat(multi)
 //	@Success	200				{object}	serializer.ListAppInstancesOutput
 //	@Failure	400				{object}	bkerrs.GinErrorOutput
 //	@Router		/apps/{appID}/envs/{envName}/instances [get]
@@ -111,6 +115,9 @@ func (h *Handler) ListAppInstances(c *gin.Context) {
 		bkerrs.AbortWithErr(c, err)
 		return
 	}
+
+	// 按 Pod IP / Node IP 过滤，需在投影窗口之前，分页 count 才基于过滤后的结果
+	items = h.filterAppInstancePodsByIP(queryInput, items)
 
 	// 将窗口内 Pod 投影为实例；全量跳过失败项，分页解析失败则整次 500
 	results, skipped, count, err := h.projectListedAppInstances(queryInput, items, record.ID.Hex())
@@ -172,21 +179,48 @@ func (h *Handler) UpdateAppInstances(c *gin.Context) {
 		return
 	}
 
-	// 获取应用部署器，执行灰度更新操作
+	// 获取应用部署器，执行灰度 / 全量更新操作
 	deployer := h.newDeployer(app)
-	if err = deployer.UpdateInstances(
+	deployID, err := deployer.UpdateInstances(
 		ctx,
 		uriInput.EnvName,
 		input.TrafficLaneName,
 		input.ImageTag,
 		input.UpdateStrategy,
 		input.InstanceIDs,
-	); err != nil {
+	)
+	if err != nil {
 		bkerrs.AbortWithErr(c, bkerrs.Wrapf(err, bkerrs.ErrCodeInternalServerError, "update app %s instances", app.ID))
 		return
 	}
 
-	// 实例更新操作记录
+	// 全量更新视为一次部署：轮询部署状态 & 更新部署记录
+	// 注：部署成功/失败的操作记录在异步任务中记录
+	if deployID != "" {
+		// 工作负载已 Patch、部署记录已创建，投递不应受请求取消影响
+		err = taskq.Enqueue(
+			context.WithoutCancel(ctx),
+			appmodeldeploypoll.Task.NewTask(appmodeldeploypoll.Args{
+				WorkspaceID:     app.WorkspaceID,
+				AppID:           app.ID,
+				EnvName:         uriInput.EnvName,
+				TrafficLaneName: input.TrafficLaneName,
+				DeployID:        deployID,
+			}),
+			asynq.ProcessIn(appmodeldeploypoll.PollingInterval()),
+		)
+		if err != nil {
+			h.markDeployPollingBroken(ctx, app.ID, deployID, err)
+			bkerrs.AbortWithErr(c, bkerrs.Wrapf(
+				err, bkerrs.ErrCodeInternalServerError, "enqueue polling deploy %s status task", deployID,
+			))
+			return
+		}
+		ginutils.OK(c, serializer.EmptyOutput{})
+		return
+	}
+
+	// 灰度更新操作记录
 	go audit.AddOperationRecordAsync(
 		context.WithoutCancel(ctx),
 		audit.OperationTypeGray,
@@ -239,8 +273,7 @@ func (h *Handler) ScaleAppInstances(c *gin.Context) {
 	// 获取应用当前环境生效的部署规格
 	spec, err := appspec.GetEnvEffective(
 		ctx,
-		h.registry.AppSpecStore,
-		h.registry.AppModelStore,
+		h.registry.DB,
 		app.ID,
 		uriInput.EnvName,
 	)
@@ -411,6 +444,25 @@ func (h *Handler) UpdateAppInstancePolaris(c *gin.Context) {
 	ginutils.OK(c, serializer.EmptyOutput{})
 }
 
+// markDeployPollingBroken 首次轮询任务投递失败时，部署记录无任务推进，将其标记为轮询中断，
+// 避免一直停留在部署中；标记失败只记录日志
+func (h *Handler) markDeployPollingBroken(ctx context.Context, appID, deployID string, enqueueErr error) {
+	ctx = context.WithoutCancel(ctx)
+	record, err := appmodeldeploy.GetRecord(ctx, h.registry.DB, appID, deployID)
+	if err != nil {
+		log.Errorf(ctx, "mark deploy %s polling broken: get deploy record: %v", deployID, err)
+		return
+	}
+	timeNow := time.Now()
+	record.Status = appmodeldeploy.StatusPollingBroken
+	record.Message = "enqueue polling deploy status task failed: " + enqueueErr.Error()
+	record.EndedAt = timeNow
+	record.UpdatedAt = timeNow
+	if err = appmodeldeploy.UpdateRecord(ctx, h.registry.DB, record); err != nil {
+		log.Errorf(ctx, "mark deploy %s polling broken: update deploy record: %v", deployID, err)
+	}
+}
+
 // validateEditableAppModel 校验 App 编辑权限并确认应用类型为 AppModel。
 func (h *Handler) validateEditableAppModel(ctx context.Context, appID string) (*bkmsapp.Application, error) {
 	// 校验 App 编辑权限
@@ -428,29 +480,15 @@ func (h *Handler) validateEditableAppModel(ctx context.Context, appID string) (*
 // newDeployer 创建 AppModel 应用部署器。
 func (h *Handler) newDeployer(app *bkmsapp.Application) *appmodeldeploy.Deployer {
 	return appmodeldeploy.NewDeployer(
-		h.registry.AppModelDeployRecordStore,
-		h.registry.AppModelDeployResourceSnapshotStore,
-		h.registry.BuildAutoDeployRecordStore,
-		h.registry.AppModelStore,
 		workload.NewBuilderService(
-			h.registry.ScopedEnvVarStore,
 			h.registry.AppDepsVarReader,
 			h.registry.PolarisVarReader,
-			h.registry.WorkspaceCompsStore,
-			h.registry.WorkspaceStore,
-			h.registry.PolarisConfigStore,
-			h.registry.HostPortStore,
-			h.registry.BscpCfgStore,
-			h.registry.AppModelStore,
-			h.registry.AppSpecStore,
-			h.registry.BuildConfigStore,
+			h.registry.DB,
 			h.newMountableFileProvider(),
 		),
-		h.registry.AppSpecStore,
-		h.registry.BuildConfigStore,
-		h.registry.AppConfigFileStore,
-		polaris.NewPolarisEnvStateManager(h.registry.PolarisConfigStore),
-		hostport.NewEnvStateManager(h.registry.HostPortStore),
+		h.registry.DB,
+		polaris.NewPolarisEnvStateManager(h.registry.DB),
+		hostport.NewEnvStateManager(h.registry.DB),
 		app,
 	)
 }

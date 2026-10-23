@@ -57,6 +57,8 @@ type Instance struct {
 	// 北极星实例状态列表（一个 Pod 可能注册到多个北极星服务）
 	// 若应用未配置北极星或 Pod 未在北极星中注册，则为空列表
 	PolarisInfos []PolarisInfo `json:"polarisInfos" yaml:"polarisInfos"`
+	// 北极星权重覆盖值，未单独设置时为空字符串
+	PolarisWeightOverride string `json:"polarisWeightOverride" yaml:"polarisWeightOverride"`
 }
 
 // ListAppInstancesRespData 应用实例列表响应
@@ -70,6 +72,10 @@ type ListAppInstancesOptions struct {
 	Page int
 	// PageSize 每页数量。
 	PageSize int
+	// PodIPs 按 Pod IP 精确过滤，多值取 OR。
+	PodIPs []string
+	// NodeIPs 按 Node IP 精确过滤，多值取 OR；与 PodIPs 之间也取 OR。
+	NodeIPs []string
 }
 
 // PaginatedInstances 分页查询实例结果

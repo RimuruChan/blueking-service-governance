@@ -34,7 +34,7 @@ func (s *AppCfgFileDefService) FindEnvInstance(
 	defID bson.ObjectID,
 	envName string,
 ) (*AppConfigFile, error) {
-	acf, err := s.FileStore.GetByDefIDAndEnv(ctx, defID, envName)
+	acf, err := s.FileStore.Get(ctx, FileByDefEnv(defID, envName))
 	if err != nil {
 		if errors.Is(err, ErrAppConfigFileNotFound) {
 			return nil, nil
@@ -66,11 +66,19 @@ func (s *AppCfgFileDefService) buildEnvInstance(
 	params CreateEnvInstanceParams,
 ) (*AppConfigFile, error) {
 	kind := defaultFile.GetConfigKind()
+	policy, err := s.policyFor(kind)
+	if err != nil {
+		return nil, err
+	}
 	switch kind {
 	case ConfigKindPlain:
 		return s.buildPlainEnvInstance(defaultFile, params)
 	case ConfigKindFramework:
-		return s.buildFrameworkEnvOverlay(defaultFile, params)
+		strategy, err := policy.GetEnvContentStrategy(defaultFile.Def)
+		if err != nil {
+			return nil, err
+		}
+		return newFrameworkEnvInstance(defaultFile, params, strategy)
 	default:
 		return nil, errors.Errorf("unsupported config kind for env instance: %s", kind)
 	}
@@ -106,30 +114,42 @@ func (s *AppCfgFileDefService) buildPlainEnvInstance(
 	return &acf, nil
 }
 
-// buildFrameworkEnvOverlay 构造 framework overlay 类型的环境实例。
-func (s *AppCfgFileDefService) buildFrameworkEnvOverlay(
+func newFrameworkEnvInstance(
 	defaultFile AppConfigFileWithDef,
 	params CreateEnvInstanceParams,
+	strategy EnvContentStrategy,
 ) (*AppConfigFile, error) {
-	if params.OverlayContent == nil {
-		return nil, errors.Wrap(ErrInvalidConfigSpec, "framework env overlay requires overlayContent")
-	}
-	baseID := defaultFile.ID
 	acf := AppConfigFile{
 		DefID:   defaultFile.DefID,
 		AppID:   defaultFile.AppID,
 		EnvName: params.EnvName,
-		Type:    AppConfigFileTypeOverlay,
 		VersionedContent: VersionedContent{
-			// 环境 overlay 来自用户输入的补丁内容，而不是继承默认文件的数据源。
-			ContentSourceType:   ContentSourceTypeLocal,
-			Format:              defaultFile.GetConfigFormat(),
-			OverlayContent:      params.OverlayContent,
-			BaseAppConfigFileID: &baseID,
+			// framework 环境实例始终来自本地编辑内容；差异只在 Content / OverlayContent 的存储形态。
+			ContentSourceType: ContentSourceTypeLocal,
+			Format:            defaultFile.GetConfigFormat(),
 		},
 		Creator:        params.Operator,
 		Updater:        params.Operator,
 		CurrentVersion: 1,
+	}
+
+	switch strategy {
+	case EnvContentStrategyOverwrite:
+		if params.Content == nil {
+			return nil, errors.Wrap(ErrInvalidConfigSpec, "framework env overwrite requires content")
+		}
+		acf.Type = AppConfigFileTypeNormal
+		acf.Content = params.Content
+	case EnvContentStrategyOverlay:
+		if params.OverlayContent == nil {
+			return nil, errors.Wrap(ErrInvalidConfigSpec, "framework env overlay requires overlayContent")
+		}
+		baseID := defaultFile.ID
+		acf.Type = AppConfigFileTypeOverlay
+		acf.OverlayContent = params.OverlayContent
+		acf.BaseAppConfigFileID = &baseID
+	default:
+		return nil, errors.Wrapf(ErrInvalidConfigSpec, "unsupported env content strategy %q", strategy)
 	}
 	return &acf, nil
 }
@@ -137,7 +157,12 @@ func (s *AppCfgFileDefService) buildFrameworkEnvOverlay(
 // --- 环境实例变更 ---
 
 // applyMountedEnvNamesChange 处理 plain 文件 mountedEnvNames 变更的副作用：
-// 被移除的环境需要清理对应的环境实例。
+// 被移出挂载范围的环境需要删除其环境实例，避免残留定制内容。
+//
+// mountedEnvNames 语义（与 EnvConfigMode 一致）：
+//   - nil：对所有环境生效（不是「未挂载」）
+//   - 空切片：不挂载任何环境
+//   - 非空：仅对列出的环境生效
 //
 // TODO(non-atomic): 当前先删除环境实例，再由上层 UpdateAppCfgFileDef 持久化 def。
 // 后续应引入 MongoDB 事务或补偿机制保证操作原子性。
@@ -149,10 +174,28 @@ func (s *AppCfgFileDefService) applyMountedEnvNamesChange(
 	oldEnvNames := def.EnvConfigMode.MountedEnvNames
 	def.EnvConfigMode.MountedEnvNames = newEnvNames
 
-	// 找出被移除的环境，清理对应实例
+	// 旧值为 nil：原先全环境生效，没有白名单可做差集。
+	// 只能扫该 def 下已有文件，删掉不在 newEnvNames 里的环境实例（默认文件保留）。
+	if oldEnvNames == nil {
+		files, err := s.FileStore.List(ctx, FilesByDef(def.ID))
+		if err != nil {
+			return errors.Wrap(err, "listing env instances for mountedEnvNames cleanup")
+		}
+		for _, file := range files {
+			if file.EnvName == EnvNameDefault || slices.Contains(newEnvNames, file.EnvName) {
+				continue
+			}
+			if _, err = s.deleteEnvInstanceByName(ctx, def.ID, def.AppID, file.EnvName); err != nil {
+				return errors.Wrapf(err, "cleanup env instance for removed env %s", file.EnvName)
+			}
+		}
+		return nil
+	}
+
+	// 旧值已是明确列表：按 old − new 删除被移出范围的环境实例。
 	for _, oldEnv := range oldEnvNames {
 		if !slices.Contains(newEnvNames, oldEnv) {
-			if err := s.deleteEnvInstanceByName(ctx, def.ID, def.AppID, oldEnv); err != nil {
+			if _, err := s.deleteEnvInstanceByName(ctx, def.ID, def.AppID, oldEnv); err != nil {
 				return errors.Wrapf(err, "cleanup env instance for removed env %s", oldEnv)
 			}
 		}
@@ -163,13 +206,14 @@ func (s *AppCfgFileDefService) applyMountedEnvNamesChange(
 // --- 环境实例删除 / 清理 ---
 
 // ResetEnvInstanceToDefault 恢复指定环境为默认配置，删除该环境的独立实例及其版本历史。
+// 返回被删除的环境实例快照；没有实例时返回 nil。
 func (s *AppCfgFileDefService) ResetEnvInstanceToDefault(
 	ctx context.Context,
 	def *AppConfigFileDef,
 	envName string,
-) error {
+) (*AppConfigFile, error) {
 	if !def.EnvConfigMode.IsIndependent() {
-		return ErrResetToDefaultRequiresIndependentConfig
+		return nil, ErrResetToDefaultRequiresIndependentConfig
 	}
 	return s.deleteEnvInstanceByName(ctx, def.ID, def.AppID, envName)
 }
@@ -183,13 +227,13 @@ func (s *AppCfgFileDefService) CleanupPlainEnvInstancesByEnv(
 	ctx context.Context,
 	appID, envName string,
 ) error {
-	plainDefs, err := s.DefStore.ListByApp(ctx, appID, DefFilterConfigKind(ConfigKindPlain))
+	plainDefs, err := ListDefsByApp(ctx, s.DefStore, appID, DefFilterConfigKind(ConfigKindPlain))
 	if err != nil {
 		return errors.Wrap(err, "listing plain defs for env cleanup")
 	}
 	for _, def := range plainDefs {
 		// 删除该环境的实例
-		if err = s.deleteEnvInstanceByName(ctx, def.ID, appID, envName); err != nil {
+		if _, err = s.deleteEnvInstanceByName(ctx, def.ID, appID, envName); err != nil {
 			return err
 		}
 		// 从 mountedEnvNames 中移除
@@ -201,7 +245,7 @@ func (s *AppCfgFileDefService) CleanupPlainEnvInstancesByEnv(
 				}
 			}
 			def.EnvConfigMode.MountedEnvNames = newNames
-			if _, err = s.DefStore.Update(ctx, def); err != nil {
+			if err = UpdateDef(ctx, s.DefStore, &def); err != nil {
 				return errors.Wrapf(err, "update def %s after removing env %s", def.ID.Hex(), envName)
 			}
 		}
@@ -210,24 +254,25 @@ func (s *AppCfgFileDefService) CleanupPlainEnvInstancesByEnv(
 }
 
 // deleteEnvInstanceByName 删除指定 def + envName 的环境实例及其版本。
+// 没有实例时返回 (nil, nil)。
 func (s *AppCfgFileDefService) deleteEnvInstanceByName(
 	ctx context.Context,
 	defID bson.ObjectID,
 	appID string,
 	envName string,
-) error {
-	acf, err := s.FileStore.GetByDefIDAndEnv(ctx, defID, envName)
+) (*AppConfigFile, error) {
+	acf, err := s.FileStore.Get(ctx, FileByDefEnv(defID, envName))
 	if err != nil {
 		if errors.Is(err, ErrAppConfigFileNotFound) {
-			return nil
+			return nil, nil
 		}
-		return err
+		return nil, err
 	}
-	if _, err = s.FileStore.DeleteByID(ctx, appID, acf.ID); err != nil {
-		return errors.Wrap(err, "delete env instance")
+	if err = DeleteFile(ctx, s.FileStore, appID, acf.ID); err != nil {
+		return nil, errors.Wrap(err, "delete env instance")
 	}
-	if _, err = s.VersionStore.DeleteByFileID(ctx, acf.ID); err != nil {
-		return errors.Wrap(err, "delete versions for env instance")
+	if _, err = s.VersionStore.DeleteMany(ctx, VersionsByFile(acf.ID)); err != nil {
+		return nil, errors.Wrap(err, "delete versions for env instance")
 	}
-	return nil
+	return acf, nil
 }

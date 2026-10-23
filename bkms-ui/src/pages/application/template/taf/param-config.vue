@@ -235,6 +235,11 @@
         trigger: 'blur',
       },
       {
+        message: t('不能以中划线结尾'),
+        trigger: 'blur',
+        validator: () => !(formData.value.name || '').endsWith('-'),
+      },
+      {
         message: t('请输入 1-20 个字符的小写字母、数字、中划线，以小写字母开头'),
         trigger: 'blur',
         validator: () => BKMS_REGEX.appNameRegex.test(formData.value.name),

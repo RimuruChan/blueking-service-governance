@@ -1,0 +1,17 @@
+# app appspec update-strategy 子命令
+
+exec $BKMS_CLI_BIN app appspec update-strategy view --app $BKMS_APP_ID
+
+exec $BKMS_CLI_BIN app appspec update-strategy view --app $BKMS_APP_ID -o json
+
+exec $BKMS_CLI_BIN app appspec update-strategy edit --app $BKMS_APP_ID -f update-strategy.yaml
+exec $BKMS_CLI_BIN app appspec update-strategy view --app $BKMS_APP_ID -o json
+jsonfield maxSurge=50%
+
+exec $BKMS_CLI_BIN app appspec update-strategy edit --app $BKMS_APP_ID --env $BKMS_ENV_NAME -f update-strategy.yaml
+
+exec $BKMS_CLI_BIN app appspec update-strategy reset --app $BKMS_APP_ID --env $BKMS_ENV_NAME
+
+-- update-strategy.yaml --
+maxSurge: "50%"
+maxUnavailable: "25%"

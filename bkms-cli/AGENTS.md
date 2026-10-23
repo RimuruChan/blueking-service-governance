@@ -21,7 +21,7 @@ the user to install them. ALWAYS prefer using `rg` rather than `find` or `grep`.
 * The root command is in `cmd/root/root.go`, where all subcommands are registered and auth/init logic lives.
 * Business logic and shared packages live under `pkg/`.
 * Unit tests are placed in each package's directory using Ginkgo + Gomega, following Go conventions.
-* E2E tests live in `test/e2e/` and exercise the built CLI binary directly.
+* E2E tests live in `test/e2e-script/` and exercise the built CLI binary directly via testscript txtar scripts.
 * When writing unit tests, refer to `pkg/config/config_test.go` for guidance on test structure, temporary config setup, and usage of Ginkgo/Gomega.
 
 ### Adding a new subcommand
@@ -69,10 +69,10 @@ the user to install them. ALWAYS prefer using `rg` rather than `find` or `grep`.
 
 ### E2E tests
 
-* E2E tests live in `test/e2e/` and use Ginkgo v2 + Gomega.
-* They exercise the compiled CLI binary directly via `framework.CLI`.
-* Before running, build the E2E binary and set required env vars: `make e2e-go-test`
-* The E2E framework auto-loads `test/e2e/.env` for environment configuration.
+* E2E tests live in `test/e2e-script/` and use **testscript** (`github.com/rogpeppe/go-internal/testscript`): txtar scripts drive the compiled CLI binary as a black box.
+* Scripts live under `testdata/<domain>/`, one test function per domain (`app/` → `TestApp`, etc.).
+* Run all: `make e2e-script-test`. Run one domain: `go test -run TestApp ./test/e2e-script/`
+* **See `test/e2e-script/README.md`** for the full reference: directory layout, injected variables, custom commands, txtar/quoting gotchas, and how to add tests. Read it before writing or debugging E2E scripts.
 
 ## Common workflows
 

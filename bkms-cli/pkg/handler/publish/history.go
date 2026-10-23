@@ -28,8 +28,14 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
 )
 
+// actionRestart 进程重启记录的操作类型
+const actionRestart = "restart"
+
 // PublishRecordRow 发布记录展示行
 type PublishRecordRow struct {
+	// Action 操作类型：publish / restart
+	Action     string `json:"action"`
+	EnvName    string `json:"envName"`
 	Instance   string `json:"instance"`
 	BinaryName string `json:"binaryName"`
 	FileSize   string `json:"fileSize"`
@@ -42,21 +48,26 @@ type PublishRecordRow struct {
 }
 
 // ListHistory 获取开发模式发布历史记录（展示格式）。
+// envName 与 envTypes 二选一：指定 envName 时只查该环境，否则按环境类型跨环境查询。
 func ListHistory(
 	ctx context.Context,
 	cli client.Client,
-	appID, envName, keyword string,
+	appID, envName string, envTypes []string, keyword string,
 ) ([]PublishRecordRow, error) {
-	records, err := cli.ListDevModePublishRecords(ctx, appID, envName, keyword)
+	records, err := listRecords(ctx, cli, appID, envName, envTypes, keyword)
 	if err != nil {
-		return nil, errors.Wrap(err, "list dev mode publish records")
+		return nil, err
 	}
 
 	rows := lo.Map(records, func(record client.DevModePublishRecord, _ int) PublishRecordRow {
+		// restart 记录不涉及二进制文件，不展示文件大小
+		fileSize := lo.Ternary(record.Action == actionRestart, "", formatFileSize(record.FileSize))
 		return PublishRecordRow{
+			Action:     lo.CoalesceOrEmpty(record.Action, "publish"),
+			EnvName:    record.EnvName,
 			Instance:   record.Instance,
 			BinaryName: record.BinaryName,
-			FileSize:   formatFileSize(record.FileSize),
+			FileSize:   fileSize,
 			MD5:        record.MD5,
 			Status:     record.Status,
 			Message:    record.Message,
@@ -65,6 +76,22 @@ func ListHistory(
 		}
 	})
 	return rows, nil
+}
+
+// listRecords 按环境或环境类型查询发布记录
+func listRecords(
+	ctx context.Context,
+	cli client.Client,
+	appID, envName string, envTypes []string, keyword string,
+) ([]client.DevModePublishRecord, error) {
+	query := client.DevModePublishRecordsQuery{Keyword: keyword, Page: 1, PageSize: 100}
+	if envName != "" {
+		query.EnvNames = []string{envName}
+	} else {
+		query.EnvTypes = envTypes
+	}
+	records, _, err := cli.ListDevModePublishRecords(ctx, appID, query)
+	return records, errors.Wrapf(err, "list dev mode publish records (env %q, env types %v)", envName, envTypes)
 }
 
 // formatFileSize 将字节数格式化为人类可读字符串（B / KB / MB / GB ...）。

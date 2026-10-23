@@ -20,6 +20,7 @@ package instance
 
 import (
 	"context"
+	"slices"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -111,6 +112,30 @@ var _ = Describe("ListInstances", func() {
 		Expect(instances).To(HaveLen(1))
 		Expect(instances[0].ID).To(Equal("pod-1"))
 		Expect(instances[0].Status).To(Equal("Running"))
+	})
+
+	It("passes IP filters to every page request", func() {
+		matchIPFilters := func(page int) interface{} {
+			return mock.MatchedBy(func(opts client.ListAppInstancesOptions) bool {
+				return opts.Page == page &&
+					slices.Equal(opts.PodIPs, []string{"10.0.0.1", "10.0.0.2"}) &&
+					slices.Equal(opts.NodeIPs, []string{"192.168.0.1"})
+			})
+		}
+		cli.EXPECT().
+			ListAppInstances(mock.Anything, appID, envName, matchIPFilters(1)).
+			Return(&client.PaginatedInstances{Count: "2", Results: []client.Instance{{ID: "pod-1"}}}, nil)
+		cli.EXPECT().
+			ListAppInstances(mock.Anything, appID, envName, matchIPFilters(2)).
+			Return(&client.PaginatedInstances{Count: "2", Results: []client.Instance{{ID: "pod-2"}}}, nil)
+
+		instances, err := ListInstances(ctx, cli, appID, envName, ListInstancesOptions{
+			PodIPs:  []string{"10.0.0.1", "10.0.0.2"},
+			NodeIPs: []string{"192.168.0.1"},
+		})
+
+		Expect(err).NotTo(HaveOccurred())
+		Expect(instances).To(HaveLen(2))
 	})
 
 	It("returns an error when response data is empty", func() {

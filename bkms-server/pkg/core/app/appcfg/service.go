@@ -20,6 +20,10 @@ package appcfg
 
 import (
 	"context"
+
+	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
 // AppConfigFileService 向后兼容的门面，内嵌 AppCfgFileDefService。
@@ -34,12 +38,8 @@ type AppConfigFileService struct {
 var _ MountableFileProvider = (*AppCfgFileDefService)(nil)
 
 // NewAppConfigFileService 内部构造分层服务。
-func NewAppConfigFileService(
-	fileStore AppConfigFileStore,
-	defStore AppConfigFileDefStore,
-	versionStore AppConfigFileVersionStore,
-) *AppConfigFileService {
-	base := NewBaseAppCfgFileService(defStore, fileStore, versionStore)
+func NewAppConfigFileService(db *mongo.Database) *AppConfigFileService {
+	base := NewBaseAppCfgFileService(db)
 	inner := NewAppCfgFileDefService(base)
 	return &AppConfigFileService{AppCfgFileDefService: inner}
 }
@@ -55,4 +55,36 @@ func (s *AppConfigFileService) Create(
 		return nil, err
 	}
 	return &wm.AppConfigFile, nil
+}
+
+// Rollback 回滚到指定历史版本。
+// 这里回滚的是文件记录的完整存储形态（包括 type 以及对应的内容字段），
+// 因此当前文件类型与目标版本类型不一致时直接拒绝，避免跨类型回滚把当前策略下的实例形态改回去。
+func (s *AppConfigFileService) Rollback(
+	ctx context.Context,
+	appID string,
+	versionID bson.ObjectID,
+	operator string,
+	description string,
+	expectedCurrentVersion *int64,
+) (*AppConfigFile, *AppConfigFileVersion, error) {
+	targetVersion, err := s.GetVersionByAppAndID(ctx, appID, versionID)
+	if err != nil {
+		return nil, nil, err
+	}
+	currentFile, err := s.FileStore.GetByID(ctx, targetVersion.AppConfigFileID)
+	if err != nil {
+		return nil, nil, err
+	}
+	if currentFile.Type != targetVersion.Type {
+		return nil, nil, errors.Wrapf(
+			ErrInvalidConfigSpec,
+			"current file type %s does not match target version type %s",
+			currentFile.Type,
+			targetVersion.Type,
+		)
+	}
+	return s.BaseAppCfgFileService.Rollback(
+		ctx, appID, versionID, operator, description, expectedCurrentVersion,
+	)
 }

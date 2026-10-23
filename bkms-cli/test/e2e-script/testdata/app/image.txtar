@@ -1,0 +1,8 @@
+# app image 子命令
+
+exec $BKMS_CLI_BIN app image list --app $BKMS_APP_ID
+stdout .
+
+# list 缺 --app
+! exec $BKMS_CLI_BIN app image list
+stderr 'required flag\(s\) "app" not set'

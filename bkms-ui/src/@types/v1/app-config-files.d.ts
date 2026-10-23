@@ -251,7 +251,7 @@ export interface CreateAppConfigFileInput {
    */
   fileFormat: "yaml" | "taf";
   /**
-   * 应用配置文件名称，包含大小写字母、数字和符号（_-），长度 1-64 之间。
+   * 应用配置文件名称，仅支持数字、字母、下划线(_)、中划线(-)、点(.)，长度 1-64 之间。
    * todo 兼容前端用特性环境内部名（feat-{appID}-{n}）创建 overlay。
    */
   name: string;
@@ -285,10 +285,6 @@ export interface UpdateAppConfigFileInput {
    * 版本描述
    */
   description?: string;
-  /**
-   * 应用配置文件名称，包含大小写字母、数字和符号（_-），长度 1-64 之间
-   */
-  name: string;
 }
 
 export interface UpdateAppConfigFileOutput {
@@ -440,6 +436,10 @@ export interface AppConfigFileOutputObj {
    * 当前生效版本号
    */
   currentVersion?: number;
+  /**
+   * 配置文件定义 ID
+   */
+  defID?: string;
   /**
    * 环境名称，为空表示应用级别配置，非空表示特定环境的配置
    */

@@ -26,9 +26,11 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/perm"
 	storereg "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/registry"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/helmcore/arrangement"
 )
 
@@ -42,18 +44,33 @@ func NewHandler(registry *storereg.Registry) *Handler {
 	return &Handler{registry: registry}
 }
 
+func (h *Handler) configFiles() *appcfg.AppConfigFileStore {
+	return store.Of(h.registry.DB, appcfg.AppConfigFileMeta)
+}
+
 func (h *Handler) newAppCfgFileDefService() *appcfg.AppCfgFileDefService {
 	base := appcfg.NewBaseAppCfgFileService(
-		h.registry.AppConfigFileDefStore,
-		h.registry.AppConfigFileStore,
-		h.registry.AppConfigFileVersionStore,
+		h.registry.DB,
 	)
 	return appcfg.NewAppCfgFileDefService(base)
+}
+
+// abortDefWriteErr 把写入 def 的错误返回给调用方。
+// 文件名 + 挂载目录冲突带 APP_CONFIG_FILE_MOUNT_IDENTITY_CONFLICT，供前端单独提示。
+func abortDefWriteErr(c *gin.Context, err error, action, appID, name, mountDir string) {
+	if errors.Is(err, appcfg.ErrAppConfigFileDefAlreadyExists) {
+		bkerrs.AbortWithErr(c, bkerrs.WrapAppConfigFileMountIdentityConflict(err, appID, name, mountDir))
+		return
+	}
+	bkerrs.AbortWithErr(c, bkerrs.Wrap(err, errCodeForDefError(err), action))
 }
 
 func errCodeForDefError(err error) bkerrs.ErrCode {
 	if errors.Is(err, appcfg.ErrInvalidConfigSpec) {
 		return bkerrs.ErrCodeInvalidArgument
+	}
+	if errors.Is(err, appcfg.ErrAppConfigFileDefAlreadyExists) {
+		return bkerrs.ErrCodeAlreadyExists
 	}
 	return bkerrs.ErrCodeInternalServerError
 }
@@ -84,7 +101,7 @@ func (h *Handler) ListDefaultFilesWithDef(c *gin.Context) {
 		return
 	}
 
-	defs, err := h.registry.AppConfigFileDefStore.ListByApp(ctx, app.ID)
+	defs, err := appcfg.ListDefsByApp(ctx, store.Of(h.registry.DB, appcfg.AppConfigFileDefMeta), app.ID)
 	if err != nil {
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "listing defs"))
 		return
@@ -95,8 +112,8 @@ func (h *Handler) ListDefaultFilesWithDef(c *gin.Context) {
 	for _, d := range defs {
 		defIDs = append(defIDs, d.ID)
 	}
-	defaultFiles, err := h.registry.AppConfigFileStore.List(
-		ctx, app.ID,
+	defaultFiles, err := appcfg.ListFiles(
+		ctx, h.configFiles(), app.ID,
 		appcfg.AcfFilterDefIDs(defIDs),
 		appcfg.AcfFilterEnvName(appcfg.EnvNameDefault),
 	)
@@ -129,6 +146,7 @@ func (h *Handler) ListDefaultFilesWithDef(c *gin.Context) {
 //	@Param			body	body		CreateDefInput	true	"创建配置文件定义请求"
 //	@Success		200		{object}	CreateDefOutput
 //	@Failure		400		{object}	bkerrs.GinErrorOutput
+//	@Failure		409		{object}	bkerrs.GinErrorOutput	"文件名和挂载目录已存在，details.code=APP_CONFIG_FILE_MOUNT_IDENTITY_CONFLICT"
 //	@Router			/apps/{appID}/app-config-file-defs [post]
 func (h *Handler) CreateAppConfigFileDef(c *gin.Context) {
 	var uriInput AppURIInput
@@ -173,6 +191,8 @@ func (h *Handler) CreateAppConfigFileDef(c *gin.Context) {
 		BSCPConfig:          bscpConfig,
 		Format:              fileFormat,
 		Content:             input.Content,
+		MountedEnvNames:     input.MountedEnvNames,
+		EnableEnvVarRender:  input.EnableEnvVarRender,
 		MountDir:            input.MountDir,
 		Creator:             creator,
 		Description:         input.Description,
@@ -180,12 +200,20 @@ func (h *Handler) CreateAppConfigFileDef(c *gin.Context) {
 		AppType:             app.Type,
 	})
 	if err != nil {
-		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, errCodeForDefError(err), "creating def"))
+		abortDefWriteErr(c, err, "creating def", app.ID, input.Name, input.MountDir)
 		return
 	}
 
 	out := new(DefDetailObj).FromDefAndFile(
 		*result.Def, &result.AppConfigFile,
+	)
+	h.addAppConfigFileDefAudit(
+		ctx,
+		app,
+		result.EnvName,
+		audit.OperationTypeCreate,
+		nil,
+		buildAppConfigFileDefAuditData(result.Def, &result.AppConfigFile),
 	)
 	ginutils.OK(c, CreateDefOutput{Item: out})
 }
@@ -235,7 +263,7 @@ func (h *Handler) GetAppCfgFileDetail(c *gin.Context) {
 	})
 }
 
-// UpdateAppCfgFileDef 更新配置文件定义信息（name / mountDir / isUnifiedConfig / mountedEnvNames）。
+// UpdateAppCfgFileDef 更新配置文件定义信息（name / mountDir / isUnifiedConfig / mountedEnvNames / envContentStrategy）。
 //
 //	@ID				UpdateAppConfigFileDef
 //	@Summary		更新配置文件定义信息
@@ -249,6 +277,7 @@ func (h *Handler) GetAppCfgFileDetail(c *gin.Context) {
 //	@Param			body	body		UpdateDefInput	true	"更新配置文件定义请求"
 //	@Success		200		{object}	UpdateDefOutput
 //	@Failure		400		{object}	bkerrs.GinErrorOutput
+//	@Failure		409		{object}	bkerrs.GinErrorOutput	"文件名和挂载目录已存在，details.code=APP_CONFIG_FILE_MOUNT_IDENTITY_CONFLICT"
 //	@Router			/apps/{appID}/app-config-file-defs/{id} [put]
 func (h *Handler) UpdateAppCfgFileDef(c *gin.Context) {
 	var uriInput DefURIInput
@@ -266,13 +295,16 @@ func (h *Handler) UpdateAppCfgFileDef(c *gin.Context) {
 
 	ctx := c.Request.Context()
 	// 需要编辑权限
-	if _, err = perm.ValidateAppByID(ctx, h.registry, uriInput.AppID, perm.TypeEdit); err != nil {
+	app, err := perm.ValidateAppByID(ctx, h.registry, uriInput.AppID, perm.TypeEdit)
+	if err != nil {
 		bkerrs.AbortWithErr(c, err)
 		return
 	}
 
 	operator := auth.MustGetUser(ctx).ID
 	update := input.ToFileDefUpdate(operator)
+	update.AppType = app.Type
+	oldDef := *def
 
 	svc := h.newAppCfgFileDefService()
 	if err = svc.UpdateAppCfgFileDef(ctx, def, update); err != nil {
@@ -280,12 +312,122 @@ func (h *Handler) UpdateAppCfgFileDef(c *gin.Context) {
 			bkerrs.AbortWithErr(c, bkerrs.WrapAppConfigFileVersionConflict(err, def.AppID, def.ID.Hex()))
 			return
 		}
-		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, errCodeForDefError(err), "updating def"))
+		name, mountDir := def.Name, def.MountDir
+		if update.Name != nil {
+			name = *update.Name
+		}
+		if update.MountDir != nil {
+			mountDir = *update.MountDir
+		}
+		abortDefWriteErr(c, err, "updating def", def.AppID, name, mountDir)
 		return
 	}
 
+	h.addAppConfigFileDefAudit(
+		ctx,
+		app,
+		appcfg.EnvNameDefault,
+		audit.OperationTypeUpdate,
+		buildAppConfigFileDefAuditData(&oldDef, nil),
+		buildAppConfigFileDefAuditData(def, nil),
+	)
 	ginutils.OK(c, UpdateDefOutput{
 		Item: new(DefSummaryObj).FromDef(*def),
+	})
+}
+
+// UpdateHelmFile 一次保存 Helm 编辑表单上的名称、基础 values 和 BSCP 绑定。
+//
+//	@ID				UpdateHelmFile
+//	@Summary		保存 Helm 配置文件的名称、基础文件和 BSCP 绑定
+//	@Tags			app-config-file-defs
+//	@Accept			json
+//	@Produce		json
+//	@Security		BkUserInfo
+//	@Security		BkUserCredential
+//	@Param			appID	path		string				true	"应用 ID"
+//	@Param			id		path		string				true	"配置文件定义 ID"
+//	@Param			body	body		UpdateHelmFileInput	true	"Helm 编辑保存请求"
+//	@Success		200		{object}	UpdateHelmFileOutput
+//	@Failure		400		{object}	bkerrs.GinErrorOutput
+//	@Failure		409		{object}	bkerrs.GinErrorOutput	"文件名和挂载目录已存在，details.code=APP_CONFIG_FILE_MOUNT_IDENTITY_CONFLICT"
+//	@Router			/apps/{appID}/app-config-file-defs/{id}/helm-file [put]
+func (h *Handler) UpdateHelmFile(c *gin.Context) {
+	var uriInput DefURIInput
+	var input UpdateHelmFileInput
+	if err := ginutils.BindURIJSON(c, &uriInput, &input); err != nil {
+		bkerrs.AbortWithErr(c, err)
+		return
+	}
+
+	def, err := h.getAppCfgFileDef(c, uriInput)
+	if err != nil {
+		bkerrs.AbortWithErr(c, err)
+		return
+	}
+
+	ctx := c.Request.Context()
+	app, err := perm.ValidateAppByID(ctx, h.registry, uriInput.AppID, perm.TypeEdit)
+	if err != nil {
+		bkerrs.AbortWithErr(c, err)
+		return
+	}
+
+	svc := h.newAppCfgFileDefService()
+	defaultFile, err := svc.GetDefaultFileWithDef(ctx, def.ID)
+	if err != nil {
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "loading default file"))
+		return
+	}
+
+	baseID, err := h.validateBaseAppConfigFileID(
+		ctx, app.ID, defaultFile.Type, input.BaseAppConfigFileID,
+	)
+	if err != nil {
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidArgument, "validating base file"))
+		return
+	}
+	bscpConfig, err := h.validateBSCPConfig(
+		ctx, defaultFile.ContentSourceType, input.BSCPConfig, defaultFile.GetConfigFormat(),
+	)
+	if err != nil {
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidArgument, "validating bscp config"))
+		return
+	}
+
+	oldDef := *def
+	oldFile := defaultFile.AppConfigFile
+	operator := auth.MustGetUser(ctx).ID
+	result, err := svc.UpdateHelmFile(ctx, def, &defaultFile.AppConfigFile, appcfg.HelmFileUpdate{
+		Name:                   input.Name,
+		BaseAppConfigFileID:    baseID,
+		BSCPConfig:             bscpConfig,
+		Operator:               operator,
+		AppType:                app.Type,
+		Description:            input.Description,
+		ExpectedCurrentVersion: input.CurrentVersion,
+	})
+	if err != nil {
+		if errors.Is(err, appcfg.ErrAppConfigFileVersionConflict) {
+			bkerrs.AbortWithErr(c, bkerrs.WrapAppConfigFileVersionConflict(err, def.AppID, defaultFile.ID.Hex()))
+			return
+		}
+		abortDefWriteErr(c, err, "updating helm file", def.AppID, input.Name, def.MountDir)
+		return
+	}
+
+	if result.NameChanged || result.FileChanged {
+		h.addAppConfigFileDefAudit(
+			ctx,
+			app,
+			defaultFile.EnvName,
+			audit.OperationTypeUpdate,
+			buildAppConfigFileDefAuditData(&oldDef, &oldFile),
+			buildAppConfigFileDefAuditData(result.Def, result.File),
+		)
+	}
+	ginutils.OK(c, UpdateHelmFileOutput{
+		Item: new(DefDetailObj).FromDefAndFile(*result.Def, result.File),
 	})
 }
 
@@ -316,14 +458,15 @@ func (h *Handler) DeleteAppCfgFileDef(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if _, err = perm.ValidateAppByID(ctx, h.registry, uriInput.AppID, perm.TypeEdit); err != nil {
+	app, err := perm.ValidateAppByID(ctx, h.registry, uriInput.AppID, perm.TypeEdit)
+	if err != nil {
 		bkerrs.AbortWithErr(c, err)
 		return
 	}
 
 	// 查默认文件并通过 base service 删除（级联删 sibling / def）
 	svc := h.newAppCfgFileDefService()
-	defaultFile, fErr := h.registry.AppConfigFileStore.GetByDefIDAndEnv(ctx, def.ID, appcfg.EnvNameDefault)
+	defaultFile, fErr := h.configFiles().Get(ctx, appcfg.FileByDefEnv(def.ID, appcfg.EnvNameDefault))
 	if fErr != nil {
 		bkerrs.AbortWithErr(
 			c,
@@ -336,6 +479,14 @@ func (h *Handler) DeleteAppCfgFileDef(c *gin.Context) {
 		return
 	}
 
+	h.addAppConfigFileDefAudit(
+		ctx,
+		app,
+		defaultFile.EnvName,
+		audit.OperationTypeDelete,
+		buildAppConfigFileDefAuditData(def, defaultFile),
+		nil,
+	)
 	ginutils.OK(c, DeleteDefOutput{})
 }
 
@@ -366,7 +517,7 @@ func (h *Handler) ListEnvInstances(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	files, err := h.registry.AppConfigFileStore.ListByDefID(ctx, def.ID)
+	files, err := h.configFiles().List(ctx, appcfg.FilesByDef(def.ID))
 	if err != nil {
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "listing env instances"))
 		return
@@ -420,7 +571,6 @@ func (h *Handler) UpdateContent(c *gin.Context) {
 		bkerrs.AbortWithErr(c, err)
 		return
 	}
-
 	operator := auth.MustGetUser(ctx).ID
 	svc := h.newAppCfgFileDefService()
 	result, err := svc.UpsertEnvContent(ctx, def, appcfg.UpsertEnvContentParams{
@@ -433,7 +583,7 @@ func (h *Handler) UpdateContent(c *gin.Context) {
 			if def.ConfigKind != appcfg.ConfigKindFramework {
 				return nil
 			}
-			arranger := arrangement.NewAppArranger(h.registry.AppStore)
+			arranger := arrangement.NewAppArranger()
 			_, validateErr := arranger.ValidateFileContent(
 				ctx,
 				app,
@@ -451,7 +601,7 @@ func (h *Handler) UpdateContent(c *gin.Context) {
 		if errors.Is(err, appcfg.ErrInvalidConfigSpec) {
 			code = bkerrs.ErrCodeInvalidArgument
 		}
-		if errors.Is(err, appcfg.ErrAppConfigFileVersionConflict) {
+		if errors.Is(err, appcfg.ErrAppConfigFileVersionConflict) && result != nil && result.File != nil {
 			bkerrs.AbortWithErr(c, bkerrs.WrapAppConfigFileVersionConflict(err, def.AppID, result.File.ID.Hex()))
 			return
 		}
@@ -459,6 +609,7 @@ func (h *Handler) UpdateContent(c *gin.Context) {
 		return
 	}
 
+	h.auditContentUpsert(ctx, app, def, result)
 	ginutils.OK(c, UpdateContentOutput{
 		FileID:         result.File.ID.Hex(),
 		CurrentVersion: result.File.CurrentVersion,
@@ -498,13 +649,14 @@ func (h *Handler) ResetEnvToDefault(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
-	if _, err = perm.ValidateAppByID(ctx, h.registry, uriInput.AppID, perm.TypeEdit); err != nil {
+	app, err := perm.ValidateAppByID(ctx, h.registry, uriInput.AppID, perm.TypeEdit)
+	if err != nil {
 		bkerrs.AbortWithErr(c, err)
 		return
 	}
-
 	svc := h.newAppCfgFileDefService()
-	if err = svc.ResetEnvInstanceToDefault(ctx, def, uriInput.EnvName); err != nil {
+	envFile, err := svc.ResetEnvInstanceToDefault(ctx, def, uriInput.EnvName)
+	if err != nil {
 		if errors.Is(err, appcfg.ErrResetToDefaultRequiresIndependentConfig) {
 			bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidArgument, "reset requires independent mode"))
 			return
@@ -513,6 +665,16 @@ func (h *Handler) ResetEnvToDefault(c *gin.Context) {
 		return
 	}
 
+	if envFile != nil {
+		h.addAppConfigFileDefAudit(
+			ctx,
+			app,
+			envFile.EnvName,
+			audit.OperationTypeDelete,
+			buildAppConfigFileDefAuditData(def, envFile),
+			nil,
+		)
+	}
 	ginutils.OK(c, ResetEnvOutput{})
 }
 
@@ -578,7 +740,7 @@ func (h *Handler) getAppCfgFileDef(ctx *gin.Context, uri DefURIInput) (*appcfg.A
 	if err != nil {
 		return nil, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidArgument, "parsing def ID")
 	}
-	def, err := h.registry.AppConfigFileDefStore.GetByID(ctx.Request.Context(), defID)
+	def, err := store.Of(h.registry.DB, appcfg.AppConfigFileDefMeta).GetByID(ctx.Request.Context(), defID)
 	if err != nil {
 		return nil, bkerrs.Wrap(err, bkerrs.ErrCodeNotFound, "config file def not found")
 	}

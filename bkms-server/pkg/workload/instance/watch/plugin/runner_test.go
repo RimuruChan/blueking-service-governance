@@ -205,6 +205,59 @@ var _ = Describe("Runner", func() {
 		Expect(events).To(BeEmpty())
 	})
 
+	// 待同步实例拿到值就推一次，空值也推（前端首包可能有旧数据）；推过之后回到深比较
+	// 插件没给值的实例标记保留，等它给出值的那一轮再推
+	It("pushes unsynced instances once even when the payload is empty", func() {
+		p := &fakePlugin{name: "stub", rounds: []map[string]any{
+			{"a": []string{"v1"}, "b": []string{}},
+			{"a": []string{"v1"}, "b": []string{}},
+			{"a": []string{"v1"}, "b": []string{}, "c": []string{}},
+			{"a": []string{"v1"}, "b": []string{}, "c": []string{}},
+		}}
+		runner := NewRunner(p)
+		runner.MarkUnsynced("a", "b", "c")
+
+		rounds := make([][]serializer.AppInstancePluginWatchEvent, 4)
+		for i := range rounds {
+			Expect(runner.Run(ctx, snapshotOf("a", "b", "c"), collect(&rounds[i]))).To(Succeed())
+		}
+
+		// 首轮 a、b 都推，b 的空数组也推；c 没给值不推
+		Expect(rounds[0]).To(HaveLen(2))
+		Expect(rounds[0][0].Object.ID).To(Equal("a"))
+		Expect(rounds[0][1].Object.ID).To(Equal("b"))
+		Expect(rounds[0][1].Object.Data).To(Equal([]string{}))
+		// 同步过的不再重推
+		Expect(rounds[1]).To(BeEmpty())
+		// c 首次给值即推，哪怕是空值
+		Expect(rounds[2]).To(HaveLen(1))
+		Expect(rounds[2][0].Object.ID).To(Equal("c"))
+		Expect(rounds[3]).To(BeEmpty())
+	})
+
+	// 拉取失败的轮次不消耗待同步标记；已推送过的实例重新标记后，相同载荷也要再推一次
+	It("keeps unsynced marks across failed fetches and re-pushes after re-marking", func() {
+		p := &fakePlugin{name: "stub", failAll: true, rounds: []map[string]any{{"a": []string{"v1"}}}}
+		runner := NewRunner(p)
+		runner.MarkUnsynced("a")
+
+		var failed []serializer.AppInstancePluginWatchEvent
+		Expect(runner.Run(ctx, snapshotOf("a"), collect(&failed))).To(Succeed())
+
+		p.failAll = false
+		var recovered []serializer.AppInstancePluginWatchEvent
+		Expect(runner.Run(ctx, snapshotOf("a"), collect(&recovered))).To(Succeed())
+
+		runner.MarkUnsynced("a")
+		var remarked []serializer.AppInstancePluginWatchEvent
+		Expect(runner.Run(ctx, snapshotOf("a"), collect(&remarked))).To(Succeed())
+
+		Expect(failed).To(BeEmpty())
+		Expect(recovered).To(HaveLen(1))
+		Expect(remarked).To(HaveLen(1))
+		Expect(remarked[0].Object.Data).To(Equal([]string{"v1"}))
+	})
+
 	// 插件快照是抽出的值拷贝，改 IP 碰不到调用方的投影对象
 	It("does not let plugin mutations reach the caller snapshot", func() {
 		mut := &fakePlugin{

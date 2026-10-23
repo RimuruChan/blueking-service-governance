@@ -1,9 +1,0 @@
-# 错误用例：缺少 buildConfig 段
-name: my-app
-type: trpc
-
-appModelSpec:
-  trpcSpec:
-    language: go
-    fileName: trpc_go.yaml
-    filePath: /app/conf

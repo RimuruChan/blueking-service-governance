@@ -125,19 +125,80 @@ var _ = Describe("Record", func() {
 			Expect(name).To(Equal("demo"))
 		})
 	})
+
+	Describe("GetReleaseMode", func() {
+		It("defaults to releasing all instances for legacy records", func() {
+			Expect((&appmodel.Record{}).GetReleaseMode()).To(Equal(appmodel.ReleaseModeAll))
+		})
+
+		It("returns the stored release mode", func() {
+			record := &appmodel.Record{ReleaseMode: appmodel.ReleaseModeBatch}
+			Expect(record.GetReleaseMode()).To(Equal(appmodel.ReleaseModeBatch))
+		})
+	})
+
+	Describe("IsBatchReleasing", func() {
+		DescribeTable("checks release mode and status",
+			func(mode appmodel.ReleaseMode, status appmodel.Status, expected bool) {
+				record := &appmodel.Record{ReleaseMode: mode, Status: status}
+				Expect(record.IsBatchReleasing()).To(Equal(expected))
+			},
+			Entry("batch release deploying", appmodel.ReleaseModeBatch, appmodel.StatusDeploying, true),
+			Entry("legacy record deploying", appmodel.ReleaseMode(""), appmodel.StatusDeploying, false),
+			Entry("release all deploying", appmodel.ReleaseModeAll, appmodel.StatusDeploying, false),
+			Entry("batch release deployed", appmodel.ReleaseModeBatch, appmodel.StatusDeployed, false),
+			Entry("batch release rolled back", appmodel.ReleaseModeBatch, appmodel.StatusRolledBack, false),
+			Entry("batch release polling broken", appmodel.ReleaseModeBatch, appmodel.StatusPollingBroken, false),
+		)
+
+		It("returns false when there is no record", func() {
+			var record *appmodel.Record
+			Expect(record.IsBatchReleasing()).To(BeFalse())
+		})
+	})
+})
+
+var _ = Describe("Status", func() {
+	DescribeTable("IsStable",
+		func(status appmodel.Status, expected bool) {
+			Expect(status.IsStable()).To(Equal(expected))
+		},
+		Entry("deploying", appmodel.StatusDeploying, false),
+		Entry("uninstalling", appmodel.StatusUninstalling, false),
+		Entry("deployed", appmodel.StatusDeployed, true),
+		Entry("rolled back", appmodel.StatusRolledBack, true),
+		Entry("failed", appmodel.StatusFailed, true),
+		Entry("polling timeout", appmodel.StatusPollingTimeout, true),
+	)
 })
 
 var _ = Describe("BuildAutoDeployExtras", func() {
 	Describe("NewBuildAutoDeployExtras", func() {
 		It("should encode build auto deploy info into deploy record extras", func() {
 			extras := appmodel.NewBuildAutoDeployExtras(&appmodel.BuildAutoDeployInfo{
-				Branch:   "release/v1.2.3",
-				CommitID: "abc123def456",
+				Branch:       "release/v1.2.3",
+				RevisionType: "branch",
+				Revision:     "release/v1.2.3",
+				CommitID:     "abc123def456",
 			})
 
 			Expect(extras).To(HaveKeyWithValue(appmodel.ExtraKeyDeploySource, appmodel.DeploySourceBuildAutoDeploy))
+			Expect(extras).To(HaveKeyWithValue(appmodel.ExtraKeyBuildRevisionType, "branch"))
+			Expect(extras).To(HaveKeyWithValue(appmodel.ExtraKeyBuildRevision, "release/v1.2.3"))
 			Expect(extras).To(HaveKeyWithValue(appmodel.ExtraKeyBuildBranch, "release/v1.2.3"))
 			Expect(extras).To(HaveKeyWithValue(appmodel.ExtraKeyBuildCommitID, "abc123def456"))
+		})
+
+		It("should not store a commit revision in the legacy branch extra", func() {
+			extras := appmodel.NewBuildAutoDeployExtras(&appmodel.BuildAutoDeployInfo{
+				RevisionType: "commit",
+				Revision:     "a1b2c3d4e5f6",
+				CommitID:     "a1b2c3d4e5f6",
+			})
+
+			Expect(extras).NotTo(HaveKey(appmodel.ExtraKeyBuildBranch))
+			Expect(extras).To(HaveKeyWithValue(appmodel.ExtraKeyBuildRevisionType, "commit"))
+			Expect(extras).To(HaveKeyWithValue(appmodel.ExtraKeyBuildRevision, "a1b2c3d4e5f6"))
 		})
 
 		It("should return nil when build auto deploy info is absent", func() {

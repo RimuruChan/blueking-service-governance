@@ -26,11 +26,14 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/samber/lo"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 
 	log "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/logging"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	bkmsenv "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appspec"
 )
 
 // DynamicApplyEnqueuer 为单个可动态下发环境投递 asynq 任务。
@@ -45,33 +48,29 @@ var ErrClusterSyncFailed = errors.New("polaris cluster resources sync failed")
 // PolarisConfigService 负责配置管理和北极星平台服务生命周期。
 // on_deploy 的动态下发通过 asynq 按环境入队；immediate 配置在请求内同步下发 CR 与 Service。
 type PolarisConfigService struct {
-	polarisConfigStore  PolarisConfigStore
+	db                  *mongo.Database
 	platformManager     *PolarisPlatformManager
 	envStateManager     *PolarisEnvStateManager
 	applier             *CRApplier
-	envStore            bkmsenv.EnvironmentStore
-	appModelStore       appmodel.AppModelStore
+	envStore            *bkmsenv.EnvironmentStore
 	envVarsReader       dynamicApplyEnvVarsReader
 	enqueueDynamicApply DynamicApplyEnqueuer
 }
 
 // NewPolarisConfigService 创建北极星配置服务。
 func NewPolarisConfigService(
-	store PolarisConfigStore,
+	db *mongo.Database,
 	platformManager *PolarisPlatformManager,
 	envStateManager *PolarisEnvStateManager,
-	envStore bkmsenv.EnvironmentStore,
-	appModelStore appmodel.AppModelStore,
 	envVarsReader dynamicApplyEnvVarsReader,
 	enqueue DynamicApplyEnqueuer,
 ) *PolarisConfigService {
 	return &PolarisConfigService{
-		polarisConfigStore:  store,
+		db:                  db,
 		platformManager:     platformManager,
 		envStateManager:     envStateManager,
 		applier:             NewCRApplier(),
-		envStore:            envStore,
-		appModelStore:       appModelStore,
+		envStore:            store.Of(db, bkmsenv.EnvMeta),
 		envVarsReader:       envVarsReader,
 		enqueueDynamicApply: enqueue,
 	}
@@ -108,7 +107,7 @@ func (s *PolarisConfigService) Create(
 
 	// 权重因子只存在于北极星。平台创建已在上面写入；导入路径忽略请求里的值。
 	config.EnableWeightFactor = false
-	if err := s.polarisConfigStore.Create(ctx, config); err != nil {
+	if err := store.Of(s.db, ConfigMeta).Create(ctx, config); err != nil {
 		return err
 	}
 
@@ -193,11 +192,11 @@ func (s *PolarisConfigService) Update(
 		)
 	}
 
-	if err := s.polarisConfigStore.Update(ctx, app.ID, oldConfig.Name, updateData); err != nil {
+	if err := UpdateConfig(ctx, s.db, app.ID, oldConfig.Name, updateData); err != nil {
 		return nil, errors.Wrap(err, "update polaris config")
 	}
 
-	newConfig, err := s.polarisConfigStore.Get(ctx, app.ID, oldConfig.Name)
+	newConfig, err := store.Of(s.db, ConfigMeta).Get(ctx, ByName(app.ID, oldConfig.Name))
 	if err != nil {
 		return nil, errors.Wrap(err, "get updated polaris config")
 	}
@@ -208,7 +207,7 @@ func (s *PolarisConfigService) Update(
 	if newConfig.IsImmediateRegister() {
 		reconcileErr := s.reconcileImmediately(ctx, app, newConfig)
 		// 同步下发会改写环境记录，重新读取以便调用方拿到本次下发后的状态
-		syncedConfig, getErr := s.polarisConfigStore.Get(ctx, app.ID, oldConfig.Name)
+		syncedConfig, getErr := store.Of(s.db, ConfigMeta).Get(ctx, ByName(app.ID, oldConfig.Name))
 		if getErr != nil {
 			return newConfig, stderrors.Join(
 				reconcileErr, errors.Wrap(getErr, "get polaris config after immediate apply"),
@@ -250,7 +249,7 @@ func (s *PolarisConfigService) Delete(
 			return errors.Wrap(err, "delete polaris service")
 		}
 	}
-	if err := s.polarisConfigStore.Delete(ctx, app.ID, config.Name); err != nil {
+	if err := store.Of(s.db, ConfigMeta).Delete(ctx, ByName(app.ID, config.Name)); err != nil {
 		return errors.Wrap(err, "delete polaris config")
 	}
 	return nil
@@ -284,7 +283,7 @@ func (s *PolarisConfigService) applyImmediately(
 		return nil
 	}
 
-	appModel, err := s.appModelStore.GetAppModel(ctx, app.ID)
+	appModel, err := store.Of(s.db, appmodel.AppModelMeta).Get(ctx, appmodel.ByApp(app.ID))
 	if err != nil {
 		applyErr := errors.Wrap(err, "get app model for polaris resources apply")
 		log.Errorf(ctx, "get app model for polaris resources apply failed, app=%s: %v", app.ID, applyErr)
@@ -316,11 +315,15 @@ func (s *PolarisConfigService) applyResourcesToEnv(
 	config *PolarisConfig,
 	envName string,
 ) error {
-	env, err := s.envStore.GetByName(ctx, app.WorkspaceID, app.ID, envName)
+	env, err := s.envStore.Get(ctx, bkmsenv.AppEnvByName(app.WorkspaceID, app.ID, envName))
 	if err != nil {
 		return errors.Wrapf(err, "get env %s", envName)
 	}
-	envVars, err := s.envVarsReader.ListVars(ctx, *env, app, appModel)
+	effective, _, err := appspec.ModelForEnv(ctx, s.db, app.ID, env.Name, appModel)
+	if err != nil {
+		return errors.Wrapf(err, "apply env app spec for %s", envName)
+	}
+	envVars, err := s.envVarsReader.ListVars(ctx, *env, app, effective)
 	if err != nil {
 		return errors.Wrapf(err, "build env vars for %s", envName)
 	}
@@ -358,7 +361,7 @@ func (s *PolarisConfigService) releaseFromEnv(
 	config *PolarisConfig,
 	envName string,
 ) error {
-	env, err := s.envStore.GetByName(ctx, app.WorkspaceID, app.ID, envName)
+	env, err := s.envStore.Get(ctx, bkmsenv.AppEnvByName(app.WorkspaceID, app.ID, envName))
 	if err != nil {
 		return errors.Wrapf(err, "get env %s", envName)
 	}
@@ -411,7 +414,7 @@ func (s *PolarisConfigService) patchEnvWeight(
 	weight int32,
 	dynamicWeight bool,
 ) error {
-	env, err := s.envStore.GetByName(ctx, app.WorkspaceID, app.ID, envName)
+	env, err := s.envStore.Get(ctx, bkmsenv.AppEnvByName(app.WorkspaceID, app.ID, envName))
 	if err != nil {
 		return errors.Wrapf(err, "get env %s", envName)
 	}
@@ -441,8 +444,8 @@ func (s *PolarisConfigService) UpdateEnvWeight(
 		}
 	}
 
-	if err := s.polarisConfigStore.UpsertEnvWeight(
-		ctx, app.ID, config.Name, envName, weight, dynamicWeight,
+	if err := UpsertEnvWeight(
+		ctx, s.db, app.ID, config.Name, envName, weight, dynamicWeight,
 	); err != nil {
 		if isDeployed {
 			log.Errorf(ctx, "persist polaris env weight after cluster patch failed, app=%s config=%s env=%s: %v",
@@ -452,7 +455,7 @@ func (s *PolarisConfigService) UpdateEnvWeight(
 	}
 
 	// 重新读取最新配置
-	newConfig, err := s.polarisConfigStore.Get(ctx, app.ID, config.Name)
+	newConfig, err := store.Of(s.db, ConfigMeta).Get(ctx, ByName(app.ID, config.Name))
 	if err != nil {
 		return nil, errors.Wrap(err, "get updated polaris config")
 	}

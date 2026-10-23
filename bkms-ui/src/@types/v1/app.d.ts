@@ -479,13 +479,15 @@ export interface TafSpecInput {
    */
   fileContent?: string;
   /**
-   * 配置文件名
+   * 配置文件名，创建应用时必填，写入 framework def，应用模型不保存。
+   * todo 兼容：更新时可不传；传了仍同步到 def。更新改走 def 接口后，该字段只用于创建。
    */
-  fileName: string;
+  fileName?: string;
   /**
-   * 配置文件路径
+   * 配置文件路径，创建应用时必填，写入 framework def 的挂载目录，应用模型不保存。
+   * todo 兼容：更新时可不传；传了仍同步到 def。更新改走 def 接口后，该字段只用于创建。
    */
-  filePath: string;
+  filePath?: string;
 }
 
 export interface TrpcSpecInput {
@@ -494,13 +496,15 @@ export interface TrpcSpecInput {
    */
   fileContent?: string;
   /**
-   * 配置文件名
+   * 配置文件名，创建应用时必填，写入 framework def，应用模型不保存。
+   * todo 兼容：更新时可不传；传了仍同步到 def。更新改走 def 接口后，该字段只用于创建。
    */
-  fileName: string;
+  fileName?: string;
   /**
-   * 配置文件路径
+   * 配置文件路径，创建应用时必填，写入 framework def 的挂载目录，应用模型不保存。
+   * todo 兼容：更新时可不传；传了仍同步到 def。更新改走 def 接口后，该字段只用于创建。
    */
-  filePath: string;
+  filePath?: string;
   /**
    * 编程语言
    */
@@ -524,6 +528,10 @@ export interface AppInfoOutputObj {
    * 应用显示名称
    */
   displayName?: string;
+  /**
+   * 应用框架（trpc/taf/blank）；Helm/Agones 为空
+   */
+  framework?: string;
   /**
    * 应用 ID
    */
@@ -772,6 +780,10 @@ export interface AppDetailOutputObj {
    */
   displayName?: string;
   /**
+   * 框架（兼容投影：优先 Application.Framework，否则由旧 type 推导）
+   */
+  framework?: string;
+  /**
    * Helm 应用描述规范
    */
   helmSpec?: HelmSpecOutputObj;
@@ -779,6 +791,10 @@ export interface AppDetailOutputObj {
    * 应用 ID
    */
   id?: string;
+  /**
+   * 编程语言（兼容投影：优先 Application.Language，否则 TrpcSpec）
+   */
+  language?: string;
   /**
    * 应用名称
    */
@@ -1111,11 +1127,13 @@ export interface TafSpecOutputObj {
    */
   fileContent?: string;
   /**
-   * 配置文件名
+   * 配置文件名。
+   * todo 兼容：详情仍返回该字段，值从 framework def 填回。调用方改读 def 后删除。
    */
   fileName?: string;
   /**
-   * 配置文件路径
+   * 配置文件路径。
+   * todo 兼容：详情仍返回该字段，值从 framework def 填回。调用方改读 def 后删除。
    */
   filePath?: string;
 }
@@ -1126,11 +1144,13 @@ export interface TrpcSpecOutputObj {
    */
   fileContent?: string;
   /**
-   * 配置文件名
+   * 配置文件名。
+   * todo 兼容：详情仍返回该字段，值从 framework def 填回。调用方改读 def 后删除。
    */
   fileName?: string;
   /**
-   * 配置文件路径
+   * 配置文件路径。
+   * todo 兼容：详情仍返回该字段，值从 framework def 填回。调用方改读 def 后删除。
    */
   filePath?: string;
   /**

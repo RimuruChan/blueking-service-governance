@@ -20,12 +20,16 @@
   <div
     ref="editorRef"
     class="w-full h-full"
+    :class="{ 'ms-editor-readonly': readonly }"
   >
     <!-- 工具栏 -->
     <div :class="['h-[40px] px-[16px] rounded-t-sm ms-editor', lightTheme ? 'bg-[#DCDEE5]' : 'bg-[#2E2E2E]']">
       <div class="flex items-center justify-between h-full">
         <div
-          :class="['flex-1 ms-editor-title text-[14px] leading-none', lightTheme ? 'text-[#313238]' : 'text-[#C4C6CC]']"
+          :class="[
+            'flex-1 min-w-0 ms-editor-title text-[14px] leading-none',
+            lightTheme ? 'text-[#313238]' : 'text-[#C4C6CC]',
+          ]"
         >
           <slot name="title">
             <div v-if="!isDiff">
@@ -41,7 +45,7 @@
             </div>
           </slot>
         </div>
-        <div class="flex items-center ms-editor-tools">
+        <div class="flex shrink-0 items-center whitespace-nowrap ms-editor-tools">
           <slot
             :editor="editor"
             name="tools"
@@ -251,6 +255,9 @@
         enabled: false,
       },
       readOnly: props.readonly,
+      // 只读时同时给隐藏 textarea 加 DOM readonly 属性：仅靠 readOnly 时中文等输入法
+      // 仍会进入组合输入态，把未上屏的候选内容临时渲染到编辑器里（monaco 的已知行为）
+      domReadOnly: props.readonly,
       automaticLayout: true,
       scrollbar: {
         alwaysConsumeMouseWheel: false,
@@ -433,7 +440,8 @@
   watch(
     () => props.readonly,
     val => {
-      editor?.updateOptions({ readOnly: val });
+      // domReadOnly 需与 readOnly 同步，否则切换只读后输入法组合内容仍可能被临时展示
+      editor?.updateOptions({ readOnly: val, domReadOnly: val });
     },
   );
 
@@ -490,3 +498,12 @@
     validate,
   });
 </script>
+
+<style lang="postcss" scoped>
+  /* 只读态不展示输入光标(caret)：monaco 的 readOnly 不会隐藏光标，点击时仍会出现闪烁的插入符，造成"内容可编辑"的误导 */
+  .ms-editor-readonly {
+    :deep(.monaco-editor .cursors-layer) {
+      display: none !important;
+    }
+  }
+</style>

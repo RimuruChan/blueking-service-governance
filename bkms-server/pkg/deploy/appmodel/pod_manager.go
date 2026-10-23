@@ -26,9 +26,11 @@ import (
 	"github.com/TencentBlueKing/gopkg/collection/set"
 	"github.com/TencentBlueKing/gopkg/mapx"
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	"github.com/spf13/cast"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -107,57 +109,52 @@ func (m *podManager) SetPodPolarisAnnotations(
 	return nil
 }
 
-// ClassifyPodsByStatus 查询 Pod 状态并分类为终止态和运行态
-// 通过 labelSelector 批量获取 Pod，然后从中筛选出目标 Pod 进行分类
-// 返回值：terminatedPods, runningPods、error
+// ClassifyPodsByStatus 将指定的 Pod 按终止态 / 运行态分类
 func (m *podManager) ClassifyPodsByStatus(
 	ctx context.Context,
 	clusterID, namespace string,
 	podNames []string,
 	labelSelector map[string]string,
 ) (terminatedPods, runningPods []string, err error) {
-	// 批量获取所有匹配的 Pod
-	client := k8sclient.NewWithGVR(cluster.NewConfig(clusterID), gvr.Po)
-	pods, err := client.List(ctx, namespace, metav1.ListOptions{
-		LabelSelector: labels.SelectorFromSet(labelSelector).String(),
-	})
+	workloadPods, err := m.ListPods(ctx, clusterID, namespace, labelSelector)
 	if err != nil {
-		return nil, nil, errors.Wrapf(
-			err, "list pods in namespace %s by label selector [%s]", namespace, labelSelector,
-		)
+		return nil, nil, err
 	}
-
-	// 待过滤的 Pod 名称集合
-	podNameSet := set.NewStringSetWithValues(podNames)
-
-	// 逐个 Pod 遍历，并根据是否为终止态分类
-	for _, po := range pods.Items {
-		// 获取 Pod 名称，并判断是否在待过滤的 Pod 名称集合中
-		podName := mapx.GetStr(po.Object, "metadata.name")
-		if podName == "" || !podNameSet.Has(podName) {
-			continue
-		}
-
-		// 判断 Pod 是否处于终止态
-		if m.isPodTerminated(po.Object) {
-			terminatedPods = append(terminatedPods, podName)
-		} else {
-			runningPods = append(runningPods, podName)
-		}
-	}
-
-	return terminatedPods, runningPods, nil
+	allTerminated, allRunning := m.splitPodNamesByStatus(workloadPods)
+	return lo.Intersect(allTerminated, podNames), lo.Intersect(allRunning, podNames), nil
 }
 
-// FilterShouldGrayscalePodNames 过滤出应该灰度的 Pod 名称
-// 返回值：shouldGrayscalePodNames、error
+// splitPodNamesByStatus 将 Pod 按是否处于终止态分类，返回终止态与运行态的 Pod 名称
+func (m *podManager) splitPodNamesByStatus(pods []unstructured.Unstructured) (terminated, running []string) {
+	named := lo.Filter(pods, func(po unstructured.Unstructured, _ int) bool { return getPodName(po) != "" })
+	terminatedPods, runningPods := lo.FilterReject(named, func(po unstructured.Unstructured, _ int) bool {
+		return m.isPodTerminated(po.Object)
+	})
+	return lo.Map(terminatedPods, func(po unstructured.Unstructured, _ int) string { return getPodName(po) }),
+		lo.Map(runningPods, func(po unstructured.Unstructured, _ int) string { return getPodName(po) })
+}
+
+// FilterShouldGrayscalePodNames 从已查询的 Pod 中过滤出应该灰度的 Pod 名称
 func (m *podManager) FilterShouldGrayscalePodNames(
-	ctx context.Context,
-	clusterID, namespace, grayscaleImageTag string,
+	workloadPods []unstructured.Unstructured,
 	podNames []string,
+	grayscaleImageTag string,
+) []string {
+	podNameSet := set.NewStringSetWithValues(podNames)
+	// 仅指定的、运行态的、镜像 Tag 与灰度 Tag 不同的 Pod 需要灰度
+	return lo.FilterMap(workloadPods, func(po unstructured.Unstructured, _ int) (string, bool) {
+		name := getPodName(po)
+		return name, name != "" && podNameSet.Has(name) &&
+			!m.isPodTerminated(po.Object) && m.isPodShouldGrayscale(po.Object, grayscaleImageTag)
+	})
+}
+
+// ListPods 通过 labelSelector 批量获取 Pod
+func (m *podManager) ListPods(
+	ctx context.Context,
+	clusterID, namespace string,
 	labelSelector map[string]string,
-) ([]string, error) {
-	// 批量获取所有匹配的 Pod
+) ([]unstructured.Unstructured, error) {
 	client := k8sclient.NewWithGVR(cluster.NewConfig(clusterID), gvr.Po)
 	pods, err := client.List(ctx, namespace, metav1.ListOptions{
 		LabelSelector: labels.SelectorFromSet(labelSelector).String(),
@@ -165,31 +162,14 @@ func (m *podManager) FilterShouldGrayscalePodNames(
 	if err != nil {
 		return nil, errors.Wrapf(err, "list pods in namespace %s by label selector [%s]", namespace, labelSelector)
 	}
+	return pods.Items, nil
+}
 
-	var shouldGrayscalePodNames []string
-	// 待过滤的 Pod 名称集合
-	podNameSet := set.NewStringSetWithValues(podNames)
-
-	// 逐个 Pod 遍历，并根据是否为终止态分类
-	for _, po := range pods.Items {
-		// 获取 Pod 名称，并判断是否在待过滤的 Pod 名称集合中
-		podName := mapx.GetStr(po.Object, "metadata.name")
-		if podName == "" || !podNameSet.Has(podName) {
-			continue
-		}
-
-		// 终止态的 Pod 不需要进行灰度
-		if m.isPodTerminated(po.Object) {
-			continue
-		}
-
-		// 判断 Pod 是否应该进行灰度
-		if m.isPodShouldGrayscale(po.Object, grayscaleImageTag) {
-			shouldGrayscalePodNames = append(shouldGrayscalePodNames, podName)
-		}
-	}
-
-	return shouldGrayscalePodNames, nil
+// coversAllRunningPods 判断指定的 Pod 名称是否包含工作负载全部运行态的 Pod（终止态的 Pod 不参与判断）
+// 不存在运行态的 Pod 时返回 false
+func (m *podManager) coversAllRunningPods(workloadPods []unstructured.Unstructured, specifiedPodNames []string) bool {
+	_, runningPodNames := m.splitPodNamesByStatus(workloadPods)
+	return len(runningPodNames) > 0 && lo.Every(specifiedPodNames, runningPodNames)
 }
 
 // BatchDeleteTerminatedPods 批量直接删除终止态的 Pod
@@ -214,22 +194,19 @@ func (m *podManager) isPodTerminated(po map[string]any) bool {
 	return phase == corev1.PodFailed || phase == corev1.PodSucceeded
 }
 
-// isPodShouldGrayscale 判断 Pod 是否应该进行灰度
+// isPodShouldGrayscale 判断 Pod 是否需要灰度：主容器镜像 Tag 与灰度 Tag 不一致
 func (m *podManager) isPodShouldGrayscale(po map[string]any, grayscaleImageTag string) bool {
-	for _, container := range mapx.GetList(po, "spec.containers") {
+	return lo.SomeBy(mapx.GetList(po, "spec.containers"), func(container any) bool {
 		c, ok := container.(map[string]any)
-		if !ok {
-			continue
+		if !ok || mapx.GetStr(c, "name") != defaults.WorkloadMainContainerName {
+			return false
 		}
-		// 只关注主工作负载容器
-		if mapx.GetStr(c, "name") != defaults.WorkloadMainContainerName {
-			continue
-		}
-		// 与灰度镜像 TAG 不匹配，说明需要进行灰度
-		image := mapx.GetStr(c, "image")
-		if _, tag, _ := strings.Cut(image, ":"); tag != grayscaleImageTag {
-			return true
-		}
-	}
-	return false
+		_, tag, _ := strings.Cut(mapx.GetStr(c, "image"), ":")
+		return tag != grayscaleImageTag
+	})
+}
+
+// getPodName 获取 Pod 名称
+func getPodName(po unstructured.Unstructured) string {
+	return mapx.GetStr(po.Object, "metadata.name")
 }

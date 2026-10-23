@@ -27,20 +27,19 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/onsi/gomega"
 
-	build "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/build/image"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env"
 	envmodel "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/env/model"
 	bkmsworkspace "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/extension/component"
-	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/appmodelcore/appmodel"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/database"
+	gstore "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 )
 
 var validate = validator.New()
 
 // Workspace 创建一个已持久化的测试用 Workspace，其名称和 ID 使用随机后缀避免冲突
-func Workspace(ctx context.Context, store bkmsworkspace.WorkspaceStore) *bkmsworkspace.Workspace {
+func Workspace(ctx context.Context, store *bkmsworkspace.WorkspaceStore) *bkmsworkspace.Workspace {
 	workspaceName := "test-workspace-" + stringx.Random(6)
 	ws := &bkmsworkspace.Workspace{
 		ID:          workspaceName + stringx.Random(6),
@@ -62,17 +61,21 @@ type ApplicationOpts struct {
 	Name string
 	// Type 应用类型；为空时保持默认空值
 	Type string
+	// Language 应用语言；为空时不写
+	Language string
+	// Framework 应用框架；为空时不写
+	Framework string
 }
 
 // Application 创建一个已持久化的测试用 Application 对象。
-func Application(ctx context.Context, store bkmsapp.ApplicationStore) *bkmsapp.Application {
+func Application(ctx context.Context, store *bkmsapp.ApplicationStore) *bkmsapp.Application {
 	return ApplicationWithOpts(ctx, store, nil)
 }
 
 // ApplicationWithOpts 创建一个已持久化的测试用 Application 对象，并允许覆写关键字段。
 func ApplicationWithOpts(
 	ctx context.Context,
-	store bkmsapp.ApplicationStore,
+	store *bkmsapp.ApplicationStore,
 	opts *ApplicationOpts,
 ) *bkmsapp.Application {
 	if opts == nil {
@@ -97,7 +100,9 @@ func ApplicationWithOpts(
 	if opts.Type != "" {
 		app.Type = opts.Type
 	}
-	err := store.CreateApp(ctx, app)
+	app.Language = opts.Language
+	app.Framework = opts.Framework
+	err := store.Create(ctx, app)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	return app
 }
@@ -160,10 +165,10 @@ func EnvWithOpts(
 		envData.Description = opts.Description
 	}
 
-	envID, err := svc.Create(ctx, envData)
+	err := svc.Create(ctx, envData)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	envObj, err := svc.Get(ctx, envID)
+	envObj, err := gstore.Of(database.DB(), envmodel.EnvMeta).GetByID(ctx, envData.ID)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	return envObj
 }
@@ -194,10 +199,10 @@ func FeatEnv(
 		Creator: "dbfactory",
 	}
 
-	envID, err := svc.Create(ctx, envData)
+	err := svc.Create(ctx, envData)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 
-	featEnv, err := svc.Get(ctx, envID)
+	featEnv, err := gstore.Of(database.DB(), envmodel.EnvMeta).GetByID(ctx, envData.ID)
 	gomega.Expect(err).NotTo(gomega.HaveOccurred())
 	return featEnv
 }
@@ -214,7 +219,7 @@ type ComponentDefOpts struct {
 //   - opts: 可选参数, 用于定制 ComponentDef 的字段
 func CompDef(
 	ctx context.Context,
-	store component.ComponentDefStore,
+	defs *component.ComponentDefStore,
 	opts *ComponentDefOpts,
 ) *component.ComponentDef {
 	validateOpts(opts)
@@ -235,7 +240,7 @@ func CompDef(
 		Creator:     "admin",
 		Updater:     "admin",
 	}
-	err := store.Create(ctx, compDef)
+	err := defs.Create(ctx, compDef)
 	gomega.Expect(err).To(gomega.Not(gomega.HaveOccurred()))
 	return compDef
 }
@@ -247,10 +252,5 @@ func validateOpts(opts any) {
 
 // TrpcApplicationStores 创建 tRPC 应用所需的 store 集合
 type TrpcApplicationStores struct {
-	AppStore                  bkmsapp.ApplicationStore
-	AppModelStore             appmodel.AppModelStore
-	AppConfigFileStore        appcfg.AppConfigFileStore
-	AppConfigFileDefStore     appcfg.AppConfigFileDefStore
-	AppConfigFileVersionStore appcfg.AppConfigFileVersionStore
-	BuildConfigStore          build.ConfigStore
+	AppStore *bkmsapp.ApplicationStore
 }

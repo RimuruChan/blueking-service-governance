@@ -32,14 +32,14 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/testutil/dbfactory"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 )
 
 var _ = Describe("AppConfigFileService", func() {
 	var diApp *fxtest.App
-	var appStore bkmsapp.ApplicationStore
-	var fileStore appcfg.AppConfigFileStore
-	var defStore appcfg.AppConfigFileDefStore
-	var versionStore appcfg.AppConfigFileVersionStore
+	var appStore *bkmsapp.ApplicationStore
+	var fileStore *appcfg.AppConfigFileStore
+	var versionStore *appcfg.AppConfigFileVersionStore
 	var service *appcfg.AppConfigFileService
 	var ctx context.Context
 	var appID string
@@ -57,18 +57,21 @@ var _ = Describe("AppConfigFileService", func() {
 		err = testutil.CleanupCollection("applications")
 		Expect(err).NotTo(HaveOccurred())
 
+		appStore = testutil.NewStore(GinkgoT(), bkmsapp.AppMeta)
 		diApp = fxtest.New(
 			GinkgoT(),
-			bkmsapp.FxModule,
 			appcfg.FxModule,
-			fx.Populate(&appStore, &fileStore, &defStore, &versionStore),
+			fx.Populate(),
 		)
 		diApp.RequireStart()
+		db := testutil.NewDB(GinkgoT())
+		versionStore = store.Of(db, appcfg.AppConfigFileVersionMeta)
 
 		app := dbfactory.Application(ctx, appStore)
 		appID = app.ID
 
-		service = appcfg.NewAppConfigFileService(fileStore, defStore, versionStore)
+		service = appcfg.NewAppConfigFileService(db)
+		fileStore = testutil.NewStore(GinkgoT(), appcfg.AppConfigFileMeta)
 	})
 
 	AfterEach(func() {
@@ -103,11 +106,7 @@ var _ = Describe("AppConfigFileService", func() {
 			Expect(gotFile.CurrentVersion).To(Equal(int64(1)))
 
 			// 验证初始版本已持久化到数据库
-			items, _, err := versionStore.List(ctx, appcfg.AppConfigFileVersionListOptions{
-				AppID:    appID,
-				Page:     1,
-				PageSize: 10,
-			})
+			items, err := versionStore.List(ctx, appcfg.VersionsByApp(appID))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(items).To(HaveLen(1))
 			Expect(items[0].Description).To(Equal("initial values"))
@@ -152,11 +151,7 @@ var _ = Describe("AppConfigFileService", func() {
 			Expect(gotFile.Updater).To(Equal("new-user"))
 
 			// 验证新版本已持久化
-			items, _, err := versionStore.List(ctx, appcfg.AppConfigFileVersionListOptions{
-				AppID:    appID,
-				Page:     1,
-				PageSize: 10,
-			})
+			items, err := versionStore.List(ctx, appcfg.VersionsByApp(appID))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(items).To(HaveLen(2))
 
@@ -207,11 +202,7 @@ var _ = Describe("AppConfigFileService", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// 获取 v2 的版本 ID
-			items, _, err := versionStore.List(ctx, appcfg.AppConfigFileVersionListOptions{
-				AppID:    appID,
-				Page:     1,
-				PageSize: 10,
-			})
+			items, err := versionStore.List(ctx, appcfg.VersionsByApp(appID))
 			Expect(err).NotTo(HaveOccurred())
 			var targetVersionID bson.ObjectID
 			for _, v := range items {
@@ -230,11 +221,7 @@ var _ = Describe("AppConfigFileService", func() {
 			Expect(*rollbackAcf.Content).To(Equal(content2))
 
 			// 验证回滚版本已持久化
-			items, _, err = versionStore.List(ctx, appcfg.AppConfigFileVersionListOptions{
-				AppID:    appID,
-				Page:     1,
-				PageSize: 10,
-			})
+			items, err = versionStore.List(ctx, appcfg.VersionsByApp(appID))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(items).To(HaveLen(4))
 
@@ -247,6 +234,63 @@ var _ = Describe("AppConfigFileService", func() {
 			Expect(rollbackVersion.OperationType).To(Equal(appcfg.AppConfigFileVersionOperationTypeRollback))
 			Expect(*rollbackVersion.RollbackFromVersion).To(Equal(int64(2)))
 			Expect(rollbackVersion.Version).To(Equal(int64(4)))
+		})
+
+		It("should reject rollback when target version type differs from current file type", func() {
+			defaultContent := "keep: true\nbase: default\n"
+			created, err := service.Create(ctx, appcfg.CreateCfgFileParams{
+				AppID:             appID,
+				EnvName:           appcfg.EnvNameDefault,
+				Name:              "values.yaml",
+				Type:              appcfg.AppConfigFileTypeNormal,
+				ContentSourceType: appcfg.ContentSourceTypeLocal,
+				Format:            appcfg.FileFormatYAML,
+				Content:           &defaultContent,
+				Creator:           "tester",
+				ConfigKind:        appcfg.ConfigKindFramework,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			def, err := service.DefStore.GetByID(ctx, created.DefID)
+			Expect(err).NotTo(HaveOccurred())
+
+			isUnified := false
+			err = service.UpdateAppCfgFileDef(ctx, def, appcfg.FileDefUpdate{
+				IsUnifiedConfig: &isUnified,
+				Operator:        "editor",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			upserted, err := service.UpsertEnvContent(ctx, def, appcfg.UpsertEnvContentParams{
+				EnvName:     "prod",
+				Content:     "base: prod\n",
+				Operator:    "editor",
+				Description: "prod overlay",
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(upserted.File.Type).To(Equal(appcfg.AppConfigFileTypeOverlay))
+
+			versions, err := versionStore.List(ctx, appcfg.VersionsByFile(upserted.File.ID))
+			Expect(err).NotTo(HaveOccurred())
+			Expect(versions).To(HaveLen(1))
+			targetVersionID := versions[0].ID
+
+			strategy := appcfg.EnvContentStrategyOverwrite
+			err = service.UpdateAppCfgFileDef(ctx, def, appcfg.FileDefUpdate{
+				EnvContentStrategy: &strategy,
+				Operator:           "editor",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			current, err := fileStore.GetByID(ctx, upserted.File.ID)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(current.Type).To(Equal(appcfg.AppConfigFileTypeNormal))
+			Expect(current.CurrentVersion).To(Equal(int64(1)))
+
+			_, _, err = service.Rollback(ctx, appID, targetVersionID, "operator", "", nil)
+			Expect(err).To(HaveOccurred())
+			Expect(errors.Is(err, appcfg.ErrInvalidConfigSpec)).To(BeTrue())
+			Expect(err.Error()).To(ContainSubstring("current file type"))
 		})
 	})
 
@@ -287,24 +331,7 @@ var _ = Describe("AppConfigFileService", func() {
 			Expect(errors.Is(err, appcfg.ErrAppConfigFileNotFound)).To(BeTrue())
 
 			// version records should be fully removed
-			items, total, err := versionStore.List(ctx, appcfg.AppConfigFileVersionListOptions{
-				AppID:    appID,
-				Page:     1,
-				PageSize: 10,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(total).To(Equal(int64(0)))
-			Expect(items).To(BeEmpty())
-
-			items, total, err = versionStore.List(ctx, appcfg.AppConfigFileVersionListOptions{
-				AppID:          appID,
-				Page:           1,
-				PageSize:       10,
-				IncludeDeleted: true,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(total).To(Equal(int64(0)))
-			Expect(items).To(BeEmpty())
+			Expect(versionStore.Count(ctx, appcfg.VersionsByApp(appID))).To(BeZero())
 
 			// recreating the same file should start fresh without version conflicts
 			newAcf, err := service.Create(ctx, appcfg.CreateCfgFileParams{
@@ -323,14 +350,10 @@ var _ = Describe("AppConfigFileService", func() {
 			Expect(newAcf.CurrentVersion).To(Equal(int64(1)))
 
 			// only the new file's version should be visible
-			items, total, err = versionStore.List(ctx, appcfg.AppConfigFileVersionListOptions{
-				AppID:    appID,
-				Page:     1,
-				PageSize: 10,
-			})
+			page, err := service.ListVersions(ctx, appID, 1, 10)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(total).To(Equal(int64(1)))
-			Expect(items[0].AppConfigFileID).To(Equal(newAcf.ID))
+			Expect(page.Total).To(Equal(int64(1)))
+			Expect(page.Items[0].AppConfigFileID).To(Equal(newAcf.ID))
 		})
 	})
 
@@ -352,11 +375,7 @@ var _ = Describe("AppConfigFileService", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// 获取当前活跃版本
-			items, _, err := versionStore.List(ctx, appcfg.AppConfigFileVersionListOptions{
-				AppID:    appID,
-				Page:     1,
-				PageSize: 10,
-			})
+			items, err := versionStore.List(ctx, appcfg.VersionsByApp(appID))
 			Expect(err).NotTo(HaveOccurred())
 			Expect(items).To(HaveLen(1))
 			currentVersionID := items[0].ID

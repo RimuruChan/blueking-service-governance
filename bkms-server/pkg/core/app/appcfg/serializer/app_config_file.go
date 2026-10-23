@@ -26,10 +26,12 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"github.com/go-playground/validator/v10"
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
 	_ "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils/validators" // register global validators
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 )
 
 func init() {
@@ -37,26 +39,14 @@ func init() {
 		if err := v.RegisterValidation("app_config_file_name", validateAppConfigFileName); err != nil {
 			panic("failed to register app_config_file_name validator: " + err.Error())
 		}
-		if err := v.RegisterValidation("mount_dir", validateMountDir); err != nil {
-			panic("failed to register mount_dir validator: " + err.Error())
-		}
 	}
-}
-
-// validateMountDir 校验容器内绝对目录路径：以 / 开头、不等于 /、不以 / 结尾。
-func validateMountDir(fl validator.FieldLevel) bool {
-	s := fl.Field().String()
-	if len(s) < 2 {
-		return false
-	}
-	return s[0] == '/' && s[len(s)-1] != '/'
 }
 
 func validateAppConfigFileName(fl validator.FieldLevel) bool {
 	return appConfigFileNamePattern.MatchString(fl.Field().String())
 }
 
-var appConfigFileNamePattern = regexp.MustCompile("^[a-zA-Z0-9-_]+$")
+var appConfigFileNamePattern = regexp.MustCompile("^[a-zA-Z0-9_.-]+$")
 
 // AppURIInput is the path input for APIs scoped by application.
 type AppURIInput struct {
@@ -110,7 +100,7 @@ type BSCPAppConfigFileConfig struct {
 
 // CreateAppConfigFileInput is the JSON body for creating an app config file.
 type CreateAppConfigFileInput struct {
-	// 应用配置文件名称，包含大小写字母、数字和符号（_-），长度 1-64 之间。
+	// 应用配置文件名称，仅支持数字、字母、下划线(_)、中划线(-)、点(.)，长度 1-64 之间。
 	// todo 兼容前端用特性环境内部名（feat-{appID}-{n}）创建 overlay。
 	Name string `json:"name" binding:"required,min=1,max=64,app_config_file_name"`
 	// 应用配置文件类型，普通或覆盖层
@@ -130,9 +120,8 @@ type CreateAppConfigFileInput struct {
 }
 
 // UpdateAppConfigFileInput is the JSON body for updating app config file metadata.
+// 文件名不属于本接口。Helm 编辑表单走 PUT /app-config-file-defs/:id/helm-file。
 type UpdateAppConfigFileInput struct {
-	// 应用配置文件名称，包含大小写字母、数字和符号（_-），长度 1-64 之间
-	Name string `json:"name" binding:"required,min=1,max=64,app_config_file_name"`
 	// 基础应用配置文件 ID，仅当 type 是 overlay 时生效
 	BaseAppConfigFileID string `json:"baseAppConfigFileID"`
 	// 当 contentSourceType 为 bscp 时，bscpConfig 为必填
@@ -184,6 +173,8 @@ type AppConfigFileEmptyOutput struct{}
 type AppConfigFileOutputObj struct {
 	// 应用配置文件 ID
 	ID string `json:"id"`
+	// 配置文件定义 ID
+	DefID string `json:"defID,omitempty"`
 	// 文件名称
 	Name string `json:"name"`
 	// 文件类型
@@ -218,6 +209,9 @@ func (o *AppConfigFileOutputObj) FromModel(obj appcfg.AppConfigFile, name string
 		CurrentVersion:    obj.CurrentVersion,
 		Updater:           obj.Updater,
 		UpdatedAt:         obj.UpdatedAt.Format(time.RFC3339),
+	}
+	if !obj.DefID.IsZero() {
+		o.DefID = obj.DefID.Hex()
 	}
 	if obj.BaseAppConfigFileID != nil {
 		o.BaseAppConfigFileID = obj.BaseAppConfigFileID.Hex()
@@ -310,26 +304,29 @@ type PreviewOverlayMergeOutput struct {
 	Data string `json:"data"`
 }
 
-// ToVersionListOptions converts query input into version list options.
-func (i ListAppConfigFileVersionsQueryInput) ToVersionListOptions(
-	appID string,
-) (appcfg.AppConfigFileVersionListOptions, error) {
-	opts := appcfg.AppConfigFileVersionListOptions{
-		AppID:       appID,
-		EnvName:     i.EnvName,
-		Name:        i.Name,
-		Version:     i.Version,
-		Creator:     i.Creator,
-		Description: i.Description,
-		Page:        i.Page,
-		PageSize:    i.PageSize,
+// ToVersionListOpt converts query input into version list filters; unset fields are not filtered.
+func (i ListAppConfigFileVersionsQueryInput) ToVersionListOpt() (store.Opt, error) {
+	opts := []store.Opt{
+		whereIfSet("envName", i.EnvName),
+		whereIfSet("name", i.Name),
+		whereIfSet("version", i.Version),
+		whereIfSet("creator", i.Creator),
+		store.ContainsIgnoreCase(lo.FromPtr(i.Description), "description"),
 	}
 	if i.AppConfigFileID != nil && *i.AppConfigFileID != "" {
 		id, err := bson.ObjectIDFromHex(*i.AppConfigFileID)
 		if err != nil {
-			return appcfg.AppConfigFileVersionListOptions{}, errors.Wrap(err, "parse appConfigFileID")
+			return nil, errors.Wrap(err, "parse appConfigFileID")
 		}
-		opts.AppConfigFileID = &id
+		opts = append(opts, appcfg.VersionsByFile(id))
 	}
-	return opts, nil
+	return store.Combine(opts...), nil
+}
+
+// whereIfSet 在 value 非 nil 时按字段精确匹配，否则不产生条件
+func whereIfSet[V any](field string, value *V) store.Opt {
+	if value == nil {
+		return nil
+	}
+	return store.Where(field, *value)
 }

@@ -1,0 +1,15 @@
+# app build 子命令
+
+exec $BKMS_CLI_BIN app build list --app $BKMS_APP_ID
+stdout .
+
+exec $BKMS_CLI_BIN app build list --app $BKMS_APP_ID -o json
+stdout .
+
+# list 缺 --app
+! exec $BKMS_CLI_BIN app build list
+stderr 'required flag\(s\) "app" not set'
+
+# create 缺 --app
+! exec $BKMS_CLI_BIN app build create --branch main --image-tag v1.0.0
+stderr 'required flag\(s\) "app" not set'

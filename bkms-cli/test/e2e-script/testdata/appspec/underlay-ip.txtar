@@ -1,0 +1,19 @@
+# app appspec underlay-ip 子命令
+
+exec $BKMS_CLI_BIN app appspec underlay-ip view --app $BKMS_APP_ID
+stdout 'Enabled:'
+
+exec $BKMS_CLI_BIN app appspec underlay-ip view --app $BKMS_APP_ID -o json
+jsonhas 'enabled'
+
+exec $BKMS_CLI_BIN app appspec underlay-ip enable --app $BKMS_APP_ID
+exec $BKMS_CLI_BIN app appspec underlay-ip view --app $BKMS_APP_ID -o json
+jsonfield enabled=true
+
+exec $BKMS_CLI_BIN app appspec underlay-ip disable --app $BKMS_APP_ID
+
+exec $BKMS_CLI_BIN app appspec underlay-ip enable --app $BKMS_APP_ID --env $BKMS_ENV_NAME
+exec $BKMS_CLI_BIN app appspec underlay-ip reset --app $BKMS_APP_ID --env $BKMS_ENV_NAME
+
+# reset 缺 --env 参数
+! exec $BKMS_CLI_BIN app appspec underlay-ip reset --app $BKMS_APP_ID
