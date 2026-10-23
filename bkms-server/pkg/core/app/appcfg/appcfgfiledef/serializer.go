@@ -116,6 +116,7 @@ type DefSummaryObj struct {
 	IsUnifiedConfig    bool     `json:"isUnifiedConfig"`
 	MountedEnvNames    []string `json:"mountedEnvNames,omitempty"`
 	EnableEnvVarRender bool     `json:"enableEnvVarRender"`
+	EnvContentStrategy string   `json:"envContentStrategy,omitempty"`
 	Creator            string   `json:"creator"`
 	CreatedAt          string   `json:"createdAt"`
 }
@@ -130,6 +131,7 @@ func (o *DefSummaryObj) FromDef(def appcfg.AppConfigFileDef) *DefSummaryObj {
 		IsUnifiedConfig:    def.EnvConfigMode.IsUnifiedConfig,
 		MountedEnvNames:    def.EnvConfigMode.MountedEnvNames,
 		EnableEnvVarRender: def.EnableEnvVarRender,
+		EnvContentStrategy: string(def.EnvConfigMode.EnvContentStrategy),
 		Creator:            def.Creator,
 		CreatedAt:          def.CreatedAt.Format(time.RFC3339),
 	}
@@ -153,6 +155,7 @@ type DefDetailObj struct {
 	IsUnifiedConfig     bool           `json:"isUnifiedConfig"`
 	MountedEnvNames     []string       `json:"mountedEnvNames,omitempty"`
 	EnableEnvVarRender  bool           `json:"enableEnvVarRender"`
+	EnvContentStrategy  string         `json:"envContentStrategy,omitempty"`
 	FileType            string         `json:"fileType,omitempty"`
 	ContentSourceType   string         `json:"contentSourceType"`
 	BaseAppConfigFileID string         `json:"baseAppConfigFileId,omitempty"`
@@ -250,6 +253,7 @@ func (o *DefDetailObj) fillDef(def appcfg.AppConfigFileDef) {
 	o.IsUnifiedConfig = def.EnvConfigMode.IsUnifiedConfig
 	o.MountedEnvNames = def.EnvConfigMode.MountedEnvNames
 	o.EnableEnvVarRender = def.EnableEnvVarRender
+	o.EnvContentStrategy = string(def.EnvConfigMode.EnvContentStrategy)
 	o.Creator = def.Creator
 	o.CreatedAt = def.CreatedAt.Format(time.RFC3339)
 }
@@ -270,11 +274,13 @@ type UpdateDefInput struct {
 	IsUnifiedConfig    *bool     `json:"isUnifiedConfig,omitempty"`
 	MountedEnvNames    *[]string `json:"mountedEnvNames,omitempty" binding:"omitempty,dive,uri_slug"`
 	EnableEnvVarRender *bool     `json:"enableEnvVarRender,omitempty"`
+	// EnvContentStrategy: overlay 表示环境内容按补丁与默认配置合并；overwrite 表示环境内容独立生效，不再继承默认配置变更。
+	EnvContentStrategy *string `json:"envContentStrategy,omitempty" binding:"omitempty,oneof=overlay overwrite"`
 }
 
 // ToFileDefUpdate 转换为 service 层参数。
 func (i UpdateDefInput) ToFileDefUpdate(operator string) appcfg.FileDefUpdate {
-	return appcfg.FileDefUpdate{
+	update := appcfg.FileDefUpdate{
 		Name:               i.Name,
 		MountDir:           i.MountDir,
 		IsUnifiedConfig:    i.IsUnifiedConfig,
@@ -282,11 +288,35 @@ func (i UpdateDefInput) ToFileDefUpdate(operator string) appcfg.FileDefUpdate {
 		EnableEnvVarRender: i.EnableEnvVarRender,
 		Operator:           operator,
 	}
+	if i.EnvContentStrategy != nil {
+		strategy := appcfg.EnvContentStrategy(*i.EnvContentStrategy)
+		update.EnvContentStrategy = &strategy
+	}
+	return update
 }
 
 // UpdateDefOutput 更新 def 响应。
 type UpdateDefOutput struct {
 	Item *DefSummaryObj `json:"item"`
+}
+
+// UpdateHelmFileInput 是 Helm 编辑表单的一次保存请求。
+type UpdateHelmFileInput struct {
+	// 文件名称，仅支持数字、字母、下划线(_)、中划线(-)、点(.)，长度 1-64 之间。
+	Name string `json:"name" binding:"required,min=1,max=64,app_config_file_name"`
+	// overlay 文件必须传当前基础文件 ID，未修改时也传原值。普通文件留空。
+	BaseAppConfigFileID string `json:"baseAppConfigFileId,omitempty" binding:"omitempty,mongodb"`
+	// BSCP 来源必须传当前绑定，未修改时也传原值。本地来源留空。
+	BSCPConfig *BSCPConfigInput `json:"bscpConfig,omitempty"`
+	// 版本描述。基础文件或 BSCP 发生变化时写入版本，只改名称不写版本。
+	Description string `json:"description"`
+	// 编辑开始时的当前版本号，用于乐观锁冲突检测。
+	CurrentVersion *int64 `json:"currentVersion,omitempty"`
+}
+
+// UpdateHelmFileOutput 是 Helm 编辑保存的响应。
+type UpdateHelmFileOutput struct {
+	Item *DefDetailObj `json:"item"`
 }
 
 // --- 环境实例 ---

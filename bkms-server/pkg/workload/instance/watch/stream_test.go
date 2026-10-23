@@ -40,14 +40,22 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/workload/instance/watch/plugin"
 )
 
-var testParams = RunParams{DeployID: "deploy-1", ResourceVersion: "100"}
+var testParams = RunParams{DeployID: "deploy-1", ResourceVersion: "100", LabelSelector: "app=demo"}
 
-// stubPodWatch 同时充当 PodWatcher 与它返回的 watch.Interface，省掉一层假 watcher
+// stubPodWatch 同时充当 PodSource 与它返回的 watch.Interface，省掉一层假 watcher
 // 用例先把事件塞进 ch，close(ch) 即模拟集群中断
+// livePods / listErr / listBlock 控制建流时预置快照的 List，listOpts 记下最近一次 List 的入参
+// listOpts 在 Manager 的 goroutine 里写，用例只在收流（done 已收到）之后读，由 channel 保证先后
 type stubPodWatch struct {
-	ch  chan k8swatch.Event
-	err error
+	ch        chan k8swatch.Event
+	err       error
+	livePods  []*unstructured.Unstructured
+	listErr   error
+	listBlock bool
+	listOpts  metav1.ListOptions
 }
+
+var _ PodSource = &stubPodWatch{}
 
 func newStubPodWatch() *stubPodWatch {
 	return &stubPodWatch{ch: make(chan k8swatch.Event, 8)}
@@ -59,6 +67,31 @@ func (s *stubPodWatch) Watch(context.Context, string, metav1.ListOptions) (k8swa
 	}
 
 	return s, nil
+}
+
+func (s *stubPodWatch) List(
+	ctx context.Context,
+	_ string,
+	opts metav1.ListOptions,
+) (*unstructured.UnstructuredList, error) {
+	s.listOpts = opts
+
+	// 模拟集群卡住：只能靠调用方的超时返回
+	if s.listBlock {
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
+
+	if s.listErr != nil {
+		return nil, s.listErr
+	}
+
+	list := &unstructured.UnstructuredList{}
+	for _, pod := range s.livePods {
+		list.Items = append(list.Items, *pod)
+	}
+
+	return list, nil
 }
 
 func (s *stubPodWatch) Stop() {}
@@ -161,9 +194,18 @@ func runToEnd(m *Manager) *httptest.ResponseRecorder {
 
 // runUntilFetched 用极短 tick 跑一条 Watch，等插件被调用到第 untilCall 次后中断集群通道并收流
 // 插件层在 select 分支里串行执行，因此收到第 N 次调用信号时，第 N-1 轮的推送必然已写完
-func runUntilFetched(w *stubPodWatch, p *stubPlugin, untilCall int) *httptest.ResponseRecorder {
+// 每次调用都对应一个 tick，建流时不拉插件；configure 用来调小其它时限
+func runUntilFetched(
+	w *stubPodWatch,
+	p *stubPlugin,
+	untilCall int,
+	configure ...func(*Manager),
+) *httptest.ResponseRecorder {
 	m := NewManager(w, p)
 	m.tickInterval = 20 * time.Millisecond
+	for _, fn := range configure {
+		fn(m)
+	}
 
 	rec := httptest.NewRecorder()
 	done := make(chan error, 1)
@@ -355,4 +397,99 @@ var _ = Describe("Manager", func() {
 		id, _ := events[3].pluginPayload()
 		Expect(id).To(Equal("pod-alive"))
 	})
+
+	// 建流后 Pod 一直不动（如只改了北极星权重），附属数据变化也必须能推出去
+	// 预置实例只记账不推 Pod 事件；首个 tick 对它们全量同步一次：首包降级为空、随后恢复的要推，
+	// 首包有数据、随后变空的也要推；同步之后只推变化
+	It("seeds live instances and syncs them once before pushing only changes", func() {
+		w := newStubPodWatch()
+		w.livePods = []*unstructured.Unstructured{validPod("pod-2"), badPod("bad-pod"), validPod("pod-1")}
+		p := newStubPlugin("stub", func(call int) (map[string]any, error) {
+			if call <= 2 {
+				return map[string]any{"pod-1": []string{"v1"}, "pod-2": []string{}}, nil
+			}
+
+			return map[string]any{"pod-1": []string{"v2"}, "pod-2": []string{}}, nil
+		})
+
+		events := parseSSE(runUntilFetched(w, p, 4))
+
+		// 预置 List 与 List 接口同作用域，走 watch cache 的 "0" 位点，超过一页翻页也不会被拒
+		Expect(w.listOpts.LabelSelector).To(Equal(testParams.LabelSelector))
+		Expect(w.listOpts.ResourceVersion).To(Equal(seedListResourceVersion))
+
+		// 没有任何 Pod 事件，插件照样拿到按 ID 定序的存活快照；坏 Pod 不进快照
+		Expect(p.snapshots).To(Receive(Equal([]string{"pod-1", "pod-2"})))
+		Expect(eventTypes(events)).To(Equal([]string{"PLUGIN", "PLUGIN", "PLUGIN", "ENDED"}))
+
+		// 首个 tick 两个实例都推，pod-2 的空数组也推出去
+		id, data := events[0].pluginPayload()
+		Expect(id).To(Equal("pod-1"))
+		Expect(data).To(Equal([]string{"v1"}))
+		id, data = events[1].pluginPayload()
+		Expect(id).To(Equal("pod-2"))
+		Expect(data).To(Equal([]string{}))
+
+		// 第 2 个 tick 没变化不推，第 3 个 tick 只有 pod-1 变了
+		id, data = events[2].pluginPayload()
+		Expect(id).To(Equal("pod-1"))
+		Expect(data).To(Equal([]string{"v2"}))
+	})
+
+	// 预置实例随后被删：DELETED 照常推，之后的快照里不能再有它，也不会为它补出 PLUGIN
+	It("drops seeded instances from the plugin snapshot once they are deleted", func() {
+		w := newStubPodWatch()
+		w.livePods = []*unstructured.Unstructured{validPod("pod-1"), validPod("pod-2")}
+		p := newStubPlugin("stub", func(int) (map[string]any, error) {
+			return map[string]any{"pod-1": []string{"v1"}, "pod-2": []string{"v1"}}, nil
+		})
+		w.send(k8swatch.Deleted, validPod("pod-2"))
+
+		events := parseSSE(runUntilFetched(w, p, 2))
+
+		// 首个 tick 前 DELETED 已消费，快照只剩 pod-1；pod-2 的待同步标记随之作废
+		Expect(p.snapshots).To(Receive(Equal([]string{"pod-1"})))
+		Expect(eventTypes(events)).To(Equal([]string{"DELETED", "PLUGIN", "ENDED"}))
+		id, _ := events[1].pluginPayload()
+		Expect(id).To(Equal("pod-1"))
+	})
+
+	// ADDED 之后服务端不知道页面这一行显示的附属数据（新行为空，重复 ADDED 保留旧数据），空载荷也要推一次覆盖过去
+	It("syncs plugin data for ADDED instances even when the payload is empty", func() {
+		w := newStubPodWatch()
+		p := newStubPlugin("stub", func(int) (map[string]any, error) {
+			return map[string]any{"pod-1": []string{}}, nil
+		})
+		w.send(k8swatch.Added, validPod("pod-1"))
+
+		events := parseSSE(runUntilFetched(w, p, 3))
+
+		// 只推一次，之后载荷没变不重推
+		Expect(eventTypes(events)).To(Equal([]string{"ADDED", "PLUGIN", "ENDED"}))
+		id, data := events[1].pluginPayload()
+		Expect(id).To(Equal("pod-1"))
+		Expect(data).To(Equal([]string{}))
+	})
+
+	// 预置拉取失败或超时都不拆流：退回只认推送过事件的实例，Pod 事件照常推
+	DescribeTable("keeps streaming when seeding live instances is unavailable",
+		func(setup func(w *stubPodWatch)) {
+			w := newStubPodWatch()
+			setup(w)
+			p := newStubPlugin("stub", func(int) (map[string]any, error) {
+				return map[string]any{"pod-1": []string{"v1"}}, nil
+			})
+			w.send(k8swatch.Added, validPod("pod-1"))
+
+			events := parseSSE(runUntilFetched(w, p, 2, func(m *Manager) {
+				m.seedListTimeout = 20 * time.Millisecond
+			}))
+
+			// 没有预置实例，插件快照里只有推送过 ADDED 的实例
+			Expect(p.snapshots).To(Receive(Equal([]string{"pod-1"})))
+			Expect(eventTypes(events)).To(Equal([]string{"ADDED", "PLUGIN", "ENDED"}))
+		},
+		Entry("list fails", func(w *stubPodWatch) { w.listErr = errors.New("list pods") }),
+		Entry("list times out", func(w *stubPodWatch) { w.listBlock = true }),
+	)
 })

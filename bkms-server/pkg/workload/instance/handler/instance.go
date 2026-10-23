@@ -72,14 +72,7 @@ func (h *Handler) newMountableFileProvider() appcfg.MountableFileProvider {
 	)
 }
 
-// ListAppInstances 按最新部署记录的 LabelSelector 列出匹配 Pod 并投影为实例
-// 本函数只做编排：绑定参数、鉴权取部署记录、拉 Pod、投影、合并北极星
-//
-// 查询模式互斥：all=true 且不带 page/pageSize 为全量；未传 all 时 page/pageSize 必填走分页
-// 全量时单个 Pod 投影失败则跳过并写入 skipped，count 为成功投影数（不含跳过项）
-// 分页时当前页解析失败整次 500（与改造前一致，供 CLI）；count 为 LabelSelector 匹配 Pod 总数
-// 北极星拉取失败不阻塞 Pod 输出，降级为空 polarisInfos，与未注册北极星同形
-// 成功响应带 resourceVersion，供 Watch 从该位点续传
+// ListAppInstances 获取应用实例列表，支持全量或分页查询，可按 Pod IP / Node IP 过滤
 //
 //	@ID			ListAppInstances
 //	@Summary	获取应用实例列表
@@ -94,6 +87,8 @@ func (h *Handler) newMountableFileProvider() appcfg.MountableFileProvider {
 //	@Param		all				query		bool	false	"为 true 时一次返回全量实例；禁止同时带 page 或 pageSize"
 //	@Param		page			query		int		false	"页码，取值 1-10000；分页模式必填，all=true 时禁止出现"
 //	@Param		pageSize		query		int		false	"每页数量；分页模式必填，all=true 时禁止出现"
+//	@Param		podIP			query		[]string	false	"Pod IP 精确过滤，多值取 OR"	collectionFormat(multi)
+//	@Param		nodeIP			query		[]string	false	"Node IP 精确过滤，多值取 OR"	collectionFormat(multi)
 //	@Success	200				{object}	serializer.ListAppInstancesOutput
 //	@Failure	400				{object}	bkerrs.GinErrorOutput
 //	@Router		/apps/{appID}/envs/{envName}/instances [get]
@@ -120,6 +115,9 @@ func (h *Handler) ListAppInstances(c *gin.Context) {
 		bkerrs.AbortWithErr(c, err)
 		return
 	}
+
+	// 按 Pod IP / Node IP 过滤，需在投影窗口之前，分页 count 才基于过滤后的结果
+	items = h.filterAppInstancePodsByIP(queryInput, items)
 
 	// 将窗口内 Pod 投影为实例；全量跳过失败项，分页解析失败则整次 500
 	results, skipped, count, err := h.projectListedAppInstances(queryInput, items, record.ID.Hex())

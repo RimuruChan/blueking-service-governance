@@ -33,6 +33,7 @@ import (
 // NewListCmd returns a Command instance for 'app instance list' sub command
 func NewListCmd() *cobra.Command {
 	var appID, envName, outputFormat string
+	var podIPs, nodeIPs []string
 
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -40,12 +41,22 @@ func NewListCmd() *cobra.Command {
 		Long: `List running instances for an application in a specific environment.
 
 This command retrieves all running instances for the specified application
-and environment, including instance ID, IP, image, status, and age.`,
+and environment, including instance ID, IP, image, status, and age.
+
+Use --pod-ip / --node-ip to filter instances by exact IP match. Both flags can be
+repeated or comma-separated, and all given values are ORed together, across the
+two flags as well.`,
 		Example: `  # List all instances for an application
   bkms-cli app instance list --app demo --env test
 
   # Output in JSON format
-  bkms-cli app instance list --app demo --env test -o json`,
+  bkms-cli app instance list --app demo --env test -o json
+
+  # Filter instances by pod IP
+  bkms-cli app instance list --app demo --env test --pod-ip 10.0.0.1 --pod-ip 10.0.0.2
+
+  # Filter instances running on given nodes
+  bkms-cli app instance list --app demo --env test --node-ip 192.168.0.1,192.168.0.2`,
 		PreRunE: cmdutil.ResolveAppPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			instances, err := handler.ListInstances(
@@ -53,7 +64,7 @@ and environment, including instance ID, IP, image, status, and age.`,
 				client.New(),
 				appID,
 				envName,
-				handler.ListInstancesOptions{},
+				handler.ListInstancesOptions{PodIPs: podIPs, NodeIPs: nodeIPs},
 			)
 			if err != nil {
 				return errors.Wrap(err, "list app instances")
@@ -70,6 +81,8 @@ and environment, including instance ID, IP, image, status, and age.`,
 
 	cmdutil.AddAppFlags(cmd, &appID)
 	cmd.Flags().StringVar(&envName, "env", "", "environment name")
+	cmd.Flags().StringSliceVar(&podIPs, "pod-ip", nil, "filter by pod IP (exact match, repeatable)")
+	cmd.Flags().StringSliceVar(&nodeIPs, "node-ip", nil, "filter by node IP (exact match, repeatable)")
 	output.AddFormatFlag(cmd, &outputFormat)
 
 	_ = cmd.MarkFlagRequired("app")

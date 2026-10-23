@@ -50,9 +50,11 @@ type CreateParams struct {
 type TrpcConfigParams struct {
 	// Language tRPC 框架语言
 	Language string
-	// FileName 配置文件名
+	// FileName 配置文件名，只写入 framework def，不写入 app model。
+	// todo 兼容：Update 仍用它同步 def，可为空。更新改走 def 接口后，只有 Create 使用。
 	FileName string
-	// FilePath 配置文件路径
+	// FilePath 配置文件路径，只写入 framework def，不写入 app model。
+	// todo 兼容：Update 仍用它同步 def，可为空。更新改走 def 接口后，只有 Create 使用。
 	FilePath string
 	// FileContent 配置文件内容
 	FileContent string
@@ -99,11 +101,14 @@ func (s *Service) Create(ctx context.Context, app *bkmsapp.Application, params *
 		fileContent = &params.TrpcConfig.FileContent
 	}
 
-	// framework def 使用 tRPC 配置中的实际文件名（如 trpc_go.yaml），
-	// 保持 def.Name 与 app model 中的 FileName 一致。
+	// 创建时 def 还不存在，文件名和挂载目录由 spec 带入，只写入 framework def。
 	cfgFileName := appcfg.DefaultAppConfigFileName
-	if params.TrpcConfig != nil && params.TrpcConfig.FileName != "" {
-		cfgFileName = params.TrpcConfig.FileName
+	cfgMountDir := ""
+	if params.TrpcConfig != nil {
+		if params.TrpcConfig.FileName != "" {
+			cfgFileName = params.TrpcConfig.FileName
+		}
+		cfgMountDir = appcfg.NormalizeMountDir(params.TrpcConfig.FilePath)
 	}
 
 	if _, err = s.appConfigFileService.Create(
@@ -112,6 +117,7 @@ func (s *Service) Create(ctx context.Context, app *bkmsapp.Application, params *
 			AppID:             app.ID,
 			EnvName:           appcfg.EnvNameDefault,
 			Name:              cfgFileName,
+			MountDir:          cfgMountDir,
 			Type:              appcfg.AppConfigFileTypeNormal,
 			ContentSourceType: appcfg.ContentSourceTypeLocal,
 			Format:            appcfg.FileFormatYAML,
@@ -137,11 +143,9 @@ func (s *Service) Create(ctx context.Context, app *bkmsapp.Application, params *
 		},
 	}
 
-	// 设置 tRPC 配置
+	// 文件名和挂载目录写在 framework def 上，app model 只保留语言。
 	if params.TrpcConfig != nil {
 		appModel.Workload.TrpcConfig = appmodel.TrpcConfig{
-			FileName: params.TrpcConfig.FileName,
-			FilePath: params.TrpcConfig.FilePath,
 			Language: params.TrpcConfig.Language,
 		}
 	}
@@ -193,11 +197,14 @@ func (s *Service) Update(
 		return nil, nil, errors.Wrap(copyErr, "copying app model")
 	}
 
-	// 更新 tRPC 配置
+	// todo 兼容：fileName、filePath 仍从 spec 同步到 def，未传时保持 def 原值。见 SyncFrameworkFileLocation。
 	if params.TrpcConfig != nil {
+		if err = s.appConfigFileService.SyncFrameworkFileLocation(
+			ctx, app.ID, app.Type, params.TrpcConfig.FileName, params.TrpcConfig.FilePath,
+		); err != nil {
+			return nil, nil, errors.Wrapf(err, "sync framework file location for app %s", app.ID)
+		}
 		appModel.Workload.TrpcConfig = appmodel.TrpcConfig{
-			FileName: params.TrpcConfig.FileName,
-			FilePath: params.TrpcConfig.FilePath,
 			Language: params.TrpcConfig.Language,
 		}
 	}

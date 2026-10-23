@@ -303,6 +303,10 @@
               >
                 <Radio.Group
                   v-model="formModel.registerMode"
+                  v-bk-tooltips="{
+                    content: $t('生效方式创建后不可修改。切换后环境变量会突然出现或消失，可能影响已运行的实例。'),
+                    disabled: !isEditMode,
+                  }"
                   class="flex w-full flex-col gap-[8px]"
                   :disabled="isEditMode"
                 >
@@ -360,19 +364,12 @@
                     <Share class="ml-[2px] align-[-2px]" />
                   </a>
                 </div>
-                <div
-                  v-if="isEditMode"
-                  class="mt-[4px] text-[12px] leading-[20px] text-[#979BA5]"
-                >
-                  {{ $t('创建后不可修改') }}
-                </div>
               </Form.FormItem>
 
               <!-- 健康检查 -->
               <Form.FormItem
                 :label="$t('健康检查')"
                 property="enableHealthCheck"
-                required
               >
                 <div class="flex items-center gap-[10px]">
                   <Switcher

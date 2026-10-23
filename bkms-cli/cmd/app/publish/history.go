@@ -21,6 +21,7 @@ package publish
 
 import (
 	"github.com/pkg/errors"
+	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/client"
@@ -28,21 +29,27 @@ import (
 	cmdutil "github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/cmd"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/console"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/output"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-cli/pkg/utils/params"
 )
 
 // newHistoryCmd 创建 publish history 子命令
 func newHistoryCmd() *cobra.Command {
-	var appID, envName, keyword, outputFormat string
+	var appID, envName, envTypes, keyword, outputFormat string
 
 	cmd := &cobra.Command{
 		Use:   "history",
-		Short: "List dev mode publish history records",
-		Long: `List dev mode publish history records for the specified app and environment.
+		Short: "List dev mode publish and restart history records",
+		Long: `List dev mode publish and restart history records for the specified app.
 
-Each record corresponds to one instance (pod). Records are returned in
-reverse-chronological order.`,
-		Example: `  # List publish history for an app environment
+Records can be filtered by a single environment or by environment types
+(multiple values are comma-separated, e.g. development,test). Exactly one of
+--env / --env-type is required. Each record corresponds to one instance (pod),
+and records are returned in reverse-chronological order.`,
+		Example: `  # List history of one environment
   bkms-cli app publish history --app myapp --env stage
+
+  # List history across environments of the given types
+  bkms-cli app publish history --app myapp --env-type development,test
 
   # Filter by keyword (binary name / operator / instance)
   bkms-cli app publish history --app myapp --env stage --keyword my-binary
@@ -51,7 +58,9 @@ reverse-chronological order.`,
   bkms-cli app publish history --app myapp --env stage -o json`,
 		PreRunE: cmdutil.ResolveAppPreRunE,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			rows, err := publishhandler.ListHistory(cmd.Context(), client.New(), appID, envName, keyword)
+			types := lo.Uniq(params.NormalizeInstIDs(envTypes, ","))
+
+			rows, err := publishhandler.ListHistory(cmd.Context(), client.New(), appID, envName, types, keyword)
 			if err != nil {
 				return errors.Wrap(err, "list dev mode publish history")
 			}
@@ -66,12 +75,16 @@ reverse-chronological order.`,
 	}
 
 	cmdutil.AddAppFlags(cmd, &appID)
-	cmd.Flags().StringVar(&envName, "env", "", "Environment name (required)")
+	cmd.Flags().StringVar(&envName, "env", "", "Environment name")
+	cmd.Flags().
+		StringVar(&envTypes, "env-type", "", "Environment types, comma-separated: development | test | staging")
 	cmd.Flags().StringVar(&keyword, "keyword", "", "Filter by keyword (binary name / operator / instance)")
 	output.AddFormatFlag(cmd, &outputFormat)
 
+	cmd.MarkFlagsMutuallyExclusive("env", "env-type")
+	cmd.MarkFlagsOneRequired("env", "env-type")
+
 	_ = cmd.MarkFlagRequired("app")
-	_ = cmd.MarkFlagRequired("env")
 
 	return cmd
 }

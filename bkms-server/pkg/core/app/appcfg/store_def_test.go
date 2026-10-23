@@ -90,11 +90,21 @@ var _ = Describe("AppConfigFileDef store", func() {
 			Expect(got.EnvConfigMode.MountedEnvNames).To(BeEmpty())
 		})
 
-		It("should reject duplicate names in the same app", func() {
+		It("should allow the same name in different directories", func() {
 			mustCreate(newDef())
 			dup := newDef()
 			dup.MountDir = "/data/other"
-			Expect(defs.Create(ctx, dup)).To(MatchError(appcfg.ErrAppConfigFileDefAlreadyExists))
+			Expect(defs.Create(ctx, dup)).To(Succeed())
+		})
+
+		It("should reject the same name when mountDir is empty", func() {
+			first := newDef()
+			first.MountDir = ""
+			mustCreate(first)
+
+			second := newDef()
+			second.MountDir = ""
+			Expect(defs.Create(ctx, second)).To(MatchError(appcfg.ErrAppConfigFileDefAlreadyExists))
 		})
 
 		It("should return ErrAppConfigFileDefNotFound for missing defs", func() {
@@ -138,6 +148,7 @@ var _ = Describe("AppConfigFileDef store", func() {
 
 			got.Name = "new-values.yaml"
 			got.EnvConfigMode.IsUnifiedConfig = false
+			got.EnvConfigMode.EnvContentStrategy = appcfg.EnvContentStrategyOverwrite
 			got.EnableEnvVarRender = true
 			Expect(appcfg.UpdateDef(ctx, defs, got)).To(Succeed())
 
@@ -145,6 +156,7 @@ var _ = Describe("AppConfigFileDef store", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(updated.Name).To(Equal("new-values.yaml"))
 			Expect(updated.EnvConfigMode.IsUnifiedConfig).To(BeFalse())
+			Expect(updated.EnvConfigMode.EnvContentStrategy).To(Equal(appcfg.EnvContentStrategyOverwrite))
 			Expect(updated.EnableEnvVarRender).To(BeTrue())
 
 			var raw bson.M
@@ -170,6 +182,11 @@ var _ = Describe("AppConfigFileDef store", func() {
 			Expect(updated.MountDir).To(BeEmpty())
 			Expect(updated.AppID).To(Equal(appID))
 			Expect(updated.ConfigKind).To(Equal(appcfg.ConfigKindFramework))
+
+			var raw bson.M
+			err = defs.Collection().FindOne(ctx, bson.M{"_id": id}).Decode(&raw)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(raw).NotTo(HaveKey("mountDir"))
 		})
 
 		It("should reject defs without ID and report missing defs", func() {

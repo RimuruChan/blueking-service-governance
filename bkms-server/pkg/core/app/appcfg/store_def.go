@@ -22,6 +22,7 @@ import (
 	"context"
 
 	"github.com/pkg/errors"
+	"go.mongodb.org/mongo-driver/v2/bson"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 )
@@ -39,8 +40,7 @@ type AppConfigFileDefStore = store.GenericStore[AppConfigFileDef]
 // AppConfigFileDefMeta 配置文件 def 的存储元数据。
 //
 // 索引（由 golang-migrate 维护）：
-// - 唯一：appID + name
-// - 唯一（partial，mountDir 非空）：appID + mountDir + name，保证最终挂载路径 Join(mountDir, name) 不重复
+// - 唯一：appID + mountDir + name。mountDir 为空时字段不落库，按空值参与唯一约束，同一应用下文件名仍然唯一。
 // - 查询：appID + configKind
 var AppConfigFileDefMeta = store.Meta[AppConfigFileDef]{
 	Collection: "app_config_file_defs",
@@ -58,6 +58,21 @@ func DefFilterConfigKind(kind ConfigKind) store.Opt {
 	return store.Where("configKind", kind)
 }
 
+// DefByMountIdentity 匹配占用 appID + mountDir + name 这组唯一键的 def 记录，
+// excludeID 非零时排除该记录自身（更新场景下排除待更新的那条）。
+// mountDir 带 omitempty，空目录不落库，因此按字段缺失或空值匹配。
+func DefByMountIdentity(appID, name, mountDir string, excludeID bson.ObjectID) store.Opt {
+	var mountDirCond any = mountDir
+	if mountDir == "" {
+		mountDirCond = bson.M{"$in": []any{nil, ""}}
+	}
+	opts := []store.Opt{DefsByApp(appID), store.Where("name", name), store.Where("mountDir", mountDirCond)}
+	if !excludeID.IsZero() {
+		opts = append(opts, store.Where("_id", bson.M{"$ne": excludeID}))
+	}
+	return store.Combine(opts...)
+}
+
 // ListDefsByApp 返回指定应用下的全部 def 记录（按名称排序），可通过 DefFilterConfigKind 等条件进一步过滤
 func ListDefsByApp(
 	ctx context.Context,
@@ -73,12 +88,15 @@ func ListDefsByApp(
 }
 
 // UpdateDef 按 ID 更新 def 记录的可变字段，def 不存在时返回 ErrAppConfigFileDefNotFound。
-// EnvConfigMode 以 inline 方式展开为 isUnifiedConfig / mountedEnvNames 两个字段
+// EnvConfigMode 以 inline 方式展开为 isUnifiedConfig / mountedEnvNames / envContentStrategy。
 func UpdateDef(ctx context.Context, defs *AppConfigFileDefStore, def *AppConfigFileDef) error {
 	if def.ID.IsZero() {
 		return errors.New("def ID is required for update")
 	}
-	mutable := store.UpdateSelected("name", "mountDir", "isUnifiedConfig", "mountedEnvNames", "enableEnvVarRender")
+	// mountDir 带 omitempty，空目录在 Update 时被 $unset，不把 "" 写进唯一索引。
+	mutable := store.UpdateSelected(
+		"name", "mountDir", "isUnifiedConfig", "mountedEnvNames", "enableEnvVarRender", "envContentStrategy",
+	)
 	if err := defs.Update(ctx, def, mutable, store.ByID(def.ID)); err != nil {
 		return errors.Wrapf(err, "update app config file def %s", def.ID.Hex())
 	}

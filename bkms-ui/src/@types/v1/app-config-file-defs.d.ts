@@ -95,6 +95,17 @@ export interface ResetAppConfigFileDefEnvToDefaultRequest {
   envName: string;
 }
 
+export type UpdateHelmFileRequest = UpdateHelmFileInput & {
+  /**
+   * 应用 ID
+   */
+  appID: string;
+  /**
+   * 配置文件定义 ID
+   */
+  id: string;
+};
+
 export interface GetMountPreviewRequest {
   /**
    * 应用 ID
@@ -148,7 +159,8 @@ export interface CreateDefInput {
    */
   mountDir?: string;
   /**
-   * 创建时可选设置挂载环境范围；nil = 全环境生效，空数组 = 不挂载任何环境。环境名格式与路径参数 envName 相同。
+   * 创建时可选设置挂载环境范围；nil = 全环境生效，空数组 = 不挂载任何环境。
+   * 环境名格式与路径参数 envName 相同。
    */
   mountedEnvNames?: string[];
   /**
@@ -171,6 +183,10 @@ export interface GetDefDetailOutput {
 
 export interface UpdateDefInput {
   enableEnvVarRender?: boolean;
+  /**
+   * EnvContentStrategy: overlay 表示环境内容按补丁与默认配置合并；overwrite 表示环境内容独立生效，不再继承默认配置变更。
+   */
+  envContentStrategy?: "overlay" | "overwrite";
   isUnifiedConfig?: boolean;
   mountDir?: string;
   mountedEnvNames?: string[];
@@ -206,6 +222,33 @@ export interface ListEnvInstancesOutput {
 export interface ResetEnvOutput {
 }
 
+export interface UpdateHelmFileInput {
+  /**
+   * overlay 文件必须传当前基础文件 ID，未修改时也传原值。普通文件留空。
+   */
+  baseAppConfigFileId?: string;
+  /**
+   * BSCP 来源必须传当前绑定，未修改时也传原值。本地来源留空。
+   */
+  bscpConfig?: BSCPConfigInput;
+  /**
+   * 编辑开始时的当前版本号，用于乐观锁冲突检测。
+   */
+  currentVersion?: number;
+  /**
+   * 版本描述。基础文件或 BSCP 发生变化时写入版本，只改名称不写版本。
+   */
+  description?: string;
+  /**
+   * 文件名称，仅支持数字、字母、下划线(_)、中划线(-)、点(.)，长度 1-64 之间。
+   */
+  name: string;
+}
+
+export interface UpdateHelmFileOutput {
+  item?: DefDetailObj;
+}
+
 export interface MountPreviewOutput {
   items?: MountPreviewItemObj[];
 }
@@ -216,29 +259,6 @@ export interface MountPreviewItemObj {
   defId?: string;
   hasEnvFile?: boolean;
   mountDir?: string;
-  name?: string;
-}
-
-export interface EnvInstanceObj {
-  content?: string;
-  currentVersion?: number;
-  envName?: string;
-  fileId?: string;
-  overlayContent?: string;
-  type?: string;
-  updatedAt?: string;
-  updater?: string;
-}
-
-export interface DefSummaryObj {
-  configKind?: string;
-  createdAt?: string;
-  creator?: string;
-  enableEnvVarRender?: boolean;
-  id?: string;
-  isUnifiedConfig?: boolean;
-  mountDir?: string;
-  mountedEnvNames?: string[];
   name?: string;
 }
 
@@ -257,6 +277,7 @@ export interface DefDetailObj {
    */
   editableContentField?: string;
   enableEnvVarRender?: boolean;
+  envContentStrategy?: string;
   fileFormat?: string;
   fileId?: string;
   fileType?: string;
@@ -292,4 +313,28 @@ export interface BSCPConfigInput {
   bizID: string;
   id: string;
   serviceID: string;
+}
+
+export interface EnvInstanceObj {
+  content?: string;
+  currentVersion?: number;
+  envName?: string;
+  fileId?: string;
+  overlayContent?: string;
+  type?: string;
+  updatedAt?: string;
+  updater?: string;
+}
+
+export interface DefSummaryObj {
+  configKind?: string;
+  createdAt?: string;
+  creator?: string;
+  enableEnvVarRender?: boolean;
+  envContentStrategy?: string;
+  id?: string;
+  isUnifiedConfig?: boolean;
+  mountDir?: string;
+  mountedEnvNames?: string[];
+  name?: string;
 }

@@ -159,8 +159,8 @@ func (h *Handler) CreateAppConfigFile(c *gin.Context) {
 
 // UpdateAppConfigFile 更新应用配置文件的 BSCP 绑定关系和 overlay base 引用。
 //
-// 职责说明：本接口负责 file 级字段的更新（baseAppConfigFileID、bscpConfig），
-// 与新接口各司其职：
+// 职责说明：本接口只更新 file 级字段（baseAppConfigFileID、bscpConfig），不修改文件名。
+// Helm 编辑表单改名称、基础 values 和 BSCP 时走 PUT /app-config-file-defs/:id/helm-file。
 //
 //   - def 级字段（名称 / mountDir / 环境策略等） → PUT /app-config-file-defs/:id
 //
@@ -215,14 +215,18 @@ func (h *Handler) UpdateAppConfigFile(c *gin.Context) {
 		acf.BSCPConfig = bscpCfg
 	}
 
-	oldName := h.resolveDefName(ctx, acf.DefID)
+	def, err := h.configFileDefs().GetByID(ctx, acf.DefID)
+	if err != nil {
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "get config file def"))
+		return
+	}
 
 	operator := auth.MustGetUser(ctx).ID
 	acfService := appcfg.NewAppConfigFileService(
 		h.registry.DB,
 	)
 	if err = acfService.UpdateFile(
-		ctx, acf, input.Name, operator,
+		ctx, acf, def.Name, operator,
 		appcfg.UpdateCfgFileOptions{
 			OperationType:          appcfg.AppConfigFileVersionOperationTypeUpdate,
 			Description:            input.Description,
@@ -237,15 +241,12 @@ func (h *Handler) UpdateAppConfigFile(c *gin.Context) {
 		return
 	}
 
-	// TODO: 老接口兼容——同步更新 def name，迁移新接口后可删除
-	h.syncDefName(ctx, acf.DefID, input.Name, oldName)
-
 	h.addAppConfigFileAudit(ctx, app, acf.EnvName, audit.OperationTypeUpdate,
-		buildAppConfigFileAuditData(&oldAcf, oldName),
-		buildAppConfigFileAuditData(acf, input.Name),
+		buildAppConfigFileAuditData(&oldAcf, def.Name),
+		buildAppConfigFileAuditData(acf, def.Name),
 	)
 	ginutils.OK(c, slz.UpdateAppConfigFileOutput{
-		Item: new(slz.AppConfigFileOutputObj).FromModel(*acf, input.Name),
+		Item: new(slz.AppConfigFileOutputObj).FromModel(*acf, def.Name),
 	})
 }
 
@@ -750,28 +751,4 @@ func (h *Handler) persistContentUpdate(
 		buildAppConfigFileAuditData(acf, defName),
 	)
 	return nil
-}
-
-// resolveDefName 从 def 获取文件名称，def 不存在时返回空字符串。
-// TODO: 老接口兼容辅助，迁移新接口后可删除。
-func (h *Handler) resolveDefName(ctx context.Context, defID bson.ObjectID) string {
-	def, err := h.configFileDefs().GetByID(ctx, defID)
-	if err != nil {
-		return ""
-	}
-	return def.Name
-}
-
-// syncDefName 老接口兼容：同步更新 def name。
-// TODO: 迁移新接口后可删除。
-func (h *Handler) syncDefName(ctx context.Context, defID bson.ObjectID, newName, oldName string) {
-	if newName == oldName {
-		return
-	}
-	def, err := h.configFileDefs().GetByID(ctx, defID)
-	if err != nil {
-		return
-	}
-	def.Name = newName
-	_ = appcfg.UpdateDef(ctx, h.configFileDefs(), def)
 }

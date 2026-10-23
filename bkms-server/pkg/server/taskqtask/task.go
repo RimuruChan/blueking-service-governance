@@ -37,6 +37,7 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/buildpoll"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/chartbuildpoll"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/depsvcredis"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/devmoderestart"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/example"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/helmdeploypoll"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/taskqtask/polarisapply"
@@ -74,6 +75,8 @@ func Setup(mux *asynq.ServeMux) error {
 	// 告警策略同步/清理 tasks
 	mux.Handle(alertstrategysync.SyncTask.Name(), alertstrategysync.SyncTask.Handler())
 	mux.Handle(alertstrategysync.CleanupTask.Name(), alertstrategysync.CleanupTask.Handler())
+	// 开发模式进程重启
+	mux.Handle(devmoderestart.Task.Name(), devmoderestart.Task.Handler())
 	// 示例任务
 	mux.Handle(example.ExampleTask.Name(), example.ExampleTask.Handler())
 	return nil

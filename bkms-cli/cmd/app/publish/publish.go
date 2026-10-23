@@ -89,6 +89,7 @@ bkms-cli app publish --app myapp --env stage -f /path/to/binary --all`,
 	_ = cmd.MarkFlagRequired("file")
 
 	cmd.AddCommand(newHistoryCmd())
+	cmd.AddCommand(newRestartCmd())
 
 	return cmd
 }

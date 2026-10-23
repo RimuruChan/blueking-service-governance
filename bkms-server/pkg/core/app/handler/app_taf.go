@@ -20,11 +20,13 @@ package handler
 
 import (
 	"context"
+	"errors"
 
 	"github.com/gin-gonic/gin"
 
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
 	bkmsapp "github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/appcfg"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/app/serializer"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/misc/audit"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
@@ -49,6 +51,7 @@ func (h *Handler) newTafService() *tafapp.Service {
 //	@Param		body	body		serializer.UpdateAppModelSpecInput	true	"更新 Taf 配置请求"
 //	@Success	200		{object}	serializer.EmptyOutput
 //	@Failure	400		{object}	bkerrs.GinErrorOutput
+//	@Failure	409		{object}	bkerrs.GinErrorOutput	"文件名和挂载目录已存在，details.code=APP_CONFIG_FILE_MOUNT_IDENTITY_CONFLICT"
 //	@Router		/apps/{appID}/taf-spec [put]
 func (h *Handler) UpdateAppTafSpec(c *gin.Context) {
 	var uriInput serializer.AppURIInput
@@ -78,7 +81,18 @@ func (h *Handler) UpdateAppTafSpec(c *gin.Context) {
 
 	// 更新 AppModel 应用配置（复用现有逻辑）
 	if err = h.updateTafApp(ctx, app, input.AppModelSpec); err != nil {
-		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "update taf app"))
+		code := bkerrs.ErrCodeInternalServerError
+		if errors.Is(err, appcfg.ErrInvalidConfigSpec) {
+			code = bkerrs.ErrCodeInvalidRequest
+		}
+		if errors.Is(err, appcfg.ErrAppConfigFileDefAlreadyExists) {
+			spec := input.AppModelSpec.TafSpec
+			bkerrs.AbortWithErr(c, bkerrs.WrapAppConfigFileMountIdentityConflict(
+				err, app.ID, spec.FileName, spec.FilePath,
+			))
+			return
+		}
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, code, "update taf app"))
 		return
 	}
 

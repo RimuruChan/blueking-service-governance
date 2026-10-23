@@ -25,6 +25,7 @@ import (
 	"github.com/samber/lo"
 	"go.mongodb.org/mongo-driver/v2/bson"
 
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/appruntime"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/store"
 )
 
@@ -59,6 +60,7 @@ func (s *AppCfgFileDefService) Create(
 	if kind == "" {
 		return nil, errors.Wrap(ErrInvalidConfigSpec, "config kind is required")
 	}
+	params.MountDir = NormalizeMountDir(params.MountDir)
 
 	policy, err := s.policyFor(kind)
 	if err != nil {
@@ -110,6 +112,7 @@ func (s *AppCfgFileDefService) createDef(
 	if params.MountedEnvNames != nil {
 		envConfigMode.MountedEnvNames = *params.MountedEnvNames
 	}
+	policy.InitializeEnvConfigMode(&envConfigMode, params)
 
 	def := AppConfigFileDef{
 		AppID:              params.AppID,
@@ -170,35 +173,33 @@ func (s *AppCfgFileDefService) UpdateAppCfgFileDef(
 	if def == nil {
 		return errors.New("def is required")
 	}
+	if update.MountDir != nil {
+		update.MountDir = lo.ToPtr(NormalizeMountDir(*update.MountDir))
+	}
 
-	// 按策略区分
-	if update.MountDir != nil || update.EnableEnvVarRender != nil || update.MountedEnvNames != nil {
-		policy, err := s.policyFor(def.ConfigKind)
-		if err != nil {
-			return errors.Wrap(err, "loading config kind policy for def update")
-		}
-		if update.MountDir != nil && !policy.AllowMountDirUpdate() {
-			return errors.Wrap(ErrInvalidConfigSpec, "this config kind does not support modifying mountDir via def")
-		}
-		if update.MountedEnvNames != nil && !policy.AllowMountedEnvNamesUpdate() {
-			return errors.Wrap(ErrInvalidConfigSpec, "this config kind does not support mountedEnvNames")
-		}
-		if update.EnableEnvVarRender != nil && !policy.AllowEnableEnvVarRenderUpdate() {
-			return errors.Wrap(ErrInvalidConfigSpec,
-				"this config kind does not allow modifying enableEnvVarRender")
+	if err := s.validateDefUpdateByPolicy(def, update); err != nil {
+		return err
+	}
+
+	name := lo.FromPtrOr(update.Name, def.Name)
+	mountDir := lo.FromPtrOr(update.MountDir, def.MountDir)
+	if name != def.Name || mountDir != def.MountDir {
+		if err := s.ensureMountIdentityAvailable(ctx, def, name, mountDir); err != nil {
+			return err
 		}
 	}
 
 	applyStaticDefFields(def, update)
 
-	if update.IsUnifiedConfig != nil && def.EnvConfigMode.IsUnifiedConfig != *update.IsUnifiedConfig {
-		def.EnvConfigMode.IsUnifiedConfig = *update.IsUnifiedConfig
-		// 从独立配置切回统一配置：删除所有环境实例及其版本记录
-		if *update.IsUnifiedConfig {
-			if err := s.deleteEnvInstances(ctx, def.ID); err != nil {
-				return err
-			}
+	if update.EnvContentStrategy != nil {
+		if err := s.applyFrameworkEnvContentStrategyChange(
+			ctx, def, *update.EnvContentStrategy, update.Operator,
+		); err != nil {
+			return err
 		}
+	}
+	if err := s.applyUnifiedConfigChange(ctx, def, update.IsUnifiedConfig); err != nil {
+		return err
 	}
 	if update.MountedEnvNames != nil {
 		if err := s.applyMountedEnvNamesChange(ctx, def, *update.MountedEnvNames); err != nil {
@@ -207,6 +208,213 @@ func (s *AppCfgFileDefService) UpdateAppCfgFileDef(
 	}
 	if err := UpdateDef(ctx, s.DefStore, def); err != nil {
 		return errors.Wrap(err, "updating def record")
+	}
+	return nil
+}
+
+// validateDefUpdateByPolicy 校验本次更新是否触碰了当前 kind 不允许修改的 def 字段。
+// 未触碰任何受策略约束的字段时直接放行，不必按 kind 查表。
+func (s *AppCfgFileDefService) validateDefUpdateByPolicy(def *AppConfigFileDef, update FileDefUpdate) error {
+	if update.Name == nil && update.MountDir == nil && update.EnableEnvVarRender == nil &&
+		update.MountedEnvNames == nil && update.EnvContentStrategy == nil {
+		return nil
+	}
+	policy, err := s.policyFor(def.ConfigKind)
+	if err != nil {
+		return errors.Wrap(err, "loading config kind policy for def update")
+	}
+	for _, c := range []struct {
+		changed bool
+		allowed bool
+		reason  string
+	}{
+		{
+			update.Name != nil && *update.Name != def.Name, policy.AllowNameUpdate(update.AppType),
+			"this config kind does not allow modifying name",
+		},
+		{
+			update.MountDir != nil, policy.AllowMountDirUpdate(update.AppType),
+			"this config kind does not support modifying mountDir via def",
+		},
+		{
+			update.MountedEnvNames != nil, policy.AllowMountedEnvNamesUpdate(),
+			"this config kind does not support mountedEnvNames",
+		},
+		{
+			update.EnableEnvVarRender != nil, policy.AllowEnableEnvVarRenderUpdate(),
+			"this config kind does not allow modifying enableEnvVarRender",
+		},
+		{
+			update.EnvContentStrategy != nil, policy.AllowEnvContentStrategyUpdate(),
+			"this config kind does not support modifying envContentStrategy",
+		},
+	} {
+		if c.changed && !c.allowed {
+			return errors.Wrap(ErrInvalidConfigSpec, c.reason)
+		}
+	}
+	return nil
+}
+
+// applyUnifiedConfigChange 切换统一配置开关。
+// 从独立配置切回统一配置时，顺带删除所有环境实例及其版本记录。
+func (s *AppCfgFileDefService) applyUnifiedConfigChange(
+	ctx context.Context,
+	def *AppConfigFileDef,
+	isUnifiedConfig *bool,
+) error {
+	if isUnifiedConfig == nil || def.EnvConfigMode.IsUnifiedConfig == *isUnifiedConfig {
+		return nil
+	}
+	def.EnvConfigMode.IsUnifiedConfig = *isUnifiedConfig
+	if !*isUnifiedConfig {
+		return nil
+	}
+	return s.deleteEnvInstances(ctx, def.ID)
+}
+
+// applyFrameworkEnvContentStrategyChange 更新框架定义的环境内容策略。
+// 没有环境实例时只改字段。已有环境实例时，把每条实例改写成目标策略对应的文件形态，
+// 但不新增版本记录，currentVersion 保持不变。
+//
+// 调用方已通过 policy 保证当前 kind 支持修改 envContentStrategy。
+// TODO(non-atomic): 先改写环境实例，再由上层 UpdateAppCfgFileDef 持久化 def。
+func (s *AppCfgFileDefService) applyFrameworkEnvContentStrategyChange(
+	ctx context.Context,
+	def *AppConfigFileDef,
+	strategy EnvContentStrategy,
+	operator string,
+) error {
+	if err := validateFrameworkEnvContentStrategy(strategy); err != nil {
+		return err
+	}
+	if def.EnvConfigMode.EnvContentStrategy == strategy {
+		return nil
+	}
+	if def.EnvConfigMode.IsIndependent() {
+		if err := s.convertEnvInstancesForStrategy(ctx, def.ID, strategy, operator); err != nil {
+			return err
+		}
+	}
+	def.EnvConfigMode.EnvContentStrategy = strategy
+	return nil
+}
+
+// convertEnvInstancesForStrategy 把已有环境实例转换成目标策略的存储形态。
+func (s *AppCfgFileDefService) convertEnvInstancesForStrategy(
+	ctx context.Context,
+	defID bson.ObjectID,
+	strategy EnvContentStrategy,
+	operator string,
+) error {
+	defaultFile, err := s.FileStore.Get(ctx, FileByDefEnv(defID, EnvNameDefault))
+	if err != nil {
+		return errors.Wrap(err, "loading default file for strategy switch")
+	}
+	files, err := s.FileStore.List(ctx, FilesByDef(defID))
+	if err != nil {
+		return errors.Wrap(err, "listing env instances for strategy switch")
+	}
+	for i := range files {
+		file := &files[i]
+		if file.EnvName == EnvNameDefault {
+			continue
+		}
+		rawContent := file.Content
+		if file.Type == AppConfigFileTypeOverlay {
+			rawContent = file.OverlayContent
+		}
+
+		var (
+			targetType           AppConfigFileType
+			targetContent        *string
+			targetOverlayContent *string
+		)
+		targetBaseID := file.BaseAppConfigFileID
+
+		switch strategy {
+		case EnvContentStrategyOverwrite:
+			targetType = AppConfigFileTypeNormal
+			targetContent = rawContent
+			targetOverlayContent = nil
+		case EnvContentStrategyOverlay:
+			targetType = AppConfigFileTypeOverlay
+			targetContent = nil
+			targetOverlayContent = rawContent
+			if targetBaseID == nil {
+				baseID := defaultFile.ID
+				targetBaseID = &baseID
+			}
+		default:
+			return errors.Wrapf(ErrInvalidConfigSpec, "unsupported envContentStrategy %q", strategy)
+		}
+
+		if err := UpdateEnvInstanceForStrategySwitch(
+			ctx,
+			s.FileStore,
+			file.ID,
+			targetType,
+			targetContent,
+			targetOverlayContent,
+			targetBaseID,
+			operator,
+		); err != nil {
+			return errors.Wrapf(err, "converting env instance %s", file.ID.Hex())
+		}
+	}
+	return nil
+}
+
+// SyncFrameworkFileLocation 把 spec 更新里的文件名和挂载目录写到该应用唯一的 framework def。
+// 空的 fileName / mountDir 表示保持 def 上的原值。trpc 改名由策略拒绝。
+//
+// todo 兼容 PUT /trpc-spec、PUT /taf-spec 仍携带 fileName、filePath。
+// 创建时这两个值已经写在 def 上。后续 spec 只更新语言、启动命令和参数，名字和目录只通过 def 更新接口修改，查询继续从 def 填回。届时删除本函数。
+func (s *AppCfgFileDefService) SyncFrameworkFileLocation(
+	ctx context.Context,
+	appID, appType, fileName, mountDir string,
+) error {
+	defs, err := ListDefsByApp(ctx, s.DefStore, appID, DefFilterConfigKind(ConfigKindFramework))
+	if err != nil {
+		return errors.Wrapf(err, "listing framework defs for app %s", appID)
+	}
+	if len(defs) != 1 {
+		return errors.Errorf("app %s has %d framework config files", appID, len(defs))
+	}
+	def := &defs[0]
+
+	update := FileDefUpdate{AppType: appType}
+	if fileName != "" && fileName != def.Name {
+		update.Name = &fileName
+	}
+	if cleaned := NormalizeMountDir(mountDir); cleaned != "" && cleaned != def.MountDir {
+		update.MountDir = &cleaned
+	}
+	if update.Name == nil && update.MountDir == nil {
+		return nil
+	}
+	if err = s.UpdateAppCfgFileDef(ctx, def, update); err != nil {
+		return errors.Wrapf(err, "sync framework file location for app %s", appID)
+	}
+	return nil
+}
+
+// ensureMountIdentityAvailable 确认同应用下没有其他 def 占用 appID + mountDir + name。
+func (s *AppCfgFileDefService) ensureMountIdentityAvailable(
+	ctx context.Context,
+	def *AppConfigFileDef,
+	name, mountDir string,
+) error {
+	taken, err := s.DefStore.Exists(ctx, DefByMountIdentity(def.AppID, name, mountDir, def.ID))
+	if err != nil {
+		return errors.Wrapf(err, "checking config file identity for app %s", def.AppID)
+	}
+	if taken {
+		return errors.Wrapf(
+			ErrAppConfigFileDefAlreadyExists,
+			"app %s already has config file %s in %q",
+			def.AppID, name, mountDir,
+		)
 	}
 	return nil
 }
@@ -239,8 +447,7 @@ func (s *AppCfgFileDefService) ensureSingleFrameworkDef(
 	if kind != ConfigKindFramework {
 		return nil
 	}
-	// 与 app.AppTypeTRPC / AppTypeTAF 对齐，避免 appcfg 反向依赖 app 包。
-	if appType != "trpc" && appType != "taf" {
+	if !appruntime.IsAppModelType(appType) {
 		return nil
 	}
 	defs, err := ListDefsByApp(ctx, s.DefStore, appID, DefFilterConfigKind(ConfigKindFramework))
@@ -302,13 +509,28 @@ func (s *AppCfgFileDefService) AttachFrameworkEnvOverlay(
 		return &AppConfigFileWithDef{AppConfigFile: *existing, Def: def}, nil
 	}
 
-	overlay := lo.FromPtr(params.OverlayContent)
-	created, err := s.CreateEnvInstance(ctx, *defaultFile, CreateEnvInstanceParams{
-		EnvName:        params.EnvName,
-		OverlayContent: &overlay,
-		Operator:       params.Creator,
-		Description:    params.Description,
-	})
+	policy, err := s.policyFor(def.ConfigKind)
+	if err != nil {
+		return nil, errors.Wrap(err, "loading config kind policy for compatibility create")
+	}
+	strategy, err := policy.GetEnvContentStrategy(def)
+	if err != nil {
+		return nil, errors.Wrap(err, "resolving env instance strategy for compatibility create")
+	}
+
+	envParams := CreateEnvInstanceParams{
+		EnvName:     params.EnvName,
+		Operator:    params.Creator,
+		Description: params.Description,
+	}
+	raw := lo.FromPtr(params.OverlayContent)
+	if strategy == EnvContentStrategyOverwrite {
+		envParams.Content = &raw
+	} else {
+		envParams.OverlayContent = &raw
+	}
+
+	created, err := s.CreateEnvInstance(ctx, *defaultFile, envParams)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating framework env overlay on existing def")
 	}

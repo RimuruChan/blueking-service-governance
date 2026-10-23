@@ -398,8 +398,40 @@ func (h *Handler) GetApp(c *gin.Context) {
 		}
 	}
 
-	outputObj := new(serializer.AppDetailOutputObj).FromModel(app, buildConfig, appModel, components)
+	fileName, filePath, err := h.frameworkFileLocation(ctx, app)
+	if err != nil {
+		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "load framework config file"))
+		return
+	}
+	outputObj := new(serializer.AppDetailOutputObj).FromModel(
+		app, buildConfig, appModel, components, fileName, filePath,
+	)
 	ginutils.OK(c, serializer.GetAppOutput{Data: outputObj})
+}
+
+// frameworkFileLocation 返回该应用唯一 framework def 的文件名和挂载目录。
+// 非 trpc/taf，或没有唯一 def 时返回空字符串，详情接口不因此失败。
+// todo 兼容：详情仍把这两个值填进 spec。调用方改读 def 后删除。
+func (h *Handler) frameworkFileLocation(
+	ctx context.Context,
+	app *bkmsapp.Application,
+) (string, string, error) {
+	if !bkmsapp.IsAppModelType(app.Type) {
+		return "", "", nil
+	}
+	defs, err := appcfg.ListDefsByApp(
+		ctx,
+		store.Of(h.registry.DB, appcfg.AppConfigFileDefMeta),
+		app.ID,
+		appcfg.DefFilterConfigKind(appcfg.ConfigKindFramework),
+	)
+	if err != nil {
+		return "", "", errors.Wrapf(err, "list framework defs for app %s", app.ID)
+	}
+	if len(defs) != 1 {
+		return "", "", nil
+	}
+	return defs[0].Name, defs[0].MountDir, nil
 }
 
 // ListApps 查询 app 列表，只返回基本信息。
@@ -847,10 +879,14 @@ func (h *Handler) deleteAppModelApp(ctx context.Context, app *bkmsapp.Applicatio
 	if _, err := store.Of(h.registry.DB, appcfg.AppConfigFileMeta).DeleteMany(ctx, appcfg.FilesByApp(app.ID)); err != nil {
 		return errors.Wrapf(err, "delete app(%s) config files", app.Name)
 	}
-	if _, err := store.Of(h.registry.DB, appcfg.AppConfigFileDefMeta).DeleteMany(ctx, appcfg.DefsByApp(app.ID)); err != nil {
+	if _, err := store.Of(h.registry.DB, appcfg.AppConfigFileDefMeta).DeleteMany(
+		ctx, appcfg.DefsByApp(app.ID),
+	); err != nil {
 		return errors.Wrapf(err, "delete app(%s) config file defs", app.Name)
 	}
-	if _, err := store.Of(h.registry.DB, appcfg.AppConfigFileVersionMeta).DeleteMany(ctx, appcfg.VersionsByApp(app.ID)); err != nil {
+	if _, err := store.Of(h.registry.DB, appcfg.AppConfigFileVersionMeta).DeleteMany(
+		ctx, appcfg.VersionsByApp(app.ID),
+	); err != nil {
 		return errors.Wrapf(err, "delete app(%s) config file versions", app.Name)
 	}
 
@@ -860,7 +896,9 @@ func (h *Handler) deleteAppModelApp(ctx context.Context, app *bkmsapp.Applicatio
 	}
 
 	// 4. 删除 HostPort 配置
-	if err := store.Of(h.registry.DB, hostport.HostPortConfigMeta).DeleteIfExists(ctx, hostport.ByApp(app.ID)); err != nil {
+	if err := store.Of(h.registry.DB, hostport.HostPortConfigMeta).DeleteIfExists(
+		ctx, hostport.ByApp(app.ID),
+	); err != nil {
 		return errors.Wrapf(err, "delete app(%s) hostport config", app.Name)
 	}
 

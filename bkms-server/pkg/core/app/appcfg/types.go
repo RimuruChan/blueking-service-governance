@@ -149,6 +149,27 @@ type CreateCfgFileParams struct {
 	AppType string
 }
 
+// HelmFileUpdate 一次保存 Helm 编辑表单上的名称、overlay base 和 BSCP 绑定。
+// BaseAppConfigFileID、BSCPConfig 为 nil 表示该文件类型或来源没有该字段，由校验函数传入。
+// 非 nil 时与当前值比较，相同则不写版本。
+type HelmFileUpdate struct {
+	Name                   string
+	BaseAppConfigFileID    *bson.ObjectID
+	BSCPConfig             *BSCPConfig
+	Operator               string
+	AppType                string
+	Description            string
+	ExpectedCurrentVersion *int64
+}
+
+// HelmFileUpdateResult 是 Helm 编辑保存的结果。只改名称时不追加文件版本。
+type HelmFileUpdateResult struct {
+	Def         *AppConfigFileDef
+	File        *AppConfigFile
+	NameChanged bool
+	FileChanged bool
+}
+
 // FileDefUpdate 描述应用配置文件 def 级字段的更新请求。
 // 指针字段为可选更新项，nil 表示不修改。
 type FileDefUpdate struct {
@@ -157,7 +178,10 @@ type FileDefUpdate struct {
 	IsUnifiedConfig    *bool
 	MountedEnvNames    *[]string
 	EnableEnvVarRender *bool
+	EnvContentStrategy *EnvContentStrategy
 	Operator           string
+	// AppType 应用类型。trpc 的框架文件不允许改名；trpc/taf 允许通过 def 改挂载目录。
+	AppType string
 }
 
 // CreateEnvInstanceParams 创建环境级配置实例的参数。

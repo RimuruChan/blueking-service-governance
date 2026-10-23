@@ -65,6 +65,8 @@ const (
 	OperationTypeExecute OperationType = "execute"
 	// OperationTypePublish 开发模式热更新操作
 	OperationTypePublish OperationType = "publish"
+	// OperationTypeRestart 开发模式进程重启操作
+	OperationTypeRestart OperationType = "restart"
 )
 
 // AllOperationTypes 所有操作类型
@@ -79,6 +81,7 @@ var AllOperationTypes = []OperationType{
 	OperationTypeGray,
 	OperationTypeExecute,
 	OperationTypePublish,
+	OperationTypeRestart,
 }
 
 // DisplayName 操作类型展示用名称 TODO 国际化
@@ -106,6 +109,8 @@ func (t OperationType) DisplayName() string {
 		return "执行"
 	case OperationTypePublish:
 		return "热更新"
+	case OperationTypeRestart:
+		return "进程重启"
 	default:
 		// 默认返回原始值
 		return string(t)
@@ -198,6 +203,8 @@ const (
 	AttributeWorkspaceComponent Attribute = "workspaceComponent"
 	// AttributeWorkspaceAppSpecDefaults 工作空间应用默认配置
 	AttributeWorkspaceAppSpecDefaults Attribute = "workspaceAppSpecDefaults"
+	// AttributeReleaseStrategy 空间发布策略
+	AttributeReleaseStrategy Attribute = "releaseStrategy"
 	// AttributeReplicas 副本数
 	AttributeReplicas Attribute = "replicas"
 	// AttributeInstance 应用实例
@@ -245,6 +252,8 @@ func (t Attribute) DisplayName() string {
 		return "空间组件"
 	case AttributeWorkspaceAppSpecDefaults:
 		return "应用默认配置"
+	case AttributeReleaseStrategy:
+		return "发布策略"
 	case AttributeReplicas:
 		return "副本数"
 	case AttributeInstance:

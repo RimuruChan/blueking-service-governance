@@ -47,6 +47,9 @@ type Runner struct {
 	// pushed 每个插件上次成功推给前端的载荷，索引为 pushed[插件名][实例 ID]
 	// 它是判断「有没有变化」的唯一基准：本轮拉取失败不动它，页面因此保留上次已知值
 	pushed map[string]map[string]any
+	// unsynced 每个插件下一次拿到值时必须无条件推的实例，索引为 unsynced[插件名][实例 ID]
+	// 推出去才清除；插件没给值的实例继续保留，已离开快照的随之出栈
+	unsynced map[string]map[string]struct{}
 	// fetchTimeout 单次 Fetch 上限；单测调小以免真实等待
 	fetchTimeout time.Duration
 }
@@ -56,47 +59,92 @@ func NewRunner(plugins ...Plugin) *Runner {
 	return &Runner{
 		plugins:      plugins,
 		pushed:       make(map[string]map[string]any, len(plugins)),
+		unsynced:     make(map[string]map[string]struct{}, len(plugins)),
 		fetchTimeout: pluginFetchTimeout,
+	}
+}
+
+// MarkUnsynced 标记这些实例需要重新同步附属数据：每个插件下一次给出该实例的值时，不做比较直接推一次（空值也推）
+// 用于建流时预置的实例与 ADDED 的实例：服务端不知道页面上这些行当前显示的附属数据是什么
+// 首包可能是降级后的空值，也可能是建流前取的旧值，只能推一份当前值覆盖过去，之后再按深比较只推变化
+// 前端按 id 覆盖附属数据，重复推相同的值没有副作用
+func (r *Runner) MarkUnsynced(instanceIDs ...string) {
+	for _, p := range r.plugins {
+		unsynced, ok := r.unsynced[p.Name()]
+		if !ok {
+			unsynced = make(map[string]struct{}, len(instanceIDs))
+			r.unsynced[p.Name()] = unsynced
+		}
+
+		for _, id := range instanceIDs {
+			unsynced[id] = struct{}{}
+		}
 	}
 }
 
 // Run 跑一轮：把存活实例快照交给每个插件，仅对相对上次推送有变化的实例 emit 事件
 // 单个插件失败只跳过本轮该插件，既不拆流也不影响其它插件与 Pod 事件
 func (r *Runner) Run(ctx context.Context, snapshot []*serializer.AppInstanceOutputObj, emit Emit) error {
-	// 快照为空说明尚无成功推送过的实例，无从比对，省掉一轮无谓拉取
+	// 快照为空说明当前没有已知的存活实例，无从比对，省掉一轮无谓拉取
 	if len(snapshot) == 0 {
 		return nil
 	}
 
-	// 抽出插件快照后再逐个 Fetch；各插件共用这一份，改字段碰不到 pushed
-	views := make([]InstanceSnapshot, 0, len(snapshot))
-	for _, inst := range snapshot {
-		views = append(views, InstanceSnapshot{ID: inst.ID, IP: inst.IP})
-	}
+	views := toInstanceSnapshots(snapshot)
 
 	for _, p := range r.plugins {
-		// 拉取失败（含超时）按「本轮不可用」处理：不推事件、不拆流、不动已推送记录
-		// 失败被这里吞掉，不会体现在响应里，只能靠日志与 metrics 排查
-		payloads, err := r.fetch(ctx, p, views)
-		if err != nil {
-			log.WarnAttrs(ctx, "watch plugin fetch failed, skip this round",
-				slog.String("plugin", p.Name()),
-				slog.String("err", err.Error()),
-			)
-
-			metrics.InstanceWatchPluginFetch(p.Name(), false)
-
+		// 拉取失败（含超时）按「本轮不可用」处理：不推事件、不拆流、不动已推送记录与待同步标记
+		payloads, ok := r.fetchOrSkip(ctx, p, views)
+		if !ok {
 			continue
 		}
 
-		metrics.InstanceWatchPluginFetch(p.Name(), true)
-
-		if err = r.emitChanged(p.Name(), views, payloads, emit); err != nil {
+		if err := r.emitChanged(p.Name(), views, payloads, emit); err != nil {
 			return err
 		}
 	}
 
 	return nil
+}
+
+// toInstanceSnapshots 抽出插件快照后再交给各插件 Fetch；各插件共用这一份，改字段碰不到调用方的投影
+func toInstanceSnapshots(snapshot []*serializer.AppInstanceOutputObj) []InstanceSnapshot {
+	views := make([]InstanceSnapshot, 0, len(snapshot))
+	for _, inst := range snapshot {
+		views = append(views, InstanceSnapshot{ID: inst.ID, IP: inst.IP})
+	}
+
+	return views
+}
+
+// fetchOrSkip 拉一轮并吞掉失败：失败只告警、记 metrics，返回 false 让调用方跳过该插件
+// 失败被这里吞掉，不会体现在响应里，只能靠日志与 metrics 排查
+func (r *Runner) fetchOrSkip(
+	ctx context.Context,
+	p Plugin,
+	views []InstanceSnapshot,
+) (map[string]any, bool) {
+	payloads, err := r.fetch(ctx, p, views)
+
+	// 客户端已断开导致的失败是正常收流，不是插件故障：不告警，也不计入失败率
+	if err != nil && ctx.Err() != nil {
+		return nil, false
+	}
+
+	if err != nil {
+		log.WarnAttrs(ctx, "watch plugin fetch failed, skip this plugin",
+			slog.String("plugin", p.Name()),
+			slog.String("err", err.Error()),
+		)
+
+		metrics.InstanceWatchPluginFetch(p.Name(), false)
+
+		return nil, false
+	}
+
+	metrics.InstanceWatchPluginFetch(p.Name(), true)
+
+	return payloads, true
 }
 
 // fetch 带超时地拉一轮
@@ -124,24 +172,34 @@ func (r *Runner) emitChanged(
 	emit Emit,
 ) error {
 	prev := r.pushed[name]
+	unsynced := r.unsynced[name]
 	// 按本轮快照重建，DELETED 的实例不在快照里，随之出栈
 	next := make(map[string]any, len(snapshot))
+	nextUnsynced := make(map[string]struct{})
 
 	for _, instance := range snapshot {
+		_, force := unsynced[instance.ID]
+
+		// 本轮没有可推的值：待同步标记留到插件给出值的那一轮
 		payload, known := payloadThisRound(payloads, prev, instance.ID)
 		if !known {
+			if force {
+				nextUnsynced[instance.ID] = struct{}{}
+			}
+
 			continue
 		}
 
 		next[instance.ID] = payload
 
-		if err := emitIfChanged(name, instance.ID, prev, payload, emit); err != nil {
+		if err := emitIfChanged(name, instance.ID, prev, payload, force, emit); err != nil {
 			return err
 		}
 	}
 
-	// 全部写成功才提交；中途失败丢弃 next，缓存停在上一轮
+	// 全部写成功才提交；中途失败丢弃 next 与 nextUnsynced，缓存和待同步标记都停在上一轮
 	r.pushed[name] = next
+	r.unsynced[name] = nextUnsynced
 
 	return nil
 }
@@ -156,10 +214,10 @@ func payloadThisRound(payloads, prev map[string]any, id string) (any, bool) {
 	return last, tracked
 }
 
-// emitIfChanged 相对上次有差异才写事件；写失败说明流已不可写，本轮剩余实例不再尝试
-func emitIfChanged(name, instanceID string, prev map[string]any, payload any, emit Emit) error {
+// emitIfChanged 相对上次有差异才写事件，force 时无条件写；写失败说明流已不可写，本轮剩余实例不再尝试
+func emitIfChanged(name, instanceID string, prev map[string]any, payload any, force bool, emit Emit) error {
 	last, tracked := prev[instanceID]
-	if !needEmit(tracked, last, payload) {
+	if !force && !needEmit(tracked, last, payload) {
 		return nil
 	}
 

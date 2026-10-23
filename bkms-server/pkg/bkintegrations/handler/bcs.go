@@ -28,6 +28,7 @@ import (
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/common/bkerrs"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/core/workspace"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/auth"
+	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/account/bcstoken"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bcs"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/infras/cloudapi/bkci"
 	"github.com/TencentBlueKing/blueking-service-governance/bkms-server/pkg/server/ginutils"
@@ -256,31 +257,20 @@ func (h *Handler) ListNamespacesByCluster(c *gin.Context) {
 //	@Router		/bcs/token [get]
 func (h *Handler) GetBCSUserToken(c *gin.Context) {
 	ctx := c.Request.Context()
-	user := auth.MustGetUser(ctx)
 
-	client, err := bcs.New(user, bcs.ClientOption{UserMode: true})
+	token, err := bcstoken.GetActiveUserToken(ctx)
 	if err != nil {
-		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "initial bcs user-mode client"))
-		return
-	}
-
-	tokens, err := client.ListUserTokens(ctx)
-	if err != nil {
+		if errors.Is(err, bcstoken.ErrNoActiveUserToken) {
+			bkerrs.AbortWithErr(c, bkerrs.Wrap(
+				errors.New("no active bcs auth info found, please create one in BCS platform"),
+				bkerrs.ErrCodeNotFound,
+				"no active bcs auth info",
+			))
+			return
+		}
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "get bcs auth info"))
 		return
 	}
 
-	activeToken, found := lo.Find(tokens, func(item bcs.UserToken) bool {
-		return item.Status == bcs.UserTokenStatusActive
-	})
-	if !found {
-		bkerrs.AbortWithErr(c, bkerrs.Wrap(
-			errors.New("no active bcs auth info found, please create one in BCS platform"),
-			bkerrs.ErrCodeNotFound,
-			"no active bcs auth info",
-		))
-		return
-	}
-
-	ginutils.OK(c, &slz.GetBCSUserTokenOutput{Data: activeToken.Token})
+	ginutils.OK(c, &slz.GetBCSUserTokenOutput{Data: token})
 }

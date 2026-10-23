@@ -63,6 +63,14 @@ export interface ListAppInstancesRequest {
    * 每页数量；分页模式必填，all=true 时禁止出现
    */
   pageSize?: number;
+  /**
+   * Pod IP 精确过滤，多值取 OR
+   */
+  podIP?: string[];
+  /**
+   * Node IP 精确过滤，多值取 OR
+   */
+  nodeIP?: string[];
 }
 
 export type UpdateAppInstancesRequest = UpdateAppInstancesInput & {
@@ -470,6 +478,10 @@ export interface AppInstanceOutputObj {
    * 北极星实例状态列表（一个 Pod 可能注册到多个北极星服务）
    */
   polarisInfos?: PolarisInstanceInfoOutputObj[];
+  /**
+   * 北极星权重覆盖值，未单独设置时为空字符串；对该 Pod 注册的所有北极星实例生效
+   */
+  polarisWeightOverride?: string;
   /**
    * 主容器资源规格（集群 Pod 实际值）
    */

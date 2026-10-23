@@ -126,6 +126,11 @@ type EnvConfigMode struct {
 	// MountedEnvNames 表示当前文件的挂载环境范围：
 	// nil = 对所有环境生效；非 nil 空切片 = 不挂载到任何环境；非空 = 仅对列出的环境生效。
 	MountedEnvNames []string `bson:"mountedEnvNames"`
+	// EnvContentStrategy 框架文件的环境内容策略。
+	// overlay：环境内容是补丁，部署时与默认配置合并。
+	// overwrite：环境内容是完整配置，之后修改默认配置不影响已单独配置的环境。
+	// 仅 framework 定义写入该字段。新建时会写入初始值，后续创建环境实例/展示内容均读取该持久化字段。
+	EnvContentStrategy EnvContentStrategy `bson:"envContentStrategy,omitempty"`
 }
 
 // ContainsEnv 判断指定环境名是否在 MountedEnvNames 列表中。

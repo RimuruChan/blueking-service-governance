@@ -18,10 +18,16 @@
 
 import { h } from 'vue';
 
-import { type AppInstanceOutputObj } from '~/@types/v1/instance';
 import { i18n } from '~/modules/i18n';
 
+import type { AppInstanceOutputObj } from '~/@types/v1/instance';
+
 const { t } = i18n.global;
+
+/** 只有获取到北极星信息的实例可以调整权重。 */
+export function canAdjustInstanceWeight(instance: AppInstanceOutputObj): boolean {
+  return (instance.polarisInfos?.length ?? 0) > 0;
+}
 
 /** 判断实例是否可以灰度（只有 Running 和 Pending 状态可以灰度） */
 export function canInstanceGrayDeploy(instance: AppInstanceOutputObj): boolean {
@@ -36,6 +42,19 @@ export function canLogin(instance: AppInstanceOutputObj): boolean {
 /** 判断实例的北极星状态是否全部健康 */
 export function isPolarisHealthy(instance: AppInstanceOutputObj): boolean {
   return instance.polarisInfos?.every(p => p.isHealthy) ?? false;
+}
+
+/**
+ * 判断实例是否命中 Pod IP / Node IP 筛选。
+ * 同一字段的多个值，以及两个字段之间均按 OR 处理；比较使用严格相等。
+ */
+export function matchesInstanceIPFilter(
+  instance: AppInstanceOutputObj,
+  podIPs: string[] = [],
+  nodeIPs: string[] = [],
+): boolean {
+  if (!podIPs.length && !nodeIPs.length) return true;
+  return podIPs.includes(instance.ip ?? '') || nodeIPs.includes(instance.nodeIP ?? '');
 }
 
 /** 日志：Running、CrashLoopBackOff、Error、Completed、Succeeded 状态可查看日志 */

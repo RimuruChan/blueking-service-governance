@@ -116,6 +116,25 @@ func (h *Handler) listMatchingAppInstancePods(
 	return pods.Items, pods.GetResourceVersion(), nil
 }
 
+// filterAppInstancePodsByIP 按 Pod IP / Node IP 过滤匹配 Pod，未带过滤条件时原样返回
+// 必须在投影窗口之前过滤，分页的 count 与页窗口才都基于过滤后的结果
+func (h *Handler) filterAppInstancePodsByIP(
+	queryInput serializer.ListAppInstancesQueryInput,
+	items []unstructured.Unstructured,
+) []unstructured.Unstructured {
+	if !queryInput.HasIPFilter() {
+		return items
+	}
+
+	match := queryInput.IPMatcher()
+	return lo.Filter(items, func(p unstructured.Unstructured, _ int) bool {
+		return match(
+			mapx.GetStr(p.Object, "status.podIP"),
+			mapx.GetStr(p.Object, "status.hostIP"),
+		)
+	})
+}
+
 // projectListedAppInstances 将窗口内 Pod 投影为 AppInstanceOutputObj
 // 全量模式投影全部，单个 Pod 无法投影时跳过并记入 skipped
 // 分页模式只解析当前页，解析失败则整次请求失败（与改造前一致，避免 CLI 中断）

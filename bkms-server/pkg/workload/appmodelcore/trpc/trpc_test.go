@@ -121,6 +121,19 @@ var _ = Describe("tRPC application service", func() {
 		persistedModel, err := store.Of(db, appmodel.AppModelMeta).Get(ctx, appmodel.ByApp(application.ID))
 		Expect(err).NotTo(HaveOccurred())
 		Expect(persistedModel.Workload.Type).To(Equal(appmodel.WorkloadTypeTrpc))
+		Expect(persistedModel.Workload.TrpcConfig.Language).To(Equal("go"))
+		Expect(persistedModel.Workload.TrpcConfig.FileName).To(BeEmpty())
+		Expect(persistedModel.Workload.TrpcConfig.FilePath).To(BeEmpty())
+		defs, listErr := appcfg.ListDefsByApp(
+			ctx,
+			store.Of(db, appcfg.AppConfigFileDefMeta),
+			application.ID,
+			appcfg.DefFilterConfigKind(appcfg.ConfigKindFramework),
+		)
+		Expect(listErr).NotTo(HaveOccurred())
+		Expect(defs).To(HaveLen(1))
+		Expect(defs[0].Name).To(Equal("trpc.yaml"))
+		Expect(defs[0].MountDir).To(Equal("/etc/trpc"))
 		Expect(*persistedModel.Replicas).To(Equal(int32(1)))
 		Expect(persistedModel.Workload.Resources).To(Equal(map[string]string{
 			"cpu":    "1-2",
@@ -193,5 +206,55 @@ var _ = Describe("tRPC application service", func() {
 
 		_, err = store.Of(db, appspec.AppSpecMeta).Get(ctx, appspec.ByAppEnv(application.ID, environment.Name))
 		Expect(errors.Is(err, appspec.ErrAppSpecNotFound)).To(BeTrue())
+	})
+
+	It("updates the framework def and leaves the model file location empty", func() {
+		name := "trpc-update-" + stringx.Random(6)
+		application = &bkmsapp.Application{
+			ID:          name + stringx.Random(6),
+			Name:        name,
+			DisplayName: name,
+			WorkspaceID: workspace.ID,
+			Type:        bkmsapp.AppTypeTRPC,
+		}
+		svc := trpc.NewService(db)
+		err := svc.Create(ctx, application, &trpc.CreateParams{
+			TrpcConfig: &trpc.TrpcConfigParams{
+				Language: "go",
+				FileName: "trpc.yaml",
+				FilePath: "/etc/trpc",
+			},
+		})
+		Expect(err).NotTo(HaveOccurred())
+
+		_, updated, err := svc.Update(ctx, application, &trpc.UpdateParams{
+			Command: []string{"/bin/app"},
+			TrpcConfig: &trpc.TrpcConfigParams{
+				Language: "cpp",
+				FileName: "trpc.yaml",
+				FilePath: "/usr/local/trpc/bin/",
+			},
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(updated.Workload.Command).To(Equal([]string{"/bin/app"}))
+		Expect(updated.Workload.TrpcConfig.Language).To(Equal("cpp"))
+		Expect(updated.Workload.TrpcConfig.FileName).To(BeEmpty())
+		Expect(updated.Workload.TrpcConfig.FilePath).To(BeEmpty())
+
+		persisted, err := store.Of(db, appmodel.AppModelMeta).Get(ctx, appmodel.ByApp(application.ID))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(persisted.Workload.TrpcConfig.FileName).To(BeEmpty())
+		Expect(persisted.Workload.TrpcConfig.FilePath).To(BeEmpty())
+
+		defs, err := appcfg.ListDefsByApp(
+			ctx,
+			store.Of(db, appcfg.AppConfigFileDefMeta),
+			application.ID,
+			appcfg.DefFilterConfigKind(appcfg.ConfigKindFramework),
+		)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(defs).To(HaveLen(1))
+		Expect(defs[0].Name).To(Equal("trpc.yaml"))
+		Expect(defs[0].MountDir).To(Equal("/usr/local/trpc/bin"))
 	})
 })

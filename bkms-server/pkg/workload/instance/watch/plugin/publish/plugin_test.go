@@ -37,7 +37,7 @@ func publishRecord(instance, status string) *devmode.PublishRecord {
 		Instance:   instance,
 		BinaryName: "server",
 		MD5:        "abc123",
-		Status:     devmode.PublishStatus(status),
+		Status:     devmode.RecordStatus(status),
 		Operator:   "test-user",
 		UpdatedAt:  time.Date(2026, 9, 16, 0, 0, 0, 0, time.UTC),
 	}
@@ -65,8 +65,8 @@ var _ = Describe("Plugin", func() {
 			Expect(instanceIDs).To(Equal([]string{"pod-1", "pod-2"}))
 
 			return map[string]*devmode.PublishRecord{
-				"pod-1": publishRecord("pod-1", string(devmode.PublishStatusSuccess)),
-				"pod-2": publishRecord("pod-2", string(devmode.PublishStatusFailed)),
+				"pod-1": publishRecord("pod-1", string(devmode.RecordStatusSuccess)),
+				"pod-2": publishRecord("pod-2", string(devmode.RecordStatusFailed)),
 			}, nil
 		})
 

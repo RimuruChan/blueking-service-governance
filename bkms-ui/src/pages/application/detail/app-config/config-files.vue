@@ -177,7 +177,7 @@
                       >
                         <Input
                           v-model.trim="fileInfoFormData.name"
-                          :disabled="isFrameworkFile && !isFileNameEditable"
+                          :disabled="(isFrameworkFile && !isFileNameEditable) || isFileInfoSaving"
                           :maxlength="isFrameworkFile ? 100 : 64"
                         />
                       </Form.FormItem>
@@ -189,13 +189,10 @@
                         <Input
                           v-model.trim="fileInfoFormData.mountDir"
                           clearable
+                          :disabled="isFileInfoSaving"
                         />
                         <div class="mt-[4px] text-[12px] text-[#979BA5]">
-                          {{
-                            $t('文件最终挂载到 {0}', [
-                              `${(fileInfoFormData.mountDir || '/[路径]').replace(/\/$/, '')}/${fileInfoFormData.name || '[文件名]'}`,
-                            ])
-                          }}
+                          {{ $t('文件最终挂载到 {0}', [mountPathPreview]) }}
                         </div>
                       </Form.FormItem>
                       <Form.FormItem
@@ -227,6 +224,58 @@
                           </span>
                         </div>
                       </Form.FormItem>
+                      <div
+                        v-if="isFrameworkFile"
+                        class="mb-[16px]"
+                      >
+                        <Button
+                          :aria-expanded="showAdvancedFileSettings"
+                          text
+                          theme="primary"
+                          @click="showAdvancedFileSettings = !showAdvancedFileSettings"
+                        >
+                          <RightShape
+                            class="mr-[4px] transition-transform duration-200"
+                            :class="showAdvancedFileSettings ? 'rotate-90' : ''"
+                            fill="#3A84FF"
+                            :height="12"
+                            :width="12"
+                          />
+                          {{ $t('高级设置') }}
+                        </Button>
+                        <div
+                          v-show="showAdvancedFileSettings"
+                          class="mt-[8px] rounded-[2px] bg-[#F5F7FA] px-[16px] py-[12px]"
+                        >
+                          <div class="mb-[10px] text-[12px] font-bold text-[#313238]">
+                            {{ $t('环境文件生效方式') }}
+                          </div>
+                          <Radio.Group
+                            v-model="fileInfoFormData.envContentStrategy"
+                            class="env-strategy-options flex w-full flex-col gap-[8px]"
+                            :disabled="isFileInfoSaving"
+                          >
+                            <Radio
+                              v-for="option in envContentStrategyOptions"
+                              :key="option.value"
+                              class="env-strategy-option !m-0 !h-auto !flex w-full items-center whitespace-normal rounded-[2px] border border-solid px-[16px] py-[8px]"
+                              :class="
+                                fileInfoFormData.envContentStrategy === option.value
+                                  ? 'border-[#3A84FF] bg-[#F0F5FF]'
+                                  : 'border-[#DCDEE5] bg-white'
+                              "
+                              :label="option.value"
+                            >
+                              <span class="inline-flex flex-wrap items-center gap-x-[8px] leading-[20px]">
+                                <span class="shrink-0 text-[#4D4F56]">{{ $t(option.label) }}</span>
+                                <span class="text-[12px] leading-[20px] text-[#979BA5]">
+                                  {{ $t(option.description) }}
+                                </span>
+                              </span>
+                            </Radio>
+                          </Radio.Group>
+                        </div>
+                      </div>
                       <Form.FormItem class="!mb-0">
                         <Button
                           :loading="isFileInfoSaving"
@@ -237,6 +286,7 @@
                         </Button>
                         <Button
                           class="ml-[8px]"
+                          :disabled="isFileInfoSaving"
                           @click="handleFileInfoCancelWithConfirm"
                           >{{ $t('取消') }}</Button
                         >
@@ -365,13 +415,15 @@
                                         class="!h-[26px] !min-w-[240px] shrink-0"
                                         :env-list="perspectiveEnvList"
                                         :filter-label="
-                                          isFrameworkFile ? $t('仅显示有差异项的环境') : $t('仅显示已单独配置的环境')
+                                          frameworkMergesWithDefault
+                                            ? $t('仅显示有差异项的环境')
+                                            : $t('仅显示已单独配置的环境')
                                         "
                                         :label="$t('环境')"
                                         :model-value="currentEnv.name || '__default__'"
                                         :modified-env-names="modifiedEnvNames"
                                         :status-labels="
-                                          isFrameworkFile
+                                          frameworkMergesWithDefault
                                             ? { active: $t('有差异项'), inactive: $t('无差异项') }
                                             : { active: $t('已单独配置'), inactive: $t('跟随默认') }
                                         "
@@ -379,15 +431,19 @@
                                         @change="handleEnvSelectChange"
                                       />
                                     </template>
-                                    <OverflowTitle
+                                    <div
                                       v-if="editorContentHint"
                                       :key="editorContentHint"
-                                      class="ml-[8px] min-w-0 text-[12px] text-[#979ba5]"
-                                      resizeable
-                                      type="tips"
+                                      class="ml-[8px] flex min-w-0 flex-1 items-center overflow-hidden"
                                     >
-                                      {{ editorContentHint }}
-                                    </OverflowTitle>
+                                      <OverflowTitle
+                                        class="min-w-0 text-[12px] leading-[20px] text-[#979ba5]"
+                                        resizeable
+                                        type="tips"
+                                      >
+                                        {{ editorContentHint }}
+                                      </OverflowTitle>
+                                    </div>
                                     <Button
                                       v-if="isEditing && canResetCurrentEnv"
                                       class="ml-[12px] shrink-0 !text-[12px]"
@@ -410,7 +466,7 @@
                                       v-for="item in contentViewOptions"
                                       :key="item.value"
                                       :aria-pressed="contentView === item.value"
-                                      class="inline-flex h-full appearance-none items-center justify-center gap-[4px] rounded-none border-0 border-solid bg-transparent px-[8px] text-[12px] leading-[22px] text-[#979ba5] outline-offset-[-1px] cursor-pointer focus-visible:outline focus-visible:outline-[1px] focus-visible:outline-[#3a84ff]"
+                                      class="inline-flex h-full appearance-none items-center justify-center gap-[4px] whitespace-nowrap rounded-none border-0 border-solid bg-transparent px-[8px] text-[12px] leading-[22px] text-[#979ba5] outline-offset-[-1px] cursor-pointer focus-visible:outline focus-visible:outline-[1px] focus-visible:outline-[#3a84ff]"
                                       :class="[
                                         item.divider ? 'border-r border-r-[#63656e]' : '',
                                         contentView === item.value
@@ -502,6 +558,10 @@
       :next-version="nextVersion"
       @confirm="handleSave"
     />
+    <EnvContentStrategyConfirmDialog
+      ref="envContentStrategyDialogRef"
+      :env-list="envList"
+    />
     <ClearFileContentDialog
       v-model:is-show="showClearFileContentDialog"
       :loading="isSubmitLoading"
@@ -523,10 +583,12 @@
     Input,
     Message,
     OverflowTitle,
+    Radio,
     ResizeLayout,
     Switcher,
     Tag,
   } from 'bkui-vue';
+  import { RightShape } from 'bkui-vue/lib/icon';
   import { cloneDeep, set } from 'lodash-es';
   import { useI18n } from 'vue-i18n';
   import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router';
@@ -541,10 +603,16 @@
   import ClearFileContentDialog from '~/pages/application/detail/app-config/components/clear-file-content-dialog.vue';
   import ConfigFileList from '~/pages/application/detail/app-config/components/config-file-list.vue';
   import CreateConfigFileSideslider from '~/pages/application/detail/app-config/components/create-config-file-sideslider.vue';
+  import EnvContentStrategyConfirmDialog from '~/pages/application/detail/app-config/components/env-content-strategy-confirm-dialog.vue';
   import MountPreviewSideslider from '~/pages/application/detail/app-config/components/mount-preview-sideslider.vue';
   import MountScopeField from '~/pages/application/detail/app-config/components/mount-scope-field.vue';
   import SaveVersionConfirmDialog from '~/pages/application/detail/app-config/components/save-version-confirm-dialog.vue';
   import TrpcEnvVarTip from '~/pages/application/detail/app-config/components/trpc-env-var-tip.vue';
+  import {
+    createMountDirRules,
+    formatMountPathPreview,
+    normalizeMountDir,
+  } from '~/pages/application/detail/app-config/config-file-utils';
   import EnvPerspectiveSelect from '~/pages/application/detail/app-config/env-perspective-select.vue';
   import {
     MOUNT_PREVIEW_VISIBLE_KEY,
@@ -560,6 +628,7 @@
   import type { MountScope } from '~/pages/application/detail/app-config/components/mount-scope-field.vue';
   import type {
     ConfigFileDefView,
+    ConfigFileEnvContentStrategy,
     ConfigFileListItem,
     PlainFileCreateInput,
   } from '~/pages/application/detail/app-config/use-config-file-defs';
@@ -583,6 +652,7 @@
     detailLoading,
     envInstances,
     fetchDefs,
+    fetchEnvInstances,
     listLoading,
     modifiedEnvNames,
     refreshActive,
@@ -600,6 +670,7 @@
   const isFileListCollapsed = ref(false); // 左侧文件列表是否折叠
   const isFileInfoEditing = ref(false); // 「文件信息」是否处于编辑态
   const isFileInfoSaving = ref(false);
+  const showAdvancedFileSettings = ref(false);
   const isCreateSubmitting = ref(false);
   const isModeSaving = ref(false); // 统一/按环境配置切换保存中
   const isEditing = ref(false); // 文件内容是否处于编辑态
@@ -630,6 +701,12 @@
   const allEnvNames = computed(() => envList.value.map(env => env.name).filter((name): name is string => !!name));
   const currentFileSpec = computed(() => appData.value?.appModelSpec?.[specFieldName.value]); // 当前应用框架（taf/trpc）的 spec
   const isFrameworkFile = computed(() => activeDef.value?.configKind === 'framework');
+  const activeEnvContentStrategy = computed(
+    () => detail.value?.envContentStrategy ?? activeDef.value?.envContentStrategy ?? 'overlay',
+  );
+  const frameworkMergesWithDefault = computed(
+    () => isFrameworkFile.value && activeEnvContentStrategy.value === 'overlay',
+  );
   const isTafApp = computed(() => appType.value === 'taf');
   const isTrpcApp = computed(() => appType.value === 'trpc');
   const isFileNameEditable = computed(() => !isFrameworkFile.value || isTafApp.value); // 框架文件名仅 taf 应用可编辑
@@ -691,9 +768,9 @@
       .map(file => file.id)
       .filter(Boolean),
   );
-  // 框架文件 + 按环境配置 + 已选环境时才支持「差异内容/完整内容」切换
+  // 合并模式 + 按环境配置 + 已选环境时才支持「差异内容/完整内容」切换
   const canShowFullContent = computed(
-    () => isFrameworkFile.value && isIndependentConfig.value && !!currentEnv.value.name,
+    () => frameworkMergesWithDefault.value && isIndependentConfig.value && !!currentEnv.value.name,
   );
   // 按环境配置且当前环境存在独立实例时，才可「恢复为默认配置」
   const canResetCurrentEnv = computed(
@@ -703,28 +780,28 @@
   const editorContentHint = computed(() => {
     if (!isIndependentConfig.value) return '';
     if (!currentEnv.value.name) {
-      return isFrameworkFile.value
+      return frameworkMergesWithDefault.value
         ? t('所有环境的基准配置，修改后对所有环境生效。')
         : t('默认配置，仅对未单独配置的环境生效');
     }
-    if (!isFrameworkFile.value) {
+    if (!frameworkMergesWithDefault.value) {
       return detail.value?.hasEnvInstance
         ? t('该环境已单独配置，不随默认配置更新')
         : t('修改后该环境将独立配置，需填写完整内容');
     }
     return showFullContent.value ? t('合并后的完整内容，仅供查看') : t('仅定义差异项，与默认配置合并后生成完整配置。');
   });
-  // 框架文件 + 按环境配置 + 已选环境且无独立实例时，编辑的是 overlayContent（差异内容）
-  const isFrameworkEnvWithoutInstance = computed(
+  // 合并模式下，无环境实例时允许从空差异开始编辑。
+  const isOverlayEnvWithoutInstance = computed(
     () =>
-      isFrameworkFile.value &&
+      frameworkMergesWithDefault.value &&
       isIndependentConfig.value &&
       !!currentEnv.value.name &&
       detail.value?.hasEnvInstance === false,
   );
   // 实际可编辑的内容字段：overlayContent / content / none（不可编辑）
   const effectiveEditableContentField = computed(() =>
-    isFrameworkEnvWithoutInstance.value ? 'overlayContent' : detail.value?.editableContentField || 'none',
+    isOverlayEnvWithoutInstance.value ? 'overlayContent' : detail.value?.editableContentField || 'none',
   );
   // 当前环境的实例文件 ID；环境无独立实例时为空（版本列表不可用）
   const currentInstanceFileID = computed(() =>
@@ -757,11 +834,31 @@
 
   const fileInfoFormData = reactive({
     enableEnvVarRender: false,
+    envContentStrategy: 'overlay' as ConfigFileEnvContentStrategy,
     mountDir: '',
     mountedEnvNames: [] as string[],
     name: '',
     scope: 'all' as MountScope,
   });
+  // 预览挂载路径
+  const mountPathPreview = computed(() => formatMountPathPreview(fileInfoFormData.mountDir, fileInfoFormData.name));
+  const envContentStrategyOptions: {
+    description: string;
+    label: string;
+    value: ConfigFileEnvContentStrategy;
+  }[] = [
+    {
+      value: 'overwrite',
+      label: '独立完整配置（推荐）',
+      description: '每个环境维护完整文件；修改默认配置不会影响已单独配置的环境。',
+    },
+    {
+      value: 'overlay',
+      label: '与默认配置合并',
+      description: '每个环境只维护差异项；修改默认配置会同步影响各环境的最终配置。',
+    },
+  ];
+  const envContentStrategyDialogRef = ref<InstanceType<typeof EnvContentStrategyConfirmDialog> | null>(null);
   const fileInfoFormRef = ref<InstanceType<typeof Form> | null>(null);
   const fileInfoFormRules = {
     name: [
@@ -775,14 +872,7 @@
           BKMS_REGEX.appConfigFileNameRegex.test(value),
       },
     ],
-    mountDir: [
-      {
-        message: t('挂载路径需以 / 开头，例如 /data/config'),
-        trigger: 'blur',
-        validator: (value: string) =>
-          isFrameworkFile.value || value === '/' || BKMS_REGEX.appConfigMountDirRegex.test(value),
-      },
-    ],
+    mountDir: createMountDirRules(t),
     mountedEnvNames: [
       {
         required: true,
@@ -868,6 +958,7 @@
 
   // 内容或文件信息存在未保存改动时弹出离开确认，返回是否可继续后续操作
   async function confirmDiscardChanges() {
+    if (isFileInfoSaving.value) return false;
     const draft = showFullContent.value ? editableDraft.value : msEditorRef.value?.getValue() || '';
     const hasContentChanges = isEditing.value && draft !== originalContent.value;
     if (!hasContentChanges && !hasFileInfoChanges()) return true;
@@ -945,7 +1036,7 @@
     }
   }
 
-  // 保存前置处理：框架文件按环境配置下清空内容需先弹确认，否则弹版本说明
+  // 保存前置处理：合并模式下清空已有环境差异需先弹确认，否则弹版本说明。
   function handleBeforeSave() {
     if (shouldShowClearFileContentDialog()) {
       showClearFileContentDialog.value = true;
@@ -992,7 +1083,7 @@
     const requestedEnvName = currentEnv.value.name;
     fullContentLoading.value = true;
     try {
-      // Framework 环境实例只保存 overlayContent，详情中的 content 不是可复用的完整内容。
+      // 合并模式的环境实例只保存 overlayContent，详情中的 content 不是可复用的完整内容。
       // 因此无论差异是否修改，都通过服务端合并生成当前完整内容。
       const defaultFileID = detail.value?.baseAppConfigFileId || detail.value?.fileId || activeDef.value?.fileId || '';
       const content = await AppConfigFilesService.previewOverlayMerge({
@@ -1127,32 +1218,71 @@
     discardCurrentEdits();
     Object.assign(fileInfoFormData, {
       enableEnvVarRender: activeDef.value.enableEnvVarRender,
+      envContentStrategy: activeEnvContentStrategy.value,
       mountDir: activeDisplayPath.value,
       mountedEnvNames: [...activeDef.value.mountedEnvNames],
       name: activeDisplayName.value,
       scope: activeMountScope.value,
     });
     fileInfoOriginalScope.value = activeMountScope.value;
+    showAdvancedFileSettings.value = false;
     isFileInfoEditing.value = true;
   }
 
-  // 保存「文件信息」：框架文件更新 appModelSpec，普通文件更新 def（仅提交变更字段）
+  // 文件元信息与策略分别保存，只提交变更；切策略不调用内容接口、不创建版本。
   async function handleFileInfoSave() {
-    if (!activeDef.value) return;
-    const isValid = await fileInfoFormRef.value
-      ?.validate()
-      .then(() => true)
-      .catch(() => false);
-    if (!isValid) return;
+    if (!activeDef.value || isFileInfoSaving.value) return;
     isFileInfoSaving.value = true;
     try {
+      const isValid = await fileInfoFormRef.value
+        ?.validate()
+        .then(() => true)
+        .catch(() => false);
+      if (!isValid) return;
+      // 落库前归一化（合并重复斜杠、去掉末尾斜杠），保证表单展示与最终挂载路径一致
+      fileInfoFormData.mountDir = normalizeMountDir(fileInfoFormData.mountDir);
+      const strategyChanged =
+        isFrameworkFile.value && fileInfoFormData.envContentStrategy !== activeEnvContentStrategy.value;
+      if (strategyChanged) {
+        // 必须读取成功后才能判断是否有环境单独配置，不能以旧列表或失败时的空值跳过确认。
+        // 被并发请求作废（stale）时重试一次；仍不可用则提示后中止，避免"点了保存没反应"。
+        let instances = await fetchEnvInstances();
+        if (!instances) instances = await fetchEnvInstances();
+        if (!instances) {
+          Message({ theme: 'warning', message: t('获取环境配置信息失败，请稍后重试') });
+          return;
+        }
+        const envNames = instances.map(item => item.envName || '').filter(Boolean);
+        if (
+          envNames.length &&
+          !(await envContentStrategyDialogRef.value?.confirm(envNames, fileInfoFormData.envContentStrategy))
+        )
+          return;
+      }
       if (isFrameworkFile.value) {
-        const updatedSpec = cloneDeep(appData.value?.appModelSpec || {}) as AppModelSpecInput;
-        const target = updatedSpec[specFieldName.value] as TafSpecOutputObj | TrpcSpecOutputObj;
-        if (isFileNameEditable.value) set(target, 'fileName', fileInfoFormData.name);
-        set(target, 'filePath', fileInfoFormData.mountDir);
-        await updateSpecApi.value({ appID: appDetailStore.appID, appModelSpec: updatedSpec });
-        await getAppData();
+        const metadataChanged =
+          fileInfoFormData.mountDir !== activeDisplayPath.value ||
+          (isFileNameEditable.value && fileInfoFormData.name !== activeDisplayName.value);
+        if (metadataChanged) {
+          const updatedSpec = cloneDeep(appData.value?.appModelSpec || {}) as AppModelSpecInput;
+          const target = updatedSpec[specFieldName.value] as TafSpecOutputObj | TrpcSpecOutputObj;
+          if (isFileNameEditable.value) set(target, 'fileName', fileInfoFormData.name);
+          set(target, 'filePath', fileInfoFormData.mountDir);
+          await updateSpecApi.value({ appID: appDetailStore.appID, appModelSpec: updatedSpec });
+          await getAppData();
+        }
+        if (strategyChanged) {
+          try {
+            await updateDef({ envContentStrategy: fileInfoFormData.envContentStrategy });
+          } catch (error) {
+            // 元信息已落库、仅策略未生效：保留编辑态让用户重试（重试只提交策略），并明确告知部分成功
+            if (metadataChanged) {
+              Message({ theme: 'warning', message: t('文件信息已保存，生效方式保存失败，请重试') });
+              return;
+            }
+            throw error;
+          }
+        }
       } else {
         const changes: UpdateDefInput = {};
         if (fileInfoFormData.name !== activeDef.value.name) changes.name = fileInfoFormData.name;
@@ -1296,7 +1426,7 @@
     if (fileInfoFormData.name !== activeDisplayName.value || fileInfoFormData.mountDir !== activeDisplayPath.value) {
       return true;
     }
-    if (isFrameworkFile.value) return false;
+    if (isFrameworkFile.value) return fileInfoFormData.envContentStrategy !== activeEnvContentStrategy.value;
     return (
       fileInfoFormData.enableEnvVarRender !== activeDef.value.enableEnvVarRender ||
       fileInfoFormData.scope !== fileInfoOriginalScope.value ||
@@ -1379,10 +1509,10 @@
     return left.length === right.length && left.every(item => right.includes(item));
   }
 
-  // 框架文件按环境配置下，当前环境实例内容被清空时需二次确认
+  // 合并模式下清空已有环境差异，需确认保存为空文件或恢复默认配置。
   function shouldShowClearFileContentDialog() {
     return (
-      isFrameworkFile.value &&
+      frameworkMergesWithDefault.value &&
       isIndependentConfig.value &&
       !!currentEnv.value.name &&
       !!detail.value?.hasEnvInstance &&
@@ -1409,6 +1539,14 @@
 </script>
 
 <style lang="postcss" scoped>
+  .env-strategy-options :deep(.bk-radio-label) {
+    white-space: normal;
+  }
+
+  .env-strategy-option:not(.is-disabled):hover {
+    border-color: #3a84ff;
+  }
+
   .mount-env-form-item :deep(.bk-form-content) {
     display: flex;
     flex-direction: column;
