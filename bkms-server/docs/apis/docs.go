@@ -178,6 +178,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/bkerrs.GinErrorOutput"
                         }
+                    },
+                    "409": {
+                        "description": "文件名和挂载目录已存在，details.code=APP_CONFIG_FILE_MOUNT_IDENTITY_CONFLICT",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
                     }
                 }
             }
@@ -334,6 +340,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    },
+                    "409": {
+                        "description": "文件名和挂载目录已存在，details.code=APP_CONFIG_FILE_MOUNT_IDENTITY_CONFLICT",
                         "schema": {
                             "$ref": "#/definitions/bkerrs.GinErrorOutput"
                         }
@@ -619,6 +631,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    },
+                    "409": {
+                        "description": "文件名和挂载目录已存在，details.code=APP_CONFIG_FILE_MOUNT_IDENTITY_CONFLICT",
                         "schema": {
                             "$ref": "#/definitions/bkerrs.GinErrorOutput"
                         }
@@ -11936,6 +11954,12 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/bkerrs.GinErrorOutput"
                         }
+                    },
+                    "409": {
+                        "description": "文件名和挂载目录已存在，details.code=APP_CONFIG_FILE_MOUNT_IDENTITY_CONFLICT",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
                     }
                 }
             }
@@ -11988,6 +12012,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/bkerrs.GinErrorOutput"
+                        }
+                    },
+                    "409": {
+                        "description": "文件名和挂载目录已存在，details.code=APP_CONFIG_FILE_MOUNT_IDENTITY_CONFLICT",
                         "schema": {
                             "$ref": "#/definitions/bkerrs.GinErrorOutput"
                         }
@@ -21029,7 +21059,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "lastOperatedAt": {
-                    "description": "应用最近操作时间（当前调用者视角）",
+                    "description": "应用最近一次成功写操作时间",
+                    "type": "string"
+                },
+                "lastOperator": {
+                    "description": "应用最近一次成功写操作的操作人",
                     "type": "string"
                 },
                 "name": {

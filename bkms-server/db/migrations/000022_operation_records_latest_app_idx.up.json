@@ -1,0 +1,17 @@
+[
+  {
+    "createIndexes": "operation_records",
+    "indexes": [
+      {
+        "key": {
+          "group.workspaceID": 1,
+          "result": 1,
+          "group.appID": 1,
+          "createdAt": -1,
+          "_id": -1
+        },
+        "name": "workspace_result_app_latest"
+      }
+    ]
+  }
+]

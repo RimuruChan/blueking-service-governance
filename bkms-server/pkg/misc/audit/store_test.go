@@ -142,5 +142,48 @@ var _ = Describe("OperationRecordStore", func() {
 			Expect(m["app-1"]).To(BeTemporally("==", base.Add(1*time.Minute)))
 			Expect(m["app-2"]).To(BeTemporally("==", base.Add(3*time.Minute)))
 		})
+
+		It(
+			"should return the latest successful operation across users within the requested workspace and apps",
+			func() {
+				mustCreate(6*time.Minute, "alice", WithWorkspaceID("ws-1"), WithAppID("app-1"),
+					WithResult(ResultFailed))
+				mustCreate(7*time.Minute, "carol", WithWorkspaceID("ws-2"), WithAppID("app-1"))
+				mustCreate(8*time.Minute, "carol", WithWorkspaceID("ws-1"), WithAppID("app-3"))
+
+				m, err := GetLatestSuccessfulOperationsByApps(ctx, db, "ws-1", []string{"app-1", "app-2", "missing"})
+				Expect(err).NotTo(HaveOccurred())
+				Expect(m).To(HaveLen(2))
+				Expect(m["app-1"].CreatedAt).To(BeTemporally("==", base.Add(5*time.Minute)))
+				Expect(m["app-1"].Username).To(Equal("bob"))
+				Expect(m["app-2"].CreatedAt).To(BeTemporally("==", base.Add(3*time.Minute)))
+				Expect(m["app-2"].Username).To(Equal("alice"))
+			},
+		)
+
+		It("should omit apps with no successful operation", func() {
+			mustCreate(6*time.Minute, "alice", WithWorkspaceID("ws-1"), WithAppID("failed-only"),
+				WithResult(ResultFailed))
+
+			m, err := GetLatestSuccessfulOperationsByApps(ctx, db, "ws-1", []string{"failed-only", "missing"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(m).To(BeEmpty())
+		})
+
+		It("should use the record ID to resolve equal operation times", func() {
+			mustCreate(6*time.Minute, "alice", WithWorkspaceID("ws-1"), WithAppID("app-1"))
+			latest := mustCreate(6*time.Minute, "carol", WithWorkspaceID("ws-1"), WithAppID("app-1"))
+
+			m, err := GetLatestSuccessfulOperationsByApps(ctx, db, "ws-1", []string{"app-1"})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(m["app-1"].ID).To(Equal(latest.ID))
+			Expect(m["app-1"].Username).To(Equal("carol"))
+		})
+
+		It("should return no operations for an empty app list", func() {
+			m, err := GetLatestSuccessfulOperationsByApps(ctx, db, "ws-1", nil)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(m).To(BeEmpty())
+		})
 	})
 })

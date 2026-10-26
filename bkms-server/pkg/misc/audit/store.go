@@ -41,6 +41,7 @@ type OperationRecordStore = store.GenericStore[OperationRecord]
 // 索引（由 golang-migrate 维护）：
 // - 查询提速：username + group.workspaceID + createdAt(倒序)
 // - 查询提速：username + group.workspaceID + group.appID + createdAt(倒序)
+// - 应用最近成功操作：group.workspaceID + result + group.appID + createdAt(倒序) + _id(倒序)
 var OperationRecordMeta = store.Meta[OperationRecord]{
 	Collection: "operation_records",
 	NotFound:   ErrOperationRecordNotFound,
@@ -138,6 +139,28 @@ func GetLatestOperationTimesByAppsForUser(
 		"username":          username,
 	})
 	return m, errors.Wrapf(err, "get latest operation times of user %s by apps in workspace %s", username, workspaceID)
+}
+
+// GetLatestSuccessfulOperationsByApps 查询各应用在所有用户中的最近一次成功写操作。
+func GetLatestSuccessfulOperationsByApps(
+	ctx context.Context, db *mongo.Database, workspaceID string, appIDs []string,
+) (map[string]OperationRecord, error) {
+	if len(appIDs) == 0 {
+		return map[string]OperationRecord{}, nil
+	}
+	records, err := store.Of(db, OperationRecordMeta).ListLatestBy(ctx, []string{"group.appID"},
+		store.Where("group.workspaceID", workspaceID),
+		store.Where("group.appID", bson.M{"$in": appIDs}),
+		store.Where("result", ResultSuccess),
+		store.Asc("group.appID"), NewestFirst(),
+		store.SelectFields("group.appID", "createdAt", "username"),
+	)
+	if err != nil {
+		return nil, errors.Wrapf(err, "get latest successful operations by apps in workspace %s", workspaceID)
+	}
+	return lo.SliceToMap(records, func(record OperationRecord) (string, OperationRecord) {
+		return record.Group.AppID, record
+	}), nil
 }
 
 // latestTimeResult 用于解码 aggregation 结果

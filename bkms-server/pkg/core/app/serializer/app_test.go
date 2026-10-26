@@ -19,6 +19,7 @@
 package serializer_test
 
 import (
+	"encoding/json"
 	"strings"
 	"time"
 
@@ -109,14 +110,14 @@ var _ = Describe("App deploy status serializers", func() {
 			Language:    "cpp",
 			Framework:   "trpc",
 			TrpcSpec:    &bkmsapp.TrpcSpec{Language: "go"},
-		}, nil, time.Time{})
+		}, nil, time.Time{}, "")
 
 		Expect(output.Type).To(Equal("trpc"))
 		Expect(output.Language).To(Equal("cpp"))
 		Expect(output.Framework).To(Equal("trpc"))
 	})
 
-	It("includes application timestamps in list output", func() {
+	It("includes application timestamps and the latest operator in list output", func() {
 		createdAt := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
 		lastOperatedAt := createdAt.Add(time.Hour)
 		output := new(serializer.AppInfoOutputObj).FromModel(&bkmsapp.Application{
@@ -124,10 +125,22 @@ var _ = Describe("App deploy status serializers", func() {
 			WorkspaceID: "workspace-id",
 			Name:        "app-name",
 			CreatedAt:   createdAt,
-		}, nil, lastOperatedAt)
+		}, nil, lastOperatedAt, "alice")
 
 		Expect(output.CreatedAt).To(Equal(createdAt))
-		Expect(output.LastOperatedAt).To(HaveValue(Equal(lastOperatedAt)))
+		Expect(output.LastOperatedAt).To(Equal(lastOperatedAt))
+		Expect(output.LastOperator).To(Equal("alice"))
+	})
+
+	It("omits empty latest-operation fields from JSON", func() {
+		output := new(serializer.AppInfoOutputObj).FromModel(&bkmsapp.Application{}, nil, time.Time{}, "")
+		data, err := json.Marshal(output)
+		Expect(err).NotTo(HaveOccurred())
+
+		var fields map[string]any
+		Expect(json.Unmarshal(data, &fields)).To(Succeed())
+		Expect(fields).NotTo(HaveKey("lastOperatedAt"))
+		Expect(fields).NotTo(HaveKey("lastOperator"))
 	})
 
 	DescribeTable(

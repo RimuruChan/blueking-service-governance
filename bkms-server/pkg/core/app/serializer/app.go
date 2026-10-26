@@ -382,8 +382,10 @@ type AppInfoOutputObj struct {
 	Framework string `json:"framework,omitempty"`
 	// 应用部署的环境列表
 	DeployedEnvs []*AppDeployedEnvOutputObj `json:"deployedEnvs"`
-	// 应用最近操作时间（当前调用者视角）
-	LastOperatedAt *time.Time `json:"lastOperatedAt,omitempty"`
+	// 应用最近一次成功写操作时间
+	LastOperatedAt time.Time `json:"lastOperatedAt,omitempty,omitzero"`
+	// 应用最近一次成功写操作的操作人
+	LastOperator string `json:"lastOperator,omitempty"`
 }
 
 // FromModel fills output fields from an Application model.
@@ -391,6 +393,7 @@ func (o *AppInfoOutputObj) FromModel(
 	app *bkmsapp.Application,
 	deployedEnvs []deploystatus.AppDeployStatus,
 	lastOperatedAt time.Time,
+	lastOperator string,
 ) *AppInfoOutputObj {
 	o.ID = app.ID
 	o.WorkspaceID = app.WorkspaceID
@@ -405,9 +408,8 @@ func (o *AppInfoOutputObj) FromModel(
 	for i := range deployedEnvs {
 		o.DeployedEnvs = append(o.DeployedEnvs, new(AppDeployedEnvOutputObj).FromModel(deployedEnvs[i]))
 	}
-	if !lastOperatedAt.IsZero() {
-		o.LastOperatedAt = &lastOperatedAt
-	}
+	o.LastOperatedAt = lastOperatedAt
+	o.LastOperator = lastOperator
 	return o
 }
 

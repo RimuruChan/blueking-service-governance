@@ -1,0 +1,6 @@
+[
+  {
+    "dropIndexes": "operation_records",
+    "index": ["workspace_result_app_latest"]
+  }
+]

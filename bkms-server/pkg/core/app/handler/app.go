@@ -493,14 +493,13 @@ func (h *Handler) ListApps(c *gin.Context) {
 		return
 	}
 
-	username := auth.MustGetUser(ctx).ID
 	filteredAppIDs := lo.Map(filteredApps, func(app *bkmsapp.Application, _ int) string { return app.ID })
-	latestOpTimes, err := audit.GetLatestOperationTimesByAppsForUser(
-		ctx, h.registry.DB, uriInput.WorkspaceID, filteredAppIDs, username,
+	latestOperations, err := audit.GetLatestSuccessfulOperationsByApps(
+		ctx, h.registry.DB, uriInput.WorkspaceID, filteredAppIDs,
 	)
 	if err != nil {
 		log.Warnf(ctx, "list apps: %v", err)
-		latestOpTimes = nil
+		latestOperations = nil
 	}
 
 	// 查询应用在各环境下的部署状态
@@ -513,8 +512,9 @@ func (h *Handler) ListApps(c *gin.Context) {
 
 	output := make([]*serializer.AppInfoOutputObj, 0, len(filteredApps))
 	for _, app := range filteredApps {
+		latestOperation := latestOperations[app.ID]
 		output = append(output, new(serializer.AppInfoOutputObj).FromModel(
-			app, deployStatusMap[app.ID], latestOpTimes[app.ID],
+			app, deployStatusMap[app.ID], latestOperation.CreatedAt, latestOperation.Username,
 		))
 	}
 

@@ -1048,7 +1048,10 @@ definitions:
         description: 应用使用的编程语言
         type: string
       lastOperatedAt:
-        description: 应用最近操作时间（当前调用者视角）
+        description: 应用最近一次成功写操作时间
+        type: string
+      lastOperator:
+        description: 应用最近一次成功写操作的操作人
         type: string
       name:
         description: 应用名称
@@ -10173,6 +10176,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/bkerrs.GinErrorOutput'
+        "409":
+          description: 文件名和挂载目录已存在，details.code=APP_CONFIG_FILE_MOUNT_IDENTITY_CONFLICT
+          schema:
+            $ref: '#/definitions/bkerrs.GinErrorOutput'
       security:
       - BkUserInfo: []
       - BkUserCredential: []
@@ -10274,6 +10281,10 @@ paths:
             $ref: '#/definitions/appcfgfiledef.UpdateDefOutput'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/bkerrs.GinErrorOutput'
+        "409":
+          description: 文件名和挂载目录已存在，details.code=APP_CONFIG_FILE_MOUNT_IDENTITY_CONFLICT
           schema:
             $ref: '#/definitions/bkerrs.GinErrorOutput'
       security:
@@ -10423,6 +10434,10 @@ paths:
             $ref: '#/definitions/appcfgfiledef.UpdateHelmFileOutput'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/bkerrs.GinErrorOutput'
+        "409":
+          description: 文件名和挂载目录已存在，details.code=APP_CONFIG_FILE_MOUNT_IDENTITY_CONFLICT
           schema:
             $ref: '#/definitions/bkerrs.GinErrorOutput'
       security:
@@ -17580,6 +17595,10 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/bkerrs.GinErrorOutput'
+        "409":
+          description: 文件名和挂载目录已存在，details.code=APP_CONFIG_FILE_MOUNT_IDENTITY_CONFLICT
+          schema:
+            $ref: '#/definitions/bkerrs.GinErrorOutput'
       security:
       - BkUserInfo: []
       - BkUserCredential: []
@@ -17612,6 +17631,10 @@ paths:
             $ref: '#/definitions/github_com_TencentBlueKing_blueking-service-governance_bkms-server_pkg_core_app_serializer.EmptyOutput'
         "400":
           description: Bad Request
+          schema:
+            $ref: '#/definitions/bkerrs.GinErrorOutput'
+        "409":
+          description: 文件名和挂载目录已存在，details.code=APP_CONFIG_FILE_MOUNT_IDENTITY_CONFLICT
           schema:
             $ref: '#/definitions/bkerrs.GinErrorOutput'
       security:
