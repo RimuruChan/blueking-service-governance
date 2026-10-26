@@ -329,7 +329,7 @@ func (h *Handler) ListAppEnvs(c *gin.Context) {
 	}
 
 	envs, err := h.envs().
-		List(ctx, envmodel.InWorkspace(app.WorkspaceID), envmodel.VisibleToApp(app.ID), envmodel.NewestFirst())
+		List(ctx, envmodel.InWorkspace(app.WorkspaceID), envmodel.AvailableToApp(app.ID), envmodel.NewestFirst())
 	if err != nil {
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInvalidRequest, "list app envs"))
 		return

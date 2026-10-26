@@ -121,7 +121,7 @@ func (s *Service) ListImageUsages(ctx context.Context, appID, tag string) ([]Ima
 	envs, err := s.envs.List(
 		ctx,
 		envmodel.InWorkspace(app.WorkspaceID),
-		envmodel.VisibleToApp(appID),
+		envmodel.AvailableToApp(appID),
 		envmodel.NewestFirst(),
 	)
 	if err != nil {

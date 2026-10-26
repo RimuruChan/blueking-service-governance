@@ -117,9 +117,12 @@ var _ = Describe("validateVisibleEnvs", func() {
 		Entry("a feature environment parent without a deployment", []string{"deployed"},
 			`environment "parent" is the parent of a feature environment and must remain visible`),
 		Entry("an unknown environment name", []string{"deployed", "parent", "missing"},
-			"invalid visible environment name(s): missing"),
+			"invalid visible environment name(s): missing (environment does not exist)"),
 		Entry("a feature environment name", []string{"deployed", "parent", "feature"},
-			"invalid visible environment name(s): feature"),
+			"invalid visible environment name(s): feature (feature environments are not allowed)"),
+		Entry("unknown and feature environment names together", []string{"deployed", "parent", "missing", "feature"},
+			"invalid visible environment name(s): missing (environment does not exist), "+
+				"feature (feature environments are not allowed)"),
 	)
 
 	It("allows hiding unused environments and environments deployed by another app", func() {

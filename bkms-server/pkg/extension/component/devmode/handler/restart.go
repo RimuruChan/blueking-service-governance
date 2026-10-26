@@ -186,7 +186,7 @@ func (h *Handler) resolveRestartTargetsByEnvTypes(
 	ctx context.Context, app *bkmsapp.Application, envTypes []string,
 ) ([]*restartEnvTarget, []*slz.RestartSkippedEnv, error) {
 	envs, err := store.Of(h.registry.DB, envmodel.EnvMeta).
-		List(ctx, envmodel.InWorkspace(app.WorkspaceID), envmodel.VisibleToApp(app.ID), envmodel.NewestFirst())
+		List(ctx, envmodel.InWorkspace(app.WorkspaceID), envmodel.AvailableToApp(app.ID), envmodel.NewestFirst())
 	if err != nil {
 		return nil, nil, bkerrs.Wrapf(err, bkerrs.ErrCodeInternalServerError, "list envs of app %s", app.ID)
 	}

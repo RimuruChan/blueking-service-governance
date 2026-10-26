@@ -151,7 +151,7 @@ var _ = Describe("Environment store", func() {
 		otherFeatureEnv := dbfactory.FeatEnv(ctx, envSvc, otherApp, env1)
 
 		appEnvs, err := envs.List(ctx,
-			envmodel.InWorkspace(workspaceID1), envmodel.VisibleToApp(ownerApp.ID), envmodel.NewestFirst(),
+			envmodel.InWorkspace(workspaceID1), envmodel.AvailableToApp(ownerApp.ID), envmodel.NewestFirst(),
 		)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(envNames(appEnvs)).To(ConsistOf(env1.Name, ownedFeatureEnv.Name))

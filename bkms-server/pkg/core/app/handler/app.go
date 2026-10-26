@@ -670,7 +670,7 @@ func (h *Handler) UpdateAppVisibleEnvs(c *gin.Context) {
 	}
 
 	envs, err := store.Of(h.registry.DB, envmodel.EnvMeta).
-		List(ctx, envmodel.InWorkspace(app.WorkspaceID), envmodel.VisibleToApp(app.ID), envmodel.NewestFirst())
+		List(ctx, envmodel.InWorkspace(app.WorkspaceID), envmodel.AvailableToApp(app.ID), envmodel.NewestFirst())
 	if err != nil {
 		bkerrs.AbortWithErr(c, bkerrs.Wrap(err, bkerrs.ErrCodeInternalServerError, "list app envs"))
 		return
@@ -712,16 +712,19 @@ func validateVisibleEnvs(appID string, names []string, envs []envmodel.Environme
 	if len(names) == 0 {
 		return nil
 	}
-	stdEnvs := lo.Filter(envs, func(env envmodel.Environment, _ int) bool {
-		return !env.IsFeatureEnv()
+	// 提交的名单只能包含存在的标准环境。
+	envByName := lo.SliceToMap(envs, func(env envmodel.Environment) (string, envmodel.Environment) {
+		return env.Name, env
 	})
-	stdNames := lo.SliceToMap(stdEnvs, func(env envmodel.Environment) (string, struct{}) {
-		return env.Name, struct{}{}
-	})
-	invalid := lo.Filter(names, func(name string, _ int) bool {
-		_, ok := stdNames[name]
-		return !ok
-	})
+	var invalid []string
+	for _, name := range names {
+		env, exists := envByName[name]
+		if !exists {
+			invalid = append(invalid, name+" (environment does not exist)")
+		} else if env.IsFeatureEnv() {
+			invalid = append(invalid, name+" (feature environments are not allowed)")
+		}
+	}
 	if len(invalid) > 0 {
 		return bkerrs.Errorf(
 			bkerrs.ErrCodeInvalidRequest,
@@ -729,8 +732,10 @@ func validateVisibleEnvs(appID string, names []string, envs []envmodel.Environme
 			strings.Join(invalid, ", "),
 		)
 	}
-	for _, env := range stdEnvs {
-		if lo.Contains(names, env.Name) {
+
+	// 未选中的标准环境不能已有部署，也不能是特性环境的父环境。
+	for _, env := range envs {
+		if env.IsFeatureEnv() || lo.Contains(names, env.Name) {
 			continue
 		}
 		// AppIDs 在尝试部署时加入，卸载成功后移除，覆盖部署中、失败和成功。

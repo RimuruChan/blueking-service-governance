@@ -111,7 +111,7 @@ func ByName(workspaceID, name string) store.Opt {
 
 // AppEnvByName 应用视角按名称匹配：同名的标准环境，或该应用拥有的同名特性环境
 func AppEnvByName(workspaceID, appID, name string) store.Opt {
-	return store.Combine(ByName(workspaceID, name), VisibleToApp(appID))
+	return store.Combine(ByName(workspaceID, name), AvailableToApp(appID))
 }
 
 // StdEnvs 只匹配标准环境。
@@ -130,8 +130,9 @@ func FeatEnvsOf(appID string) store.Opt {
 	return store.Combine(store.Where("kind", EnvironmentKindFeature), store.Where("ownerAppID", appID))
 }
 
-// VisibleToApp 匹配应用可用的环境：全部标准环境，以及该应用拥有的特性环境
-func VisibleToApp(appID string) store.Opt { return visibleToApps(appID) }
+// AvailableToApp 匹配应用可用的环境：全部标准环境，以及该应用拥有的特性环境。
+// 注意不是按应用的 VisibleEnvNames 名单过滤。
+func AvailableToApp(appID string) store.Opt { return availableToApps(appID) }
 
 // BoundToApp 匹配与应用关联的环境：appIDs 中包含该应用的标准环境，以及该应用拥有的特性环境
 func BoundToApp(appID string) store.Opt {
@@ -144,7 +145,7 @@ func BoundToApp(appID string) store.Opt {
 // NewestFirst 按创建时间倒序
 func NewestFirst() store.Opt { return store.Desc("createdAt") }
 
-func visibleToApps(appIDs ...string) store.Opt {
+func availableToApps(appIDs ...string) store.Opt {
 	return store.Where("$or", bson.A{
 		bson.M{"kind": EnvironmentKindStandard},
 		bson.M{"kind": EnvironmentKindFeature, "ownerAppID": bson.M{"$in": lo.Uniq(appIDs)}},
@@ -168,7 +169,7 @@ func ListBatchAppEnvs(
 	if len(appIDs) == 0 {
 		return []Environment{}, nil
 	}
-	envs, err := store.Of(db, EnvMeta).List(ctx, InWorkspace(workspaceID), visibleToApps(appIDs...), NewestFirst())
+	envs, err := store.Of(db, EnvMeta).List(ctx, InWorkspace(workspaceID), availableToApps(appIDs...), NewestFirst())
 	return envs, errors.Wrapf(err, "list environments of apps %v in workspace %s", appIDs, workspaceID)
 }
 

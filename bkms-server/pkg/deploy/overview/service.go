@@ -192,7 +192,7 @@ func (s *Service) listTrackedEnvs(
 	envs, err := s.envStore.List(
 		ctx,
 		envmodel.InWorkspace(application.WorkspaceID),
-		envmodel.VisibleToApp(application.ID),
+		envmodel.AvailableToApp(application.ID),
 		envmodel.NewestFirst(),
 	)
 	if err != nil {

@@ -71,7 +71,7 @@ func (s *Service) ListFederatedEnvStates(
 	envs, err := s.envStore.List(
 		ctx,
 		envmodel.InWorkspace(app.WorkspaceID),
-		envmodel.VisibleToApp(app.ID),
+		envmodel.AvailableToApp(app.ID),
 		envmodel.NewestFirst(),
 	)
 	if err != nil {

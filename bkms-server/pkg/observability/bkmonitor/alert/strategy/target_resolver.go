@@ -57,7 +57,7 @@ func (s *Service) resolveEffectiveEnvs(ctx context.Context, strategy *AlertStrat
 		allEnvs, err := s.envStore.List(
 			ctx,
 			envmodel.InWorkspace(strategy.WorkspaceID),
-			envmodel.VisibleToApp(strategy.AppID),
+			envmodel.AvailableToApp(strategy.AppID),
 			envmodel.NewestFirst(),
 		)
 		if err != nil {
